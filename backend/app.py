@@ -1,11 +1,20 @@
-from fastapi import FastAPI, HTTPException, status
+from fastapi import FastAPI, HTTPException, status, Response
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 import psycopg2
 import os
-from typing import Literal
+from typing import Dict, Literal, Optional
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allow all origins for development
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 class HealthCheck(BaseModel):
@@ -36,11 +45,17 @@ def get_health() -> HealthCheck:
 
 # Pydantic model for validation
 class Recipe(BaseModel):
+    id: Optional[int] = None
     name: str
     ingredients: str
     instructions: str
     # meal_type can only be 'breakfast', 'lunch', 'dinner', or 'snack'
     meal_type: Literal['breakfast', 'lunch', 'dinner', 'snack','weekend prep']
+
+class PlanSlot(BaseModel):
+    day: str
+    meal_type: Literal['breakfast', 'lunch', 'dinner', 'snack']
+    recipe_id: Optional[int] = None
 
 
 
@@ -55,38 +70,48 @@ def get_db_connection():
     return conn
 
 
-@app.get("/recipes")
+@app.get("/recipes", response_model=list[Recipe])
 def get_recipes():
     conn = get_db_connection()
     cur = conn.cursor()
-    cur.execute("SELECT * FROM recipes;")
-    recipes = cur.fetchall()
+    cur.execute("SELECT id, name, ingredients, instructions, meal_type FROM recipes ORDER BY name;")
+    rows = cur.fetchall()
     cur.close()
     conn.close()
+    recipes = [
+        Recipe(
+            id=row[0],
+            name=row[1],
+            ingredients=row[2],
+            instructions=row[3],
+            meal_type=row[4]
+        ) for row in rows
+    ]
     return recipes
 
 
-@app.post("/recipes", status_code=201)
+@app.post("/recipes", status_code=201, response_model=Recipe)
 def add_recipe(recipe: Recipe):
     conn = get_db_connection()
     cur = conn.cursor()
     cur.execute(
-        "INSERT INTO recipes (name, ingredients, instructions) VALUES (%s, %s, %s)",
-        (recipe.name, recipe.ingredients, recipe.instructions)
+        "INSERT INTO recipes (name, ingredients, instructions, meal_type) VALUES (%s, %s, %s, %s) RETURNING id",
+        (recipe.name, recipe.ingredients, recipe.instructions, recipe.meal_type)
     )
+    new_id = cur.fetchone()[0]
     conn.commit()
     cur.close()
     conn.close()
-    return recipe
+    return Recipe(id=new_id, **recipe.dict())
 
 
-@app.put("/recipes/{recipe_id}")
+@app.put("/recipes/{recipe_id}", response_model=Recipe)
 def update_recipe(recipe_id: int, recipe: Recipe):
     conn = get_db_connection()
     cur = conn.cursor()
     cur.execute(
-        "UPDATE recipes SET name = %s, ingredients = %s, instructions = %s WHERE id = %s",
-        (recipe.name, recipe.ingredients, recipe.instructions, recipe_id)
+        "UPDATE recipes SET name = %s, ingredients = %s, instructions = %s, meal_type = %s WHERE id = %s",
+        (recipe.name, recipe.ingredients, recipe.instructions, recipe.meal_type, recipe_id)
     )
     if cur.rowcount == 0:
         conn.close()
@@ -94,7 +119,7 @@ def update_recipe(recipe_id: int, recipe: Recipe):
     conn.commit()
     cur.close()
     conn.close()
-    return recipe
+    return Recipe(id=recipe_id, **recipe.dict(exclude={"id"}))
 
 
 @app.delete("/recipes/{recipe_id}", status_code=204)
@@ -108,4 +133,40 @@ def delete_recipe(recipe_id: int):
     conn.commit()
     cur.close()
     conn.close()
-    return JSONResponse(content={}, status_code=204)
+    return Response(status_code=204)
+
+
+@app.get("/weekly-plan", response_model=Dict[str, Dict[str, Optional[int]]])
+def get_weekly_plan():
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT day, meal_type, recipe_id FROM weekly_plan;")
+    rows = cur.fetchall()
+    cur.close()
+    conn.close()
+    # Build nested dict: {day: {meal_type: recipe_id}}
+    days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+    meal_types = ["breakfast", "lunch", "snack", "dinner"]
+    plan = {day: {meal: None for meal in meal_types} for day in days}
+    for day, meal, recipe_id in rows:
+        plan[day][meal] = recipe_id
+    return plan
+
+
+@app.post("/weekly-plan", status_code=201)
+def set_weekly_plan_slot(slot: PlanSlot):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    # Upsert logic: update if exists, else insert
+    cur.execute(
+        """
+        INSERT INTO weekly_plan (day, meal_type, recipe_id)
+        VALUES (%s, %s, %s)
+        ON CONFLICT (day, meal_type) DO UPDATE SET recipe_id = EXCLUDED.recipe_id
+        """,
+        (slot.day, slot.meal_type, slot.recipe_id)
+    )
+    conn.commit()
+    cur.close()
+    conn.close()
+    return {"message": "Plan updated"}

@@ -34,6 +34,21 @@ def create_tables():
 
         conn.commit()
 
+        cur.execute('''
+            CREATE TABLE IF NOT EXISTS weekly_plan (
+                id SERIAL PRIMARY KEY,
+                day VARCHAR(16) NOT NULL,
+                meal_type VARCHAR(50) CHECK (meal_type IN ('breakfast', 'lunch', 'dinner', 'snack')) NOT NULL,
+                recipe_id INTEGER REFERENCES recipes(id) ON DELETE SET NULL
+            );
+        ''')
+        conn.commit()
+        
+        cur.execute('''
+            ALTER TABLE weekly_plan ADD CONSTRAINT unique_day_meal UNIQUE(day, meal_type);
+        ''')
+        conn.commit()
+
     except Exception as e:
         print(f"Error: {e}")
     finally:
