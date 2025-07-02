@@ -1,10 +1,10 @@
-from fastapi import FastAPI, HTTPException, status, Response
-from fastapi.responses import JSONResponse
-from pydantic import BaseModel
-import psycopg2
 import os
 from typing import Dict, Literal, Optional
+
+import psycopg2
+from fastapi import FastAPI, HTTPException, Response, status
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 
 app = FastAPI()
 
@@ -43,6 +43,7 @@ def get_health() -> HealthCheck:
     """
     return HealthCheck(status="OK")
 
+
 # Pydantic model for validation
 class Recipe(BaseModel):
     id: Optional[int] = None
@@ -50,22 +51,22 @@ class Recipe(BaseModel):
     ingredients: str
     instructions: str
     # meal_type can only be 'breakfast', 'lunch', 'dinner', or 'snack'
-    meal_type: Literal['breakfast', 'lunch', 'dinner', 'snack','weekend prep']
+    meal_type: Literal["breakfast", "lunch", "dinner", "snack", "weekend prep"]
+
 
 class PlanSlot(BaseModel):
     day: str
-    meal_type: Literal['breakfast', 'lunch', 'dinner', 'snack']
+    meal_type: Literal["breakfast", "lunch", "dinner", "snack"]
     recipe_id: Optional[int] = None
-
 
 
 # DB Connection function
 def get_db_connection():
     conn = psycopg2.connect(
-        dbname=os.environ['POSTGRES_DB'],
-        user=os.environ['POSTGRES_USER'],
-        password=os.environ['POSTGRES_PASSWORD'],
-        host='db'
+        dbname=os.environ["POSTGRES_DB"],
+        user=os.environ["POSTGRES_USER"],
+        password=os.environ["POSTGRES_PASSWORD"],
+        host="db",
     )
     return conn
 
@@ -74,7 +75,9 @@ def get_db_connection():
 def get_recipes():
     conn = get_db_connection()
     cur = conn.cursor()
-    cur.execute("SELECT id, name, ingredients, instructions, meal_type FROM recipes ORDER BY name;")
+    cur.execute(
+        "SELECT id, name, ingredients, instructions, meal_type FROM recipes ORDER BY name;"
+    )
     rows = cur.fetchall()
     cur.close()
     conn.close()
@@ -84,8 +87,9 @@ def get_recipes():
             name=row[1],
             ingredients=row[2],
             instructions=row[3],
-            meal_type=row[4]
-        ) for row in rows
+            meal_type=row[4],
+        )
+        for row in rows
     ]
     return recipes
 
@@ -96,13 +100,13 @@ def add_recipe(recipe: Recipe):
     cur = conn.cursor()
     cur.execute(
         "INSERT INTO recipes (name, ingredients, instructions, meal_type) VALUES (%s, %s, %s, %s) RETURNING id",
-        (recipe.name, recipe.ingredients, recipe.instructions, recipe.meal_type)
+        (recipe.name, recipe.ingredients, recipe.instructions, recipe.meal_type),
     )
     new_id = cur.fetchone()[0]
     conn.commit()
     cur.close()
     conn.close()
-    return Recipe(id=new_id, **recipe.dict())
+    return Recipe(id=new_id, **recipe.dict(exclude={"id"}))
 
 
 @app.put("/recipes/{recipe_id}", response_model=Recipe)
@@ -111,7 +115,13 @@ def update_recipe(recipe_id: int, recipe: Recipe):
     cur = conn.cursor()
     cur.execute(
         "UPDATE recipes SET name = %s, ingredients = %s, instructions = %s, meal_type = %s WHERE id = %s",
-        (recipe.name, recipe.ingredients, recipe.instructions, recipe.meal_type, recipe_id)
+        (
+            recipe.name,
+            recipe.ingredients,
+            recipe.instructions,
+            recipe.meal_type,
+            recipe_id,
+        ),
     )
     if cur.rowcount == 0:
         conn.close()
@@ -145,7 +155,15 @@ def get_weekly_plan():
     cur.close()
     conn.close()
     # Build nested dict: {day: {meal_type: recipe_id}}
-    days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+    days = [
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday",
+        "Sunday",
+    ]
     meal_types = ["breakfast", "lunch", "snack", "dinner"]
     plan = {day: {meal: None for meal in meal_types} for day in days}
     for day, meal, recipe_id in rows:
@@ -164,7 +182,7 @@ def set_weekly_plan_slot(slot: PlanSlot):
         VALUES (%s, %s, %s)
         ON CONFLICT (day, meal_type) DO UPDATE SET recipe_id = EXCLUDED.recipe_id
         """,
-        (slot.day, slot.meal_type, slot.recipe_id)
+        (slot.day, slot.meal_type, slot.recipe_id),
     )
     conn.commit()
     cur.close()

@@ -6,11 +6,11 @@ services:
       - ./html:/usr/share/nginx/html
     ports:
       - "8080:80"
-    develop:
-      watch:
-        - action: sync+restart
-          path: ./html
-          target: /usr/share/nginx/html
+    # develop:
+    #   watch:
+    #     - action: sync+restart
+    #       path: ./html
+    #       target: /usr/share/nginx/html
     depends_on:
       backend:
         condition: service_healthy
@@ -25,11 +25,11 @@ services:
       - POSTGRES_DB=recipes
     ports:
       - "5000:5000"
-    develop:
-      watch:
-        - action: sync
-          path: ./backend
-          target: /app
+    # develop:
+    #   watch:
+    #     - action: sync
+    #       path: ./backend
+    #       target: /app
     depends_on:
       db:
         condition: service_healthy

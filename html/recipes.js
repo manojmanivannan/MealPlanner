@@ -197,7 +197,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 <button class="text-xs text-blue-600 underline" onclick="window.selectRecipeForSlot('${day}','${meal}')">${recipe ? 'Change' : 'Add'}</button>
                             </div>
                             <div class="ml-2 text-sm text-stone-700">
-                                ${recipe ? `<strong>${recipe.name}</strong><br><span>${recipe.ingredients}</span>` : '<span class="text-stone-400">No recipe</span>'}
+                                ${recipe ? `<span class='font-bold text-teal-800 cursor-pointer hover:underline' onclick='window.showRecipeDetails(${recipe.id})'>${recipe.name}</span><br><span>${recipe.ingredients}</span>` : '<span class="text-stone-400">No recipe</span>'}
                             </div>
                         </div>
                     `;
@@ -232,6 +232,29 @@ document.addEventListener('DOMContentLoaded', () => {
         saveWeeklyPlanSlot(day, meal, recipeId);
         document.getElementById('select-recipe-modal').remove();
     };
+
+    window.showRecipeDetails = (id) => {
+        if (!id) return;
+        const recipe = recipes.find(r => r.id === id);
+        if (!recipe) return;
+        const modalHTML = `
+            <div id="recipe-detail-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                <div class="bg-white p-6 rounded-lg shadow-lg w-full max-w-lg relative" onclick="event.stopPropagation()">
+                    <button class="absolute top-2 right-2 text-2xl text-stone-400 hover:text-stone-700" onclick="document.getElementById('recipe-detail-modal').remove()">&times;</button>
+                    <h2 class="text-2xl font-bold mb-2 text-teal-800">${recipe.name}</h2>
+                    <div class="mb-2"><span class="font-semibold">Ingredients:</span><br>${recipe.ingredients}</div>
+                    <div class="mb-2"><span class="font-semibold">Instructions:</span><br>${recipe.instructions}</div>
+                    <div class="mt-2 text-xs text-stone-500">Meal type: ${recipe.meal_type}</div>
+                </div>
+            </div>
+        `;
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+        const overlay = document.getElementById('recipe-detail-modal');
+        overlay.addEventListener('click', () => overlay.remove());
+    };
+
+    // Make showRecipeModal globally available for inline event handlers
+    window.showRecipeModal = showRecipeModal;
 
     // --- End Weekly Planner Logic ---
 
