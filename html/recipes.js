@@ -270,51 +270,90 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- End Weekly Planner Logic ---
 
     // --- Shopping List Logic ---
+    let shelfLifeMode = false;
+
     const renderShoppingList = async () => {
         const container = document.getElementById('shopping-list-container');
+        // Add toggle UI
+        container.innerHTML = `
+            <div class="flex items-center mb-4">
+                <label class="flex items-center cursor-pointer">
+                    <input type="checkbox" id="toggle-shelf-life" class="form-checkbox h-4 w-4 text-teal-600">
+                    <span class="ml-2 text-sm text-stone-700">Sort by shelf life</span>
+                </label>
+            </div>
+            <div id="ingredients-list-section"></div>
+        `;
+        const listSection = document.getElementById('ingredients-list-section');
         try {
             const response = await fetch(`${API_BASE}/ingredients-list`);
-            const ingredients = await response.json();
-            // Group ingredients by first letter (A-Z)
-            const grouped = {};
-            ingredients.forEach(ing => {
-                const letter = ing.name.charAt(0).toUpperCase();
-                if (!grouped[letter]) grouped[letter] = [];
-                grouped[letter].push(ing);
-            });
-            // Only show non-empty sections, sorted alphabetically
-            const letters = Object.keys(grouped).sort();
-            container.innerHTML = letters.map(letter => `
-                <div class="mb-2">
-                    <div class="font-bold text-stone-700 text-xs mb-1 pl-1">${letter}</div>
-                    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-1">
-                        ${grouped[letter].map(ing => `
-                            <label class="flex items-center space-x-1 p-1 bg-stone-50 rounded border border-stone-200 group relative">
-                                <input type="checkbox" data-id="${ing.id}" ${ing.available ? 'checked' : ''}>
-                                <span class="text-xs">${ing.name}</span>
-                                <button type="button" data-id="${ing.id}" class="delete-ingredient-btn absolute right-1 top-1 text-stone-400 hover:text-red-600 text-xs font-bold transition-opacity duration-150" title="Delete">&times;</button>
-                            </label>
-                        `).join('')}
+            let ingredients = await response.json();
+            // Render by mode
+            let html = '';
+            if (shelfLifeMode) {
+                // Sort by shelf_life ascending
+                const sorted = [...ingredients].sort((a, b) => (a.shelf_life ?? 9999) - (b.shelf_life ?? 9999));
+                html += `<div class="flex flex-col gap-1">`;
+                sorted.forEach(ing => {
+                    const expired = ing.shelf_life <= 0;
+                    html += `
+                        <label class="flex items-center space-x-2 p-1 bg-stone-50 rounded border border-stone-200 relative">
+                            <input type="checkbox" data-id="${ing.id}" ${ing.available ? 'checked' : ''}>
+                            <span class="text-xs ingredient-name${expired ? ' line-through text-red-500' : ''}">${ing.name}</span>
+                            <span class="ml-auto text-xs ${expired ? 'text-red-500 font-bold' : 'text-stone-500'}">
+                                ${expired ? 'Expired' : (ing.shelf_life === 1 ? '1 day left' : ing.shelf_life + ' days left')}
+                            </span>
+                            <button type="button" data-id="${ing.id}" class="delete-ingredient-btn absolute right-1 top-1 text-stone-400 hover:text-red-600 text-xs font-bold transition-opacity duration-150" title="Delete">&times;</button>
+                        </label>
+                    `;
+                });
+                html += `</div>`;
+            } else {
+                // Alphabetical grouping
+                const grouped = {};
+                ingredients.forEach(ing => {
+                    const letter = ing.name.charAt(0).toUpperCase();
+                    if (!grouped[letter]) grouped[letter] = [];
+                    grouped[letter].push(ing);
+                });
+                const letters = Object.keys(grouped).sort();
+                html += letters.map(letter => `
+                    <div class="mb-2">
+                        <div class="font-bold text-stone-700 text-xs mb-1 pl-1">${letter}</div>
+                        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-1">
+                            ${grouped[letter].map(ing => `
+                                <label class="flex items-center space-x-1 p-1 bg-stone-50 rounded border border-stone-200 group relative">
+                                    <input type="checkbox" data-id="${ing.id}" ${ing.available ? 'checked' : ''}>
+                                    <span class="text-xs">${ing.name}</span>
+                                    <button type="button" data-id="${ing.id}" class="delete-ingredient-btn absolute right-1 top-1 text-stone-400 hover:text-red-600 text-xs font-bold transition-opacity duration-150" title="Delete">&times;</button>
+                                </label>
+                            `).join('')}
+                        </div>
                     </div>
-                </div>
-            `).join('') + `
+                `).join('');
+            }
+            // Add input/buttons
+            html += `
                 <div class="mt-4 flex flex-col sm:flex-row sm:items-center sm:space-x-2 space-y-2 sm:space-y-0">
                     <input id="new-ingredient-input" type="text" placeholder="Ingredient..." class="border border-stone-300 rounded px-2 py-1 text-sm focus:outline-none focus:border-teal-500 w-full sm:w-auto">
                     <button id="add-ingredient-btn" class="bg-teal-600 text-white px-3 py-1 rounded hover:bg-teal-700 text-sm w-full sm:w-auto">Add</button>
                     <button id="regenerate-ingredients-btn" class="bg-orange-500 text-white px-3 py-1 rounded hover:bg-orange-600 text-sm w-full sm:w-auto">Regenerate</button>
                 </div>
             `;
-            container.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+            listSection.innerHTML = html;
+            // Checkbox logic
+            listSection.querySelectorAll('input[type="checkbox"]').forEach(cb => {
                 cb.addEventListener('change', async (e) => {
                     const id = e.target.getAttribute('data-id');
                     const available = e.target.checked;
                     await fetch(`${API_BASE}/ingredients/${id}?available=${available}`, {
                         method: 'PUT'
                     });
+                    renderShoppingList(); // Refresh to get updated shelf life from backend
                 });
             });
             // Delete ingredient logic
-            container.querySelectorAll('.delete-ingredient-btn').forEach(btn => {
+            listSection.querySelectorAll('.delete-ingredient-btn').forEach(btn => {
                 btn.addEventListener('click', async (e) => {
                     e.preventDefault();
                     e.stopPropagation();
@@ -373,8 +412,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     regenBtn.disabled = false;
                 }
             });
+            // Toggle logic
+            const toggle = document.getElementById('toggle-shelf-life');
+            toggle.checked = shelfLifeMode;
+            toggle.addEventListener('change', (e) => {
+                shelfLifeMode = e.target.checked;
+                renderShoppingList();
+            });
         } catch (error) {
-            console.error('Error fetching ingredients:', error);
+            listSection.innerHTML = '<div class="text-red-600">Failed to load shopping list.</div>';
         }
     }
 

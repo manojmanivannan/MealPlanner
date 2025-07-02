@@ -1,3 +1,4 @@
+import logging
 import os
 from typing import Dict, List, Literal, Optional
 
@@ -7,6 +8,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 app = FastAPI()
+logger = logging.getLogger("uvicorn")
+logger.setLevel(logging.DEBUG)
 
 app.add_middleware(
     CORSMiddleware,
@@ -64,6 +67,8 @@ class Ingredient(BaseModel):
     id: int
     name: str
     available: bool
+    shelf_life: Optional[int] = None  # original shelf life in days
+    last_available: Optional[str] = None  # ISO timestamp
 
 
 # DB Connection function
@@ -214,22 +219,80 @@ def get_unique_ingredients():
 
 @app.get("/ingredients-list", response_model=List[Ingredient])
 def get_ingredients_list():
-    conn = get_db_connection()
-    cur = conn.cursor()
-    cur.execute("SELECT id, name, available FROM ingredients ORDER BY name;")
-    rows = cur.fetchall()
-    cur.close()
-    conn.close()
-    return [Ingredient(id=row[0], name=row[1], available=row[2]) for row in rows]
+    import datetime
 
-
-@app.put("/ingredients/{ingredient_id}", response_model=Ingredient)
-def update_ingredient_availability(ingredient_id: int, available: bool):
     conn = get_db_connection()
     cur = conn.cursor()
     cur.execute(
-        "UPDATE ingredients SET available = %s WHERE id = %s RETURNING id, name, available;",
-        (available, ingredient_id),
+        "SELECT id, name, available, shelf_life, last_available FROM ingredients ORDER BY name;"
+    )
+    rows = cur.fetchall()
+    cur.close()
+    conn.close()
+    result = []
+    now = datetime.datetime.utcnow()
+    for row in rows:
+        id, name, available, shelf_life, last_available = row
+        # Compute remaining shelf life if available and last_available is set
+        remaining = shelf_life
+        last_available_str = last_available.isoformat() if last_available else None
+        if available and last_available and shelf_life is not None:
+            try:
+                logger.debug(f"Calculating remaining shelf life for {name}")
+                last_dt = (
+                    last_available
+                    if isinstance(last_available, datetime.datetime)
+                    else datetime.datetime.fromisoformat(str(last_available))
+                )
+                logger.debug(f"Last available: {last_dt}, Now: {now}")
+                days_passed = (now - last_dt).days
+                logger.debug(f"Days passed: {days_passed}")
+                remaining = max(0, shelf_life - days_passed)
+                logger.debug(f"Remaining shelf life: {remaining}")
+                logger.debug("-----------------------")
+            except Exception:
+                pass
+        result.append(
+            Ingredient(
+                id=id,
+                name=name,
+                available=available,
+                shelf_life=remaining,
+                last_available=last_available_str,
+            )
+        )
+    return result
+
+
+@app.put("/ingredients/{ingredient_id}", response_model=Ingredient)
+def update_ingredient_availability(
+    ingredient_id: int,
+    available: Optional[bool] = None,
+    shelf_life: Optional[int] = None,
+):
+    import datetime
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+    set_clauses = []
+    params = []
+    if available is not None:
+        set_clauses.append("available = %s")
+        params.append(available)
+        if available:
+            set_clauses.append("last_available = %s")
+            params.append(datetime.datetime.utcnow().isoformat())
+    if shelf_life is not None:
+        set_clauses.append("shelf_life = %s")
+        params.append(shelf_life)
+    if not set_clauses:
+        conn.close()
+        raise HTTPException(status_code=400, detail="No valid fields to update")
+    set_clause = ", ".join(set_clauses)
+    params.append(ingredient_id)
+    cur.execute(
+        f"UPDATE ingredients SET {set_clause} WHERE id = %s RETURNING id, name, available, shelf_life, last_available;",
+        tuple(params),
     )
     row = cur.fetchone()
     conn.commit()
@@ -237,7 +300,29 @@ def update_ingredient_availability(ingredient_id: int, available: bool):
     conn.close()
     if not row:
         raise HTTPException(status_code=404, detail="Ingredient not found")
-    return Ingredient(id=row[0], name=row[1], available=row[2])
+    # Compute remaining shelf life for response
+    id, name, available, shelf_life, last_available = row
+    remaining = shelf_life
+    last_available_str = last_available.isoformat() if last_available else None
+    if available and last_available and shelf_life is not None:
+        try:
+            last_dt = (
+                last_available
+                if isinstance(last_available, datetime.datetime)
+                else datetime.datetime.fromisoformat(str(last_available))
+            )
+            now = datetime.datetime.utcnow()
+            days_passed = (now - last_dt).days
+            remaining = max(0, shelf_life - days_passed)
+        except Exception:
+            pass
+    return Ingredient(
+        id=id,
+        name=name,
+        available=available,
+        shelf_life=remaining,
+        last_available=last_available_str,
+    )
 
 
 @app.post("/ingredients", response_model=Ingredient, status_code=201)

@@ -1,0 +1,101 @@
+id,name,shelf_life,available
+1,almonds,365,f
+2,banana,14,f
+3,berries,7,f
+4,yogurt,14,f
+5,spinach,7,f
+6,orange,21,f
+7,toast,7,f
+8,moong dal batter,3,f
+9,apple,28,f
+10,paneer,7,f
+12,chia seeds,1095,f
+13,egg,42,f
+14,nuts,365,f
+15,oats,2190,f
+16,mushrooms,7,f
+17,eggs,42,f
+18,kale,7,f
+21,bell peppers,14,f
+23,onions,28,f
+24,spices,365,f
+25,tomatoes,14,f
+28,cashews,365,f
+29,chili powder,1095,f
+36,quinoa,1095,f
+40,roti,3,f
+41,feta,14,f
+42,tomato sauce,7,f
+44,greens,7,f
+46,chickpeas,5,f
+47,vegetables,14,f
+50,chicken skewers,3,f
+51,olives,14,f
+52,orange slices,4,f
+55,chicken,2,f
+56,peppers,14,f
+60,tofu,7,f
+61,cauliflower rice,5,f
+64,salsa,7,f
+65,black beans,4,f
+66,avocado,7,f
+67,ground beef,2,f
+72,fruit,5,f
+73,wraps,7,f
+74,shrimp,2,f
+76,halloumi,14,f
+78,couscous,4,f
+79,salmon,2,f
+83,beans,5,f
+84,tuna,4,f
+87,pasta,7,f
+88,pear,42,f
+89,melon slices,3,f
+90,tzatziki,14,f
+91,hummus,7,f
+92,lamb,3,f
+94,tabbouleh,3,f
+96,falafel,3,f
+99,curry base,7,f
+102,brown rice,5,f
+103,chana masala,3,f
+105,chicken breast,2,f
+106,salad,3,f
+108,turkey sausage,4,f
+110,lamb meatballs,4,f
+111,pepper sauce,14,f
+113,chicken thighs,2,f
+115,asparagus,7,f
+118,broccoli,7,f
+120,cucumber yogurt salad,3,f
+121,kebabs,3,f
+122,green beans,7,f
+126,lentils,5,f
+130,noodles,7,f
+132,watermelon,14,f
+133,rice,5,f
+135,curry spices,1095,f
+139,cucumber salad,3,f
+151,naan,3,f
+152,vegetable sabzi,3,f
+159,masala spice,1095,f
+161,walnuts,365,f
+164,grapes,14,f
+165,carrot sticks,7,f
+166,cucumber sticks,7,f
+167,melon,14,f
+170,cottage cheese,7,f
+171,strawberries,5,f
+172,crackers,91.25,f
+173,dried fruit,1095,f
+174,cheese,14,f
+177,pear slices,3,f
+180,orange segments,4,f
+181,cumin powder,1095,f
+184,vegetable sticks,7,f
+191,dal,5,f
+194,zucchini,7,f
+203,cauliflower,7,f
+208,curry paste,21,f
+210,peanuts,365,f
+212,tamarind,1095,f

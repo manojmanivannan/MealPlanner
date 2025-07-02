@@ -45,7 +45,9 @@ def create_tables():
             CREATE TABLE IF NOT EXISTS ingredients (
                 id SERIAL PRIMARY KEY,
                 name VARCHAR(255) UNIQUE NOT NULL,
-                available BOOLEAN DEFAULT FALSE
+                shelf_life INTEGER DEFAULT 0,
+                available BOOLEAN DEFAULT FALSE,
+                last_available TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
         """)
         conn.commit()
@@ -75,6 +77,23 @@ def create_tables():
         """)
         conn.commit()
 
+        # Load initial data for ingredients from CSV file
+        with open("ingredients.csv", "r") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                cur.execute(
+                    """
+                    INSERT INTO ingredients (name, shelf_life, available)
+                    VALUES (%s, %s, %s)
+                    ON CONFLICT (name) DO UPDATE SET
+                        shelf_life = EXCLUDED.shelf_life,
+                        available = EXCLUDED.available
+                """,
+                    (row["name"], row["shelf_life"], row["available"]),
+                )
+        conn.commit()
+
+        # Load initial data for recipes from CSV files
         with open("recipes.csv", "r") as f:
             reader = csv.DictReader(f)
             for row in reader:
