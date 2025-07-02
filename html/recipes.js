@@ -214,7 +214,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const filtered = recipes.filter(r => r.meal_type === meal);
         const modalHTML = `
             <div id="select-recipe-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                <div class="bg-white p-6 rounded-lg shadow-lg w-full max-w-md">
+                <div class="bg-white p-6 rounded-lg shadow-lg w-full max-w-md" onclick="event.stopPropagation()">
                     <h2 class="text-xl font-bold mb-4">Select ${meal.charAt(0).toUpperCase() + meal.slice(1)} for ${day}</h2>
                     <div class="mb-4 max-h-60 overflow-y-auto">
                         ${filtered.length ? filtered.map(r => `
@@ -229,6 +229,8 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
         `;
         document.body.insertAdjacentHTML('beforeend', modalHTML);
+        const overlay = document.getElementById('select-recipe-modal');
+        overlay.addEventListener('click', () => overlay.remove());
     };
 
     window.assignRecipeToSlot = (day, meal, recipeId) => {
