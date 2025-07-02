@@ -299,6 +299,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div class="mt-4 flex items-center space-x-2">
                     <input id="new-ingredient-input" type="text" placeholder="Ingredient..." class="border border-stone-300 rounded px-2 py-1 text-sm focus:outline-none focus:border-teal-500">
                     <button id="add-ingredient-btn" class="bg-teal-600 text-white px-3 py-1 rounded hover:bg-teal-700 text-sm">Add</button>
+                    <button id="regenerate-ingredients-btn" class="bg-orange-500 text-white px-3 py-1 rounded hover:bg-orange-600 text-sm">Regenerate</button>
                 </div>
             `;
             container.querySelectorAll('input[type="checkbox"]').forEach(cb => {
@@ -344,6 +345,30 @@ document.addEventListener('DOMContentLoaded', () => {
                     console.error('Error adding ingredient:', error);
                 } finally {
                     addBtn.disabled = false;
+                }
+            });
+            // Regenerate ingredients logic
+            const regenBtn = document.getElementById('regenerate-ingredients-btn');
+            regenBtn.addEventListener('click', async (e) => {
+                e.preventDefault();
+                regenBtn.disabled = true;
+                try {
+                    // Get unique ingredients from recipes
+                    const resp = await fetch('http://localhost:5000/ingredients');
+                    const uniqueIngredients = await resp.json();
+                    // Get current ingredient names (lowercase, trimmed)
+                    const current = new Set(ingredients.map(i => i.name.trim().toLowerCase()));
+                    // Add missing ones
+                    for (const name of uniqueIngredients) {
+                        if (!current.has(name.trim().toLowerCase())) {
+                            await fetch(`http://localhost:5000/ingredients?name=${encodeURIComponent(name)}`, { method: 'POST' });
+                        }
+                    }
+                    renderShoppingList();
+                } catch (error) {
+                    console.error('Error regenerating ingredients:', error);
+                } finally {
+                    regenBtn.disabled = false;
                 }
             });
         } catch (error) {
