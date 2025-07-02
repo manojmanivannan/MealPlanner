@@ -114,6 +114,9 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
         `;
         document.body.insertAdjacentHTML('beforeend', modalHTML);
+        const overlay = document.getElementById('recipe-modal');
+        overlay.addEventListener('click', () => overlay.remove());
+        overlay.querySelector('div.bg-white').addEventListener('click', e => e.stopPropagation());
 
         document.getElementById('recipe-form').addEventListener('submit', saveRecipe);
         document.getElementById('cancel-btn').addEventListener('click', () => document.getElementById('recipe-modal').remove());
