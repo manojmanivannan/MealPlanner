@@ -274,12 +274,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const renderShoppingList = async () => {
         const container = document.getElementById('shopping-list-container');
-        // Add toggle UI
+        // Add input/buttons at the top
         container.innerHTML = `
-            <div class="flex items-center mb-4">
-                <label class="flex items-center cursor-pointer">
-                    <input type="checkbox" id="toggle-shelf-life" class="form-checkbox h-4 w-4 text-teal-600">
-                    <span class="ml-2 text-sm text-stone-700">Sort by shelf life</span>
+            <div class="flex flex-col sm:flex-row sm:items-center sm:space-x-2 space-y-2 sm:space-y-0 mb-4">
+                <input id="new-ingredient-input" type="text" placeholder="Ingredient..." class="border border-stone-300 rounded px-2 py-1 text-sm focus:outline-none focus:border-teal-500 w-full sm:w-auto">
+                <input id="new-ingredient-shelf-life" type="number" min="0" placeholder="Shelf life (days)" class="border border-stone-300 rounded px-2 py-1 text-sm focus:outline-none focus:border-teal-500 w-full sm:w-auto">
+                <button id="add-ingredient-btn" class="bg-teal-600 text-white px-3 py-1 rounded hover:bg-teal-700 text-sm w-full sm:w-auto">Add</button>
+                <div class="flex-1"></div>
+                <label class="flex items-center cursor-pointer ml-auto">
+                    <span class="mr-2 text-sm text-stone-700">Sort by shelf life</span>
+                    <button id="toggle-shelf-life" class="relative inline-flex h-6 w-12 border-2 border-teal-600 rounded-full transition-colors duration-200 focus:outline-none ${shelfLifeMode ? 'bg-teal-600' : 'bg-stone-200'}">
+                        <span class="absolute left-0 top-0 h-6 w-6 bg-white border border-stone-300 rounded-full shadow transform transition-transform duration-200 ${shelfLifeMode ? 'translate-x-6' : ''}"></span>
+                    </button>
                 </label>
             </div>
             <div id="ingredients-list-section"></div>
@@ -293,7 +299,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (shelfLifeMode) {
                 // Sort by shelf_life ascending
                 const sorted = [...ingredients].sort((a, b) => (a.shelf_life ?? 9999) - (b.shelf_life ?? 9999));
-                html += `<div class="flex flex-col gap-1">`;
+                // Render as 2 columns
+                html += `<div class="grid grid-cols-1 sm:grid-cols-2 gap-2">`;
                 sorted.forEach(ing => {
                     const expired = ing.shelf_life <= 0;
                     html += `
@@ -332,14 +339,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                 `).join('');
             }
-            // Add input/buttons
-            html += `
-                <div class="mt-4 flex flex-col sm:flex-row sm:items-center sm:space-x-2 space-y-2 sm:space-y-0">
-                    <input id="new-ingredient-input" type="text" placeholder="Ingredient..." class="border border-stone-300 rounded px-2 py-1 text-sm focus:outline-none focus:border-teal-500 w-full sm:w-auto">
-                    <button id="add-ingredient-btn" class="bg-teal-600 text-white px-3 py-1 rounded hover:bg-teal-700 text-sm w-full sm:w-auto">Add</button>
-                    <button id="regenerate-ingredients-btn" class="bg-orange-500 text-white px-3 py-1 rounded hover:bg-orange-600 text-sm w-full sm:w-auto">Regenerate</button>
-                </div>
-            `;
             listSection.innerHTML = html;
             // Checkbox logic
             listSection.querySelectorAll('input[type="checkbox"]').forEach(cb => {
@@ -367,17 +366,33 @@ document.addEventListener('DOMContentLoaded', () => {
             // Add ingredient logic
             const addBtn = document.getElementById('add-ingredient-btn');
             const input = document.getElementById('new-ingredient-input');
+            const shelfLifeInput = document.getElementById('new-ingredient-shelf-life');
             addBtn.addEventListener('click', async (e) => {
                 e.preventDefault();
                 const name = input.value.trim();
+                const shelf_life = shelfLifeInput.value.trim();
+                // Validation: shelf life is required and must be integer > 0
                 if (!name) return;
+                if (shelf_life === '') {
+                    alert('Shelf life is required and must be an integer greater than 0 (days).');
+                    shelfLifeInput.focus();
+                    return;
+                }
+                const shelfLifeInt = parseInt(shelf_life, 10);
+                if (isNaN(shelfLifeInt) || shelfLifeInt <= 0) {
+                    alert('Shelf life must be an integer greater than 0 (days).');
+                    shelfLifeInput.focus();
+                    return;
+                }
                 addBtn.disabled = true;
                 try {
-                    const resp = await fetch(`${API_BASE}/ingredients?name=${encodeURIComponent(name)}`, {
+                    let url = `${API_BASE}/ingredients?name=${encodeURIComponent(name)}&shelf_life=${encodeURIComponent(shelf_life)}`;
+                    const resp = await fetch(url, {
                         method: 'POST'
                     });
                     if (resp.ok) {
                         input.value = '';
+                        shelfLifeInput.value = '';
                         renderShoppingList();
                     } else {
                         console.error('Error adding ingredient:', resp.statusText);
@@ -388,35 +403,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     addBtn.disabled = false;
                 }
             });
-            // Regenerate ingredients logic
-            const regenBtn = document.getElementById('regenerate-ingredients-btn');
-            regenBtn.addEventListener('click', async (e) => {
-                e.preventDefault();
-                regenBtn.disabled = true;
-                try {
-                    // Get unique ingredients from recipes
-                    const resp = await fetch(`${API_BASE}/ingredients`);
-                    const uniqueIngredients = await resp.json();
-                    // Get current ingredient names (lowercase, trimmed)
-                    const current = new Set(ingredients.map(i => i.name.trim().toLowerCase()));
-                    // Add missing ones
-                    for (const name of uniqueIngredients) {
-                        if (!current.has(name.trim().toLowerCase())) {
-                            await fetch(`${API_BASE}/ingredients?name=${encodeURIComponent(name)}`, { method: 'POST' });
-                        }
-                    }
-                    renderShoppingList();
-                } catch (error) {
-                    console.error('Error regenerating ingredients:', error);
-                } finally {
-                    regenBtn.disabled = false;
-                }
-            });
-            // Toggle logic
+            // Toggle logic (button instead of checkbox)
             const toggle = document.getElementById('toggle-shelf-life');
-            toggle.checked = shelfLifeMode;
-            toggle.addEventListener('change', (e) => {
-                shelfLifeMode = e.target.checked;
+            toggle.addEventListener('click', (e) => {
+                shelfLifeMode = !shelfLifeMode;
                 renderShoppingList();
             });
         } catch (error) {

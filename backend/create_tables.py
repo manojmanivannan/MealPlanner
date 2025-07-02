@@ -45,7 +45,7 @@ def create_tables():
             CREATE TABLE IF NOT EXISTS ingredients (
                 id SERIAL PRIMARY KEY,
                 name VARCHAR(255) UNIQUE NOT NULL,
-                shelf_life INTEGER DEFAULT 0,
+                shelf_life INTEGER CHECK (shelf_life >= 0) DEFAULT NULL,
                 available BOOLEAN DEFAULT FALSE,
                 last_available TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );

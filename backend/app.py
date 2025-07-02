@@ -326,13 +326,13 @@ def update_ingredient_availability(
 
 
 @app.post("/ingredients", response_model=Ingredient, status_code=201)
-def add_ingredient(name: str):
+def add_ingredient(name: str, shelf_life: int):
     conn = get_db_connection()
     cur = conn.cursor()
     # Insert new ingredient, default available to False
     cur.execute(
-        "INSERT INTO ingredients (name, available) VALUES (%s, %s) ON CONFLICT (name) DO NOTHING RETURNING id, name, available;",
-        (name.strip(), False),
+        "INSERT INTO ingredients (name, available, shelf_life) VALUES (%s, %s, %s) ON CONFLICT (name) DO NOTHING RETURNING id, name, available, shelf_life;",
+        (name.strip(), False, shelf_life),
     )
     row = cur.fetchone()
     conn.commit()
