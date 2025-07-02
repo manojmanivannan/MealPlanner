@@ -197,7 +197,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 <button class="text-xs text-blue-600 underline" onclick="window.selectRecipeForSlot('${day}','${meal}')">${recipe ? 'Change' : 'Add'}</button>
                             </div>
                             <div class="ml-2 text-sm text-stone-700">
-                                ${recipe ? `<span class='font-bold text-teal-800 cursor-pointer hover:underline' onclick='window.showRecipeDetails(${recipe.id})'>${recipe.name}</span><br><span>${recipe.ingredients}</span>` : '<span class="text-stone-400">No recipe</span>'}
+                                ${recipe ? `<span class='font-bold text-teal-800 cursor-pointer hover:underline' onclick='window.showRecipeDetails(${recipe.id})'>${recipe.name}</span>` : '<span class="text-stone-400">No recipe</span>'}
                             </div>
                         </div>
                     `;
