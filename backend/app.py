@@ -238,3 +238,23 @@ def update_ingredient_availability(ingredient_id: int, available: bool):
     if not row:
         raise HTTPException(status_code=404, detail="Ingredient not found")
     return Ingredient(id=row[0], name=row[1], available=row[2])
+
+
+@app.post("/ingredients", response_model=Ingredient, status_code=201)
+def add_ingredient(name: str):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    # Insert new ingredient, default available to False
+    cur.execute(
+        "INSERT INTO ingredients (name, available) VALUES (%s, %s) ON CONFLICT (name) DO NOTHING RETURNING id, name, available;",
+        (name.strip(), False),
+    )
+    row = cur.fetchone()
+    conn.commit()
+    cur.close()
+    conn.close()
+    if not row:
+        raise HTTPException(
+            status_code=400, detail="Ingredient already exists or invalid name"
+        )
+    return Ingredient(id=row[0], name=row[1], available=row[2])

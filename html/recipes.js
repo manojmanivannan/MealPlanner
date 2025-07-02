@@ -294,7 +294,12 @@ document.addEventListener('DOMContentLoaded', () => {
                         `).join('')}
                     </div>
                 </div>
-            `).join('');
+            `).join('') + `
+                <div class="mt-4 flex items-center space-x-2">
+                    <input id="new-ingredient-input" type="text" placeholder="Ingredient..." class="border border-stone-300 rounded px-2 py-1 text-sm focus:outline-none focus:border-teal-500">
+                    <button id="add-ingredient-btn" class="bg-teal-600 text-white px-3 py-1 rounded hover:bg-teal-700 text-sm">Add</button>
+                </div>
+            `;
             container.querySelectorAll('input[type="checkbox"]').forEach(cb => {
                 cb.addEventListener('change', async (e) => {
                     const id = e.target.getAttribute('data-id');
@@ -303,6 +308,30 @@ document.addEventListener('DOMContentLoaded', () => {
                         method: 'PUT'
                     });
                 });
+            });
+            // Add ingredient logic
+            const addBtn = document.getElementById('add-ingredient-btn');
+            const input = document.getElementById('new-ingredient-input');
+            addBtn.addEventListener('click', async (e) => {
+                e.preventDefault();
+                const name = input.value.trim();
+                if (!name) return;
+                addBtn.disabled = true;
+                try {
+                    const resp = await fetch(`http://localhost:5000/ingredients?name=${encodeURIComponent(name)}`, {
+                        method: 'POST'
+                    });
+                    if (resp.ok) {
+                        input.value = '';
+                        renderShoppingList();
+                    } else {
+                        const data = await resp.json();
+                        alert(data.detail || 'Failed to add ingredient.');
+                    }
+                } catch {
+                    alert('Failed to add ingredient.');
+                }
+                addBtn.disabled = false;
             });
         } catch (error) {
             container.innerHTML = '<div class="text-red-600">Failed to load shopping list.</div>';
