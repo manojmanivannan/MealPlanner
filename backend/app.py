@@ -1,5 +1,5 @@
 import os
-from typing import Dict, Literal, Optional
+from typing import Dict, List, Literal, Optional
 
 import psycopg2
 from fastapi import FastAPI, HTTPException, Response, status
@@ -58,6 +58,12 @@ class PlanSlot(BaseModel):
     day: str
     meal_type: Literal["breakfast", "lunch", "dinner", "snack"]
     recipe_id: Optional[int] = None
+
+
+class Ingredient(BaseModel):
+    id: int
+    name: str
+    available: bool
 
 
 # DB Connection function
@@ -188,3 +194,47 @@ def set_weekly_plan_slot(slot: PlanSlot):
     cur.close()
     conn.close()
     return {"message": "Plan updated"}
+
+
+@app.get("/ingredients", response_model=List[str])
+def get_unique_ingredients():
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT DISTINCT LOWER(TRIM(ingredient)) AS ingredient
+        FROM recipes,
+             unnest(string_to_array(ingredients, ',')) AS ingredient
+        ORDER BY ingredient;
+    """)
+    rows = cur.fetchall()
+    cur.close()
+    conn.close()
+    return [row[0] for row in rows]
+
+
+@app.get("/ingredients-list", response_model=List[Ingredient])
+def get_ingredients_list():
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT id, name, available FROM ingredients ORDER BY name;")
+    rows = cur.fetchall()
+    cur.close()
+    conn.close()
+    return [Ingredient(id=row[0], name=row[1], available=row[2]) for row in rows]
+
+
+@app.put("/ingredients/{ingredient_id}", response_model=Ingredient)
+def update_ingredient_availability(ingredient_id: int, available: bool):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute(
+        "UPDATE ingredients SET available = %s WHERE id = %s RETURNING id, name, available;",
+        (available, ingredient_id),
+    )
+    row = cur.fetchone()
+    conn.commit()
+    cur.close()
+    conn.close()
+    if not row:
+        raise HTTPException(status_code=404, detail="Ingredient not found")
+    return Ingredient(id=row[0], name=row[1], available=row[2])

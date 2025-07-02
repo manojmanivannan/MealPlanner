@@ -26,24 +26,6 @@ def create_tables():
         """)
         conn.commit()
 
-        with open("recipes.csv", "r") as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                cur.execute(
-                    """
-                    INSERT INTO recipes (id, name, ingredients, instructions, meal_type)
-                    VALUES (%s, %s, %s, %s, %s)
-                """,
-                    (
-                        row["id"],
-                        row["name"],
-                        row["ingredients"],
-                        row["instructions"],
-                        row["meal_type"],
-                    ),
-                )
-        conn.commit()
-
         # Ensure the sequence is set correctly after inserting data
         cur.execute(
             """SELECT setval('recipes_id_seq', (SELECT MAX(id) FROM recipes));"""
@@ -63,6 +45,58 @@ def create_tables():
         cur.execute("""
             ALTER TABLE weekly_plan ADD CONSTRAINT unique_day_meal UNIQUE(day, meal_type);
         """)
+        conn.commit()
+
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS ingredients (
+                id SERIAL PRIMARY KEY,
+                name VARCHAR(255) UNIQUE NOT NULL,
+                available BOOLEAN DEFAULT FALSE
+            );
+        """)
+        conn.commit()
+
+        # Trigger function to sync ingredients
+        cur.execute("""
+        CREATE OR REPLACE FUNCTION sync_ingredients()
+        RETURNS TRIGGER AS $$
+        BEGIN
+            -- For each ingredient in the new recipe, insert if not exists
+            INSERT INTO ingredients (name)
+            SELECT DISTINCT LOWER(TRIM(ingredient))
+            FROM unnest(string_to_array(NEW.ingredients, ',')) AS ingredient
+            ON CONFLICT (name) DO NOTHING;
+            RETURN NEW;
+        END;
+        $$ LANGUAGE plpgsql;
+        """)
+        conn.commit()
+
+        # Trigger on insert to recipes
+        cur.execute("""
+        DROP TRIGGER IF EXISTS trg_sync_ingredients ON recipes;
+        CREATE TRIGGER trg_sync_ingredients
+        AFTER INSERT ON recipes
+        FOR EACH ROW EXECUTE FUNCTION sync_ingredients();
+        """)
+        conn.commit()
+
+        with open("recipes.csv", "r") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                cur.execute(
+                    """
+                    INSERT INTO recipes (id, name, ingredients, instructions, meal_type)
+                    VALUES (%s, %s, %s, %s, %s)
+                """,
+                    (
+                        row["id"],
+                        row["name"],
+                        row["ingredients"],
+                        row["instructions"],
+                        row["meal_type"],
+                    ),
+                )
         conn.commit()
 
         with open("weekly_plan.csv", "r") as f:

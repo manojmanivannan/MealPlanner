@@ -263,5 +263,36 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- End Weekly Planner Logic ---
 
+    // --- Shopping List Logic ---
+    async function renderShoppingList() {
+        const container = document.getElementById('shopping-list-container');
+        try {
+            const response = await fetch('http://localhost:5000/ingredients-list');
+            const ingredients = await response.json();
+            container.innerHTML = `
+                <form id="shopping-list-form" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+                    ${ingredients.map(ing => `
+                        <label class="flex items-center space-x-2 p-2 bg-stone-50 rounded border border-stone-200">
+                            <input type="checkbox" data-id="${ing.id}" ${ing.available ? 'checked' : ''}>
+                            <span class="text-sm">${ing.name}</span>
+                        </label>
+                    `).join('')}
+                </form>
+            `;
+            container.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+                cb.addEventListener('change', async (e) => {
+                    const id = e.target.getAttribute('data-id');
+                    const available = e.target.checked;
+                    await fetch(`http://localhost:5000/ingredients/${id}?available=${available}`, {
+                        method: 'PUT'
+                    });
+                });
+            });
+        } catch (error) {
+            container.innerHTML = '<div class="text-red-600">Failed to load shopping list.</div>';
+        }
+    }
+
     fetchRecipes();
+    renderShoppingList();
 });
