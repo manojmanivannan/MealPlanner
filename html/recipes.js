@@ -155,7 +155,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             renderRecipes();
             document.getElementById('recipe-modal').remove();
-            renderShoppingList(); // Refresh shopping list after save
+            renderShoppingList(); // Refresh ingredient list after save
         } catch (error) {
             console.error('Error saving recipe:', error);
         }
@@ -273,7 +273,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let shelfLifeMode = false;
 
     const renderShoppingList = async () => {
-        const container = document.getElementById('shopping-list-container');
+        const container = document.getElementById('ingredient-list-container');
         // Add input/buttons at the top
         container.innerHTML = `
             <div class="flex flex-col sm:flex-row sm:items-center sm:space-x-2 space-y-2 sm:space-y-0 mb-4">
@@ -310,6 +310,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             <span class="ml-auto text-xs ${expired ? 'text-red-500 font-bold' : 'text-stone-500'}">
                                 ${expired ? 'Expired' : (ing.shelf_life === 1 ? '1 day left' : ing.shelf_life + ' days left')}
                             </span>
+                            <button type="button" data-id="${ing.id}" class="edit-shelf-life-btn absolute right-7 top-1 text-stone-400 hover:text-teal-600 text-xs font-bold transition-opacity duration-150" title="Edit shelf life">✎</button>
                             <button type="button" data-id="${ing.id}" class="delete-ingredient-btn absolute right-1 top-1 text-stone-400 hover:text-red-600 text-xs font-bold transition-opacity duration-150" title="Delete">&times;</button>
                         </label>
                     `;
@@ -332,6 +333,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 <label class="flex items-center space-x-1 p-1 bg-stone-50 rounded border border-stone-200 group relative">
                                     <input type="checkbox" data-id="${ing.id}" ${ing.available ? 'checked' : ''}>
                                     <span class="text-xs">${ing.name}</span>
+                                    <button type="button" data-id="${ing.id}" class="edit-shelf-life-btn absolute right-7 top-1 text-stone-400 hover:text-teal-600 text-xs font-bold transition-opacity duration-150" title="Edit shelf life">✎</button>
                                     <button type="button" data-id="${ing.id}" class="delete-ingredient-btn absolute right-1 top-1 text-stone-400 hover:text-red-600 text-xs font-bold transition-opacity duration-150" title="Delete">&times;</button>
                                 </label>
                             `).join('')}
@@ -349,6 +351,33 @@ document.addEventListener('DOMContentLoaded', () => {
                         method: 'PUT'
                     });
                     renderShoppingList(); // Refresh to get updated shelf life from backend
+                });
+            });
+            // Edit shelf life logic
+            listSection.querySelectorAll('.edit-shelf-life-btn').forEach(btn => {
+                btn.addEventListener('click', async (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const id = btn.getAttribute('data-id');
+                    const ing = ingredients.find(i => i.id == id);
+                    let newShelfLife = prompt(`Enter new shelf life (days) for '${ing.name}':`, ing.shelf_life);
+                    if (newShelfLife === null) return; // Cancelled
+                    newShelfLife = newShelfLife.trim();
+                    if (newShelfLife === '' || isNaN(newShelfLife) || parseInt(newShelfLife, 10) <= 0) {
+                        alert('Shelf life must be an integer greater than 0 (days).');
+                        return;
+                    }
+                    btn.disabled = true;
+                    try {
+                        await fetch(`${API_BASE}/ingredients/${id}?shelf_life=${encodeURIComponent(newShelfLife)}`, {
+                            method: 'PUT'
+                        });
+                        renderShoppingList();
+                    } catch (error) {
+                        alert('Failed to update shelf life.');
+                    } finally {
+                        btn.disabled = false;
+                    }
                 });
             });
             // Delete ingredient logic
@@ -410,7 +439,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 renderShoppingList();
             });
         } catch (error) {
-            listSection.innerHTML = '<div class="text-red-600">Failed to load shopping list.</div>';
+            listSection.innerHTML = '<div class="text-red-600">Failed to load ingredient list.</div>';
         }
     }
 
