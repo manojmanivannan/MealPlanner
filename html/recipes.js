@@ -15,11 +15,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const renderRecipes = () => {
         const filteredRecipes = recipes.filter(r => mealTypeMap[activeCategory]?.includes(r.meal_type));
         hubContent.innerHTML = `
-            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-3">
                 ${filteredRecipes.map(recipe => `
-                    <div class="bg-stone-50 p-4 rounded-lg border border-stone-200 meal-card-enter">
-                        <h5 class="font-bold text-md text-teal-800">${recipe.name}</h5>
-                        <p class="text-sm text-stone-600 mt-1">${recipe.instructions}</p>
+                    <div class="bg-stone-50 p-3 rounded-lg border border-stone-200 meal-card-enter">
+                        <h5 class="font-bold text-sm text-teal-800">${recipe.name}</h5>
+                        <p class="text-xs text-stone-600 mt-1">${recipe.instructions}</p>
+                        <p class="text-xs text-stone-500 mt-1"><span class="font-semibold">Ingredients:</span> ${recipe.ingredients}</p>
                         <div class="mt-2 flex justify-end space-x-2">
                             <button class="text-xs px-2 py-1 rounded bg-orange-100 text-orange-700 font-semibold hover:bg-orange-200 transition" onclick="editRecipe(${recipe.id})">Edit</button>
                             <button class="text-xs px-2 py-1 rounded bg-red-100 text-red-700 font-semibold hover:bg-red-200 transition" onclick="deleteRecipe(${recipe.id})">Delete</button>
@@ -27,7 +28,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                 `).join('')}
             </div>
-            <div class="mt-6">
+            <div class="mt-4">
                 <button id="add-recipe-btn" class="bg-green-100 text-green-700 font-semibold px-4 py-2 rounded-lg hover:bg-green-200 transition">Add New Recipe</button>
             </div>
         `;
@@ -187,19 +188,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function renderPlanner() {
         plannerGrid.innerHTML = daysOfWeek.map(day => `
-            <div class="bg-white rounded-xl shadow-md border border-stone-200 p-4 flex flex-col">
-                <h4 class="text-xl font-bold text-orange-900 mb-2 text-center">${day}</h4>
+            <div class="bg-white rounded-lg shadow border border-stone-200 p-2 flex flex-col">
+                <h4 class="text-lg font-bold text-orange-900 mb-1 text-center">${day}</h4>
                 ${mealSlots.map(meal => {
                     const recipeId = weeklyPlan[day]?.[meal] || null;
                     const recipe = recipes.find(r => r.id === recipeId);
                     return `
-                        <div class="mb-3">
+                        <div class="mb-2">
                             <div class="flex items-center justify-between">
-                                <span class="font-medium text-sm text-stone-500 capitalize">${meal}</span>
+                                <span class="font-medium text-xs text-stone-500 capitalize">${meal}</span>
                                 <button class="text-xs px-2 py-1 rounded font-semibold transition ${recipe ? 'bg-orange-100 text-orange-700 hover:bg-orange-200' : 'bg-green-100 text-green-700 hover:bg-green-200'}" onclick="window.selectRecipeForSlot('${day}','${meal}')">${recipe ? 'Change' : 'Add'}</button>
                             </div>
                             <div class="ml-2">
-                                ${recipe ? `<span class='font-extrabold text-lg text-teal-800 cursor-pointer hover:underline' onclick='window.showRecipeDetails(${recipe.id})'>${recipe.name}</span>` : '<span class="text-stone-400">No recipe</span>'}
+                                ${recipe ? `<span class='font-extrabold text-base text-teal-800 cursor-pointer hover:underline' onclick='window.showRecipeDetails(${recipe.id})'>${recipe.name}</span>` : '<span class="text-stone-400">No recipe</span>'}
                             </div>
                         </div>
                     `;
