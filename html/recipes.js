@@ -287,9 +287,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div class="font-bold text-stone-700 text-xs mb-1 pl-1">${letter}</div>
                     <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-1">
                         ${grouped[letter].map(ing => `
-                            <label class="flex items-center space-x-1 p-1 bg-stone-50 rounded border border-stone-200">
+                            <label class="flex items-center space-x-1 p-1 bg-stone-50 rounded border border-stone-200 group relative">
                                 <input type="checkbox" data-id="${ing.id}" ${ing.available ? 'checked' : ''}>
                                 <span class="text-xs">${ing.name}</span>
+                                <button type="button" data-id="${ing.id}" class="delete-ingredient-btn absolute right-1 top-1 text-stone-400 opacity-0 group-hover:opacity-100 hover:text-red-600 text-xs font-bold transition-opacity duration-150" title="Delete">&times;</button>
                             </label>
                         `).join('')}
                     </div>
@@ -309,6 +310,18 @@ document.addEventListener('DOMContentLoaded', () => {
                     });
                 });
             });
+            // Delete ingredient logic
+            container.querySelectorAll('.delete-ingredient-btn').forEach(btn => {
+                btn.addEventListener('click', async (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const id = btn.getAttribute('data-id');
+                    if (window.confirm('Delete this ingredient?')) {
+                        await fetch(`http://localhost:5000/ingredients/${id}`, { method: 'DELETE' });
+                        renderShoppingList();
+                    }
+                });
+            });
             // Add ingredient logic
             const addBtn = document.getElementById('add-ingredient-btn');
             const input = document.getElementById('new-ingredient-input');
@@ -325,19 +338,19 @@ document.addEventListener('DOMContentLoaded', () => {
                         input.value = '';
                         renderShoppingList();
                     } else {
-                        const data = await resp.json();
-                        alert(data.detail || 'Failed to add ingredient.');
+                        console.error('Error adding ingredient:', resp.statusText);
                     }
-                } catch {
-                    alert('Failed to add ingredient.');
+                } catch (error) {
+                    console.error('Error adding ingredient:', error);
+                } finally {
+                    addBtn.disabled = false;
                 }
-                addBtn.disabled = false;
             });
         } catch (error) {
-            container.innerHTML = '<div class="text-red-600">Failed to load shopping list.</div>';
+            console.error('Error fetching ingredients:', error);
         }
     }
 
-    fetchRecipes();
-    renderShoppingList();
+    renderShoppingList(); // Initial render
+    fetchRecipes(); // Initial fetch
 });

@@ -258,3 +258,17 @@ def add_ingredient(name: str):
             status_code=400, detail="Ingredient already exists or invalid name"
         )
     return Ingredient(id=row[0], name=row[1], available=row[2])
+
+
+@app.delete("/ingredients/{ingredient_id}", status_code=204)
+def delete_ingredient(ingredient_id: int):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("DELETE FROM ingredients WHERE id = %s", (ingredient_id,))
+    if cur.rowcount == 0:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Ingredient not found")
+    conn.commit()
+    cur.close()
+    conn.close()
+    return Response(status_code=204)
