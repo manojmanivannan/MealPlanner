@@ -26,12 +26,6 @@ def create_tables():
         """)
         conn.commit()
 
-        # Ensure the sequence is set correctly after inserting data
-        cur.execute(
-            """SELECT setval('recipes_id_seq', (SELECT MAX(id) FROM recipes));"""
-        )
-        conn.commit()
-
         cur.execute("""
             CREATE TABLE IF NOT EXISTS weekly_plan (
                 id SERIAL PRIMARY KEY,
@@ -111,6 +105,12 @@ def create_tables():
                     (row["day"], row["meal_type"], row["recipe_id"]),
                 )
 
+        conn.commit()
+
+        # Ensure the sequence is set correctly after inserting data
+        cur.execute(
+            """SELECT setval('recipes_id_seq', (SELECT MAX(id) FROM recipes));"""
+        )
         conn.commit()
 
     except Exception as e:

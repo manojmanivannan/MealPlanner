@@ -153,6 +153,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             renderRecipes();
             document.getElementById('recipe-modal').remove();
+            renderShoppingList(); // Refresh shopping list after save
         } catch (error) {
             console.error('Error saving recipe:', error);
         }
@@ -272,16 +273,28 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const response = await fetch('http://localhost:5000/ingredients-list');
             const ingredients = await response.json();
-            container.innerHTML = `
-                <form id="shopping-list-form" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
-                    ${ingredients.map(ing => `
-                        <label class="flex items-center space-x-2 p-2 bg-stone-50 rounded border border-stone-200">
-                            <input type="checkbox" data-id="${ing.id}" ${ing.available ? 'checked' : ''}>
-                            <span class="text-sm">${ing.name}</span>
-                        </label>
-                    `).join('')}
-                </form>
-            `;
+            // Group ingredients by first letter (A-Z)
+            const grouped = {};
+            ingredients.forEach(ing => {
+                const letter = ing.name.charAt(0).toUpperCase();
+                if (!grouped[letter]) grouped[letter] = [];
+                grouped[letter].push(ing);
+            });
+            // Only show non-empty sections, sorted alphabetically
+            const letters = Object.keys(grouped).sort();
+            container.innerHTML = letters.map(letter => `
+                <div class="mb-2">
+                    <div class="font-bold text-stone-700 text-xs mb-1 pl-1">${letter}</div>
+                    <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-1">
+                        ${grouped[letter].map(ing => `
+                            <label class="flex items-center space-x-1 p-1 bg-stone-50 rounded border border-stone-200">
+                                <input type="checkbox" data-id="${ing.id}" ${ing.available ? 'checked' : ''}>
+                                <span class="text-xs">${ing.name}</span>
+                            </label>
+                        `).join('')}
+                    </div>
+                </div>
+            `).join('');
             container.querySelectorAll('input[type="checkbox"]').forEach(cb => {
                 cb.addEventListener('change', async (e) => {
                     const id = e.target.getAttribute('data-id');
