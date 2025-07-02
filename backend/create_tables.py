@@ -21,7 +21,7 @@ def create_tables():
                 name VARCHAR(255) NOT NULL,
                 ingredients TEXT NOT NULL,
                 instructions TEXT NOT NULL,
-                meal_type VARCHAR(50) CHECK (meal_type IN ('breakfast', 'lunch', 'dinner', 'snack','weekend prep')) NOT NULL
+                meal_type VARCHAR(50) CHECK (meal_type IN ('breakfast', 'lunch', 'dinner', 'snack','weekend prep','sides')) NOT NULL
             );
         """)
         conn.commit()
@@ -42,7 +42,12 @@ def create_tables():
                         row["meal_type"],
                     ),
                 )
+        conn.commit()
 
+        # Ensure the sequence is set correctly after inserting data
+        cur.execute(
+            """SELECT setval('recipes_id_seq', (SELECT MAX(id) FROM recipes));"""
+        )
         conn.commit()
 
         cur.execute("""

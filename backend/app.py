@@ -51,7 +51,7 @@ class Recipe(BaseModel):
     ingredients: str
     instructions: str
     # meal_type can only be 'breakfast', 'lunch', 'dinner', or 'snack'
-    meal_type: Literal["breakfast", "lunch", "dinner", "snack", "weekend prep"]
+    meal_type: Literal["breakfast", "lunch", "dinner", "snack", "weekend prep", "sides"]
 
 
 class PlanSlot(BaseModel):

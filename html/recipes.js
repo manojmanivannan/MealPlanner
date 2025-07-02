@@ -8,7 +8,8 @@ document.addEventListener('DOMContentLoaded', () => {
         '🍳 Breakfast': ['breakfast'],
         '🍲 Lunch & Dinner': ['lunch', 'dinner'],
         '🥜 Snacks': ['snack'],
-        '🗓️ Weekend Prep': ['weekend prep']
+        '🗓️ Weekend Prep': ['weekend prep'],
+        '🥗 Sides': ['sides']
     };
 
     const renderRecipes = () => {
@@ -20,14 +21,14 @@ document.addEventListener('DOMContentLoaded', () => {
                         <h5 class="font-bold text-md text-teal-800">${recipe.name}</h5>
                         <p class="text-sm text-stone-600 mt-1">${recipe.instructions}</p>
                         <div class="mt-2 flex justify-end space-x-2">
-                            <button class="text-sm text-blue-600 hover:underline" onclick="editRecipe(${recipe.id})">Edit</button>
-                            <button class="text-sm text-red-600 hover:underline" onclick="deleteRecipe(${recipe.id})">Delete</button>
+                            <button class="text-xs px-2 py-1 rounded bg-orange-100 text-orange-700 font-semibold hover:bg-orange-200 transition" onclick="editRecipe(${recipe.id})">Edit</button>
+                            <button class="text-xs px-2 py-1 rounded bg-red-100 text-red-700 font-semibold hover:bg-red-200 transition" onclick="deleteRecipe(${recipe.id})">Delete</button>
                         </div>
                     </div>
                 `).join('')}
             </div>
             <div class="mt-6">
-                <button id="add-recipe-btn" class="bg-teal-600 text-white px-4 py-2 rounded-lg hover:bg-teal-700">Add New Recipe</button>
+                <button id="add-recipe-btn" class="bg-green-100 text-green-700 font-semibold px-4 py-2 rounded-lg hover:bg-green-200 transition">Add New Recipe</button>
             </div>
         `;
 
@@ -100,6 +101,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 <option value="dinner" ${recipe && recipe.meal_type === 'dinner' ? 'selected' : ''}>Dinner</option>
                                 <option value="snack" ${recipe && recipe.meal_type === 'snack' ? 'selected' : ''}>Snack</option>
                                 <option value="weekend prep" ${recipe && recipe.meal_type === 'weekend prep' ? 'selected' : ''}>Weekend Prep</option>
+                                <option value="sides" ${recipe && recipe.meal_type === 'sides' ? 'selected' : ''}>Sides</option>
                             </select>
                         </div>
                         <div class="flex justify-end space-x-4">
@@ -193,11 +195,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     return `
                         <div class="mb-3">
                             <div class="flex items-center justify-between">
-                                <span class="font-semibold capitalize">${meal}</span>
-                                <button class="text-xs text-blue-600 underline" onclick="window.selectRecipeForSlot('${day}','${meal}')">${recipe ? 'Change' : 'Add'}</button>
+                                <span class="font-medium text-sm text-stone-500 capitalize">${meal}</span>
+                                <button class="text-xs px-2 py-1 rounded font-semibold transition ${recipe ? 'bg-orange-100 text-orange-700 hover:bg-orange-200' : 'bg-green-100 text-green-700 hover:bg-green-200'}" onclick="window.selectRecipeForSlot('${day}','${meal}')">${recipe ? 'Change' : 'Add'}</button>
                             </div>
-                            <div class="ml-2 text-sm text-stone-700">
-                                ${recipe ? `<span class='font-bold text-teal-800 cursor-pointer hover:underline' onclick='window.showRecipeDetails(${recipe.id})'>${recipe.name}</span>` : '<span class="text-stone-400">No recipe</span>'}
+                            <div class="ml-2">
+                                ${recipe ? `<span class='font-extrabold text-lg text-teal-800 cursor-pointer hover:underline' onclick='window.showRecipeDetails(${recipe.id})'>${recipe.name}</span>` : '<span class="text-stone-400">No recipe</span>'}
                             </div>
                         </div>
                     `;
