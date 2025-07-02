@@ -4,6 +4,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let recipes = [];
     let activeCategory = '🍳 Breakfast';
 
+    const API_BASE = '/api';
+
     const mealTypeMap = {
         '🍳 Breakfast': ['breakfast'],
         '🍲 Lunch & Dinner': ['lunch', 'dinner'],
@@ -38,7 +40,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const fetchRecipes = async () => {
         try {
-            const response = await fetch('http://localhost:5000/recipes');
+            const response = await fetch(`${API_BASE}/recipes`);
             recipes = await response.json();
             renderRecipes();
             fetchWeeklyPlan(); // fetch planner after recipes are loaded
@@ -66,7 +68,7 @@ document.addEventListener('DOMContentLoaded', () => {
     window.deleteRecipe = async (id) => {
         if (confirm('Are you sure you want to delete this recipe?')) {
             try {
-                await fetch(`http://localhost:5000/recipes/${id}`, { method: 'DELETE' });
+                await fetch(`${API_BASE}/recipes/${id}`, { method: 'DELETE' });
                 recipes = recipes.filter(r => r.id !== id);
                 renderRecipes();
             } catch (error) {
@@ -134,7 +136,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             if (id) { // Edit
-                const response = await fetch(`http://localhost:5000/recipes/${id}`, {
+                const response = await fetch(`${API_BASE}/recipes/${id}`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(recipeData)
@@ -143,7 +145,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const index = recipes.findIndex(r => r.id == id);
                 recipes[index] = updatedRecipe;
             } else { // Add
-                const response = await fetch('http://localhost:5000/recipes', {
+                const response = await fetch(`${API_BASE}/recipes`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(recipeData)
@@ -166,7 +168,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function fetchWeeklyPlan() {
         try {
-            const response = await fetch('http://localhost:5000/weekly-plan');
+            const response = await fetch(`${API_BASE}/weekly-plan`);
             weeklyPlan = await response.json();
             renderPlanner();
         } catch (error) {
@@ -176,7 +178,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function saveWeeklyPlanSlot(day, meal, recipeId) {
         try {
-            await fetch('http://localhost:5000/weekly-plan', {
+            await fetch(`${API_BASE}/weekly-plan`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ day, meal_type: meal, recipe_id: recipeId })
@@ -268,10 +270,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- End Weekly Planner Logic ---
 
     // --- Shopping List Logic ---
-    async function renderShoppingList() {
+    const renderShoppingList = async () => {
         const container = document.getElementById('shopping-list-container');
         try {
-            const response = await fetch('http://localhost:5000/ingredients-list');
+            const response = await fetch(`${API_BASE}/ingredients-list`);
             const ingredients = await response.json();
             // Group ingredients by first letter (A-Z)
             const grouped = {};
@@ -290,23 +292,23 @@ document.addEventListener('DOMContentLoaded', () => {
                             <label class="flex items-center space-x-1 p-1 bg-stone-50 rounded border border-stone-200 group relative">
                                 <input type="checkbox" data-id="${ing.id}" ${ing.available ? 'checked' : ''}>
                                 <span class="text-xs">${ing.name}</span>
-                                <button type="button" data-id="${ing.id}" class="delete-ingredient-btn absolute right-1 top-1 text-stone-400 opacity-0 group-hover:opacity-100 hover:text-red-600 text-xs font-bold transition-opacity duration-150" title="Delete">&times;</button>
+                                <button type="button" data-id="${ing.id}" class="delete-ingredient-btn absolute right-1 top-1 text-stone-400 hover:text-red-600 text-xs font-bold transition-opacity duration-150" title="Delete">&times;</button>
                             </label>
                         `).join('')}
                     </div>
                 </div>
             `).join('') + `
-                <div class="mt-4 flex items-center space-x-2">
-                    <input id="new-ingredient-input" type="text" placeholder="Ingredient..." class="border border-stone-300 rounded px-2 py-1 text-sm focus:outline-none focus:border-teal-500">
-                    <button id="add-ingredient-btn" class="bg-teal-600 text-white px-3 py-1 rounded hover:bg-teal-700 text-sm">Add</button>
-                    <button id="regenerate-ingredients-btn" class="bg-orange-500 text-white px-3 py-1 rounded hover:bg-orange-600 text-sm">Regenerate</button>
+                <div class="mt-4 flex flex-col sm:flex-row sm:items-center sm:space-x-2 space-y-2 sm:space-y-0">
+                    <input id="new-ingredient-input" type="text" placeholder="Ingredient..." class="border border-stone-300 rounded px-2 py-1 text-sm focus:outline-none focus:border-teal-500 w-full sm:w-auto">
+                    <button id="add-ingredient-btn" class="bg-teal-600 text-white px-3 py-1 rounded hover:bg-teal-700 text-sm w-full sm:w-auto">Add</button>
+                    <button id="regenerate-ingredients-btn" class="bg-orange-500 text-white px-3 py-1 rounded hover:bg-orange-600 text-sm w-full sm:w-auto">Regenerate</button>
                 </div>
             `;
             container.querySelectorAll('input[type="checkbox"]').forEach(cb => {
                 cb.addEventListener('change', async (e) => {
                     const id = e.target.getAttribute('data-id');
                     const available = e.target.checked;
-                    await fetch(`http://localhost:5000/ingredients/${id}?available=${available}`, {
+                    await fetch(`${API_BASE}/ingredients/${id}?available=${available}`, {
                         method: 'PUT'
                     });
                 });
@@ -318,7 +320,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     e.stopPropagation();
                     const id = btn.getAttribute('data-id');
                     if (window.confirm('Delete this ingredient?')) {
-                        await fetch(`http://localhost:5000/ingredients/${id}`, { method: 'DELETE' });
+                        await fetch(`${API_BASE}/ingredients/${id}`, { method: 'DELETE' });
                         renderShoppingList();
                     }
                 });
@@ -332,7 +334,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!name) return;
                 addBtn.disabled = true;
                 try {
-                    const resp = await fetch(`http://localhost:5000/ingredients?name=${encodeURIComponent(name)}`, {
+                    const resp = await fetch(`${API_BASE}/ingredients?name=${encodeURIComponent(name)}`, {
                         method: 'POST'
                     });
                     if (resp.ok) {
@@ -354,14 +356,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 regenBtn.disabled = true;
                 try {
                     // Get unique ingredients from recipes
-                    const resp = await fetch('http://localhost:5000/ingredients');
+                    const resp = await fetch(`${API_BASE}/ingredients`);
                     const uniqueIngredients = await resp.json();
                     // Get current ingredient names (lowercase, trimmed)
                     const current = new Set(ingredients.map(i => i.name.trim().toLowerCase()));
                     // Add missing ones
                     for (const name of uniqueIngredients) {
                         if (!current.has(name.trim().toLowerCase())) {
-                            await fetch(`http://localhost:5000/ingredients?name=${encodeURIComponent(name)}`, { method: 'POST' });
+                            await fetch(`${API_BASE}/ingredients?name=${encodeURIComponent(name)}`, { method: 'POST' });
                         }
                     }
                     renderShoppingList();
