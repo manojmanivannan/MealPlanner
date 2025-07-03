@@ -14,24 +14,30 @@ document.addEventListener('DOMContentLoaded', () => {
         '🥗 Sides': ['sides']
     };
 
+    const dayBgClass = [
+        'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'
+    ];
+
     const renderRecipes = () => {
         const filteredRecipes = recipes.filter(r => mealTypeMap[activeCategory]?.includes(r.meal_type));
         hubContent.innerHTML = `
+            <div class="flex justify-end mb-4">
+                <button id="add-recipe-btn" class="clay-btn px-4 py-2">Add New Recipe</button>
+            </div>
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-3">
                 ${filteredRecipes.map(recipe => `
-                    <div class="bg-pastel-lavender p-3 clay shadow clay-shadow-outer meal-card-enter border border-transparent">
-                        <h5 class="font-bold text-sm text-teal-800">${recipe.name}</h5>
-                        <p class="text-xs text-stone-600 mt-1">${recipe.instructions}</p>
-                        <p class="text-xs text-stone-500 mt-1"><span class="font-semibold">Ingredients:</span> ${recipe.ingredients}</p>
-                        <div class="mt-2 flex justify-end space-x-2">
+                    <div class="recipe-card relative flex flex-col h-full">
+                        <div>
+                            <h5 class="font-bold text-sm card-title mb-1">${recipe.name}</h5>
+                            <p class="text-xs text-stone-600 mt-1">${recipe.instructions}</p>
+                            <p class="text-xs text-stone-500 mt-1"><span class="font-semibold">Ingredients:</span> ${recipe.ingredients}</p>
+                        </div>
+                        <div class="absolute bottom-3 right-3 flex space-x-2">
                             <button class="text-xs px-2 py-1 clay-btn" onclick="editRecipe(${recipe.id})">Edit</button>
                             <button class="text-xs px-2 py-1 clay-btn" style="background:linear-gradient(135deg,#fbcfe8 60%,#c7d2fe 100%);color:#be185d;" onclick="deleteRecipe(${recipe.id})">Delete</button>
                         </div>
                     </div>
                 `).join('')}
-            </div>
-            <div class="mt-4">
-                <button id="add-recipe-btn" class="clay-btn px-4 py-2">Add New Recipe</button>
             </div>
         `;
 
@@ -193,9 +199,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const plannerGrid = document.getElementById('meal-plan-grid');
 
     function renderPlanner() {
-        plannerGrid.innerHTML = daysOfWeek.map(day => `
-            <div class="bg-white rounded-lg shadow border border-stone-200 p-2 flex flex-col">
-                <h4 class="text-lg font-bold text-orange-900 mb-1 text-center">${day}</h4>
+        plannerGrid.innerHTML = daysOfWeek.map((day, idx) => `
+            <div class="meal-card ${dayBgClass[idx]} flex flex-col">
+                <h4 class="text-lg font-bold card-title mb-1 text-center">${day}</h4>
                 ${mealSlots.map(meal => {
                     const recipeId = weeklyPlan[day]?.[meal] || null;
                     const recipe = recipes.find(r => r.id === recipeId);
@@ -306,14 +312,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 sorted.forEach(ing => {
                     const expired = ing.shelf_life <= 0;
                     html += `
-                        <label class="flex items-center space-x-2 p-2 bg-pastel-mint clay shadow clay-shadow-outer border border-transparent relative">
-                            <input type="checkbox" data-id="${ing.id}" ${ing.available ? 'checked' : ''} class="clay-checkbox">
-                            <span class="text-xs ingredient-name${expired ? ' line-through text-red-500' : ''}">${ing.name}</span>
-                            <span class="ml-auto text-xs ${expired ? 'text-red-500 font-bold' : 'text-stone-500'}">
-                                ${expired ? 'Expired' : (ing.shelf_life === 1 ? '1 day left' : ing.shelf_life + ' days left')}
-                            </span>
-                            <button type="button" data-id="${ing.id}" class="edit-shelf-life-btn clay-btn absolute right-10 top-1 text-xs font-bold" title="Edit shelf life">✎</button>
-                            <button type="button" data-id="${ing.id}" class="delete-ingredient-btn clay-btn absolute right-1 top-1 text-xs font-bold" style="background:linear-gradient(135deg,#fbcfe8 60%,#c7d2fe 100%);color:#be185d;" title="Delete">&times;</button>
+                        <label class="ingredient-card flex items-center justify-between space-x-2 p-2 border border-transparent relative">
+                            <div class="flex items-center space-x-2 flex-1 min-w-0">
+                                <input type="checkbox" data-id="${ing.id}" ${ing.available ? 'checked' : ''} class="clay-checkbox">
+                                <span class="text-xs ingredient-name${expired ? ' line-through text-red-500' : ''} truncate">${ing.name}</span>
+                                <span class="ml-2 text-xs ${expired ? 'text-red-500 font-bold' : 'text-stone-500'}">
+                                    ${expired ? 'Expired' : (ing.shelf_life === 1 ? '1 day left' : ing.shelf_life + ' days left')}
+                                </span>
+                            </div>
+                            <div class="flex items-center space-x-2 ml-2">
+                                <button type="button" data-id="${ing.id}" class="edit-shelf-life-btn clay-btn px-2 py-1 rounded-full text-xs font-bold focus:outline-none focus:ring-2 focus:ring-blue-300 hover:bg-blue-50" title="Edit shelf life">✎</button>
+                                <button type="button" data-id="${ing.id}" class="delete-ingredient-btn clay-btn px-2 py-1 rounded-full text-xs font-bold focus:outline-none focus:ring-2 focus:ring-pink-300 hover:bg-pink-50" style="background:linear-gradient(135deg,#fbcfe8 60%,#c7d2fe 100%);color:#be185d;" title="Delete">&times;</button>
+                            </div>
                         </label>
                     `;
                 });
@@ -332,11 +342,15 @@ document.addEventListener('DOMContentLoaded', () => {
                         <div class="font-bold clay-label text-xs mb-1 pl-1">${letter}</div>
                         <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-1">
                             ${grouped[letter].map(ing => `
-                                <label class="flex items-center space-x-1 p-2 bg-pastel-blue clay shadow clay-shadow-outer group border border-transparent relative">
-                                    <input type="checkbox" data-id="${ing.id}" ${ing.available ? 'checked' : ''} class="clay-checkbox">
-                                    <span class="text-xs">${ing.name}</span>
-                                    <button type="button" data-id="${ing.id}" class="edit-shelf-life-btn clay-btn absolute right-10 top-1 text-xs font-bold" title="Edit shelf life">✎</button>
-                                    <button type="button" data-id="${ing.id}" class="delete-ingredient-btn clay-btn absolute right-1 top-1 text-xs font-bold" style="background:linear-gradient(135deg,#fbcfe8 60%,#c7d2fe 100%);color:#be185d;" title="Delete">&times;</button>
+                                <label class="ingredient-card flex items-center justify-between space-x-2 p-2 group border border-transparent relative">
+                                    <div class="flex items-center space-x-2 flex-1 min-w-0">
+                                        <input type="checkbox" data-id="${ing.id}" ${ing.available ? 'checked' : ''} class="clay-checkbox">
+                                        <span class="text-xs truncate">${ing.name}</span>
+                                    </div>
+                                    <div class="flex items-center space-x-2 ml-2">
+                                        <button type="button" data-id="${ing.id}" class="edit-shelf-life-btn clay-btn px-2 py-1 rounded-full text-xs font-bold focus:outline-none focus:ring-2 focus:ring-blue-300 hover:bg-blue-50" title="Edit shelf life">✎</button>
+                                        <button type="button" data-id="${ing.id}" class="delete-ingredient-btn clay-btn px-2 py-1 rounded-full text-xs font-bold focus:outline-none focus:ring-2 focus:ring-pink-300 hover:bg-pink-50" style="background:linear-gradient(135deg,#fbcfe8 60%,#c7d2fe 100%);color:#be185d;" title="Delete">&times;</button>
+                                    </div>
                                 </label>
                             `).join('')}
                         </div>
@@ -388,7 +402,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     e.preventDefault();
                     e.stopPropagation();
                     const id = btn.getAttribute('data-id');
-                    if (window.confirm('Delete this ingredient?')) {
+                    const ing = ingredients.find(i => i.id == id);
+                    const ingName = ing ? ing.name : 'this ingredient';
+                    if (window.confirm(`Delete ingredient '${ingName}'?`)) {
                         await fetch(`${API_BASE}/ingredients/${id}`, { method: 'DELETE' });
                         renderShoppingList();
                     }
