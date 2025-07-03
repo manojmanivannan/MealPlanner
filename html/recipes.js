@@ -19,19 +19,19 @@ document.addEventListener('DOMContentLoaded', () => {
         hubContent.innerHTML = `
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-3">
                 ${filteredRecipes.map(recipe => `
-                    <div class="bg-stone-50 p-3 rounded-lg border border-stone-200 meal-card-enter">
+                    <div class="bg-pastel-lavender p-3 clay shadow clay-shadow-outer meal-card-enter border border-transparent">
                         <h5 class="font-bold text-sm text-teal-800">${recipe.name}</h5>
                         <p class="text-xs text-stone-600 mt-1">${recipe.instructions}</p>
                         <p class="text-xs text-stone-500 mt-1"><span class="font-semibold">Ingredients:</span> ${recipe.ingredients}</p>
                         <div class="mt-2 flex justify-end space-x-2">
-                            <button class="text-xs px-2 py-1 rounded bg-orange-100 text-orange-700 font-semibold hover:bg-orange-200 transition" onclick="editRecipe(${recipe.id})">Edit</button>
-                            <button class="text-xs px-2 py-1 rounded bg-red-100 text-red-700 font-semibold hover:bg-red-200 transition" onclick="deleteRecipe(${recipe.id})">Delete</button>
+                            <button class="text-xs px-2 py-1 clay-btn" onclick="editRecipe(${recipe.id})">Edit</button>
+                            <button class="text-xs px-2 py-1 clay-btn" style="background:linear-gradient(135deg,#fbcfe8 60%,#c7d2fe 100%);color:#be185d;" onclick="deleteRecipe(${recipe.id})">Delete</button>
                         </div>
                     </div>
                 `).join('')}
             </div>
             <div class="mt-4">
-                <button id="add-recipe-btn" class="bg-green-100 text-green-700 font-semibold px-4 py-2 rounded-lg hover:bg-green-200 transition">Add New Recipe</button>
+                <button id="add-recipe-btn" class="clay-btn px-4 py-2">Add New Recipe</button>
             </div>
         `;
 
@@ -277,15 +277,17 @@ document.addEventListener('DOMContentLoaded', () => {
         // Add input/buttons at the top
         container.innerHTML = `
             <div class="flex flex-col sm:flex-row sm:items-center sm:space-x-2 space-y-2 sm:space-y-0 mb-4">
-                <input id="new-ingredient-input" type="text" placeholder="Ingredient..." class="border border-stone-300 rounded px-2 py-1 text-sm focus:outline-none focus:border-teal-500 w-full sm:w-auto">
-                <input id="new-ingredient-shelf-life" type="number" min="0" placeholder="Shelf life (days)" class="border border-stone-300 rounded px-2 py-1 text-sm focus:outline-none focus:border-teal-500 w-full sm:w-auto">
-                <button id="add-ingredient-btn" class="bg-teal-600 text-white px-3 py-1 rounded hover:bg-teal-700 text-sm w-full sm:w-auto">Add</button>
+                <input id="new-ingredient-input" type="text" placeholder="Ingredient..." class="clay-input border border-transparent w-full sm:w-auto">
+                <input id="new-ingredient-shelf-life" type="number" min="0" placeholder="Shelf life (days)" class="clay-input border border-transparent w-full sm:w-auto">
+                <button id="add-ingredient-btn" class="clay-btn text-sm w-full sm:w-auto px-6 py-2">Add</button>
                 <div class="flex-1"></div>
                 <label class="flex items-center cursor-pointer ml-auto">
-                    <span class="mr-2 text-sm text-stone-700">Sort by shelf life</span>
-                    <button id="toggle-shelf-life" class="relative inline-flex h-6 w-12 border-2 border-teal-600 rounded-full transition-colors duration-200 focus:outline-none ${shelfLifeMode ? 'bg-teal-600' : 'bg-stone-200'}">
-                        <span class="absolute left-0 top-0 h-6 w-6 bg-white border border-stone-300 rounded-full shadow transform transition-transform duration-200 ${shelfLifeMode ? 'translate-x-6' : ''}"></span>
-                    </button>
+                    <span class="mr-2 text-sm clay-label">Sort by shelf life</span>
+                    <span class="relative inline-flex items-center w-12 h-6">
+                        <input type="checkbox" id="toggle-shelf-life" class="sr-only peer">
+                        <span class="w-12 h-6 bg-pastel-blue clay-section rounded-full peer peer-checked:bg-pastel-mint transition-colors duration-200"></span>
+                        <span class="absolute left-0 top-0 h-6 w-6 bg-white border border-transparent rounded-full shadow transform transition-transform duration-200 peer-checked:translate-x-6"></span>
+                    </span>
                 </label>
             </div>
             <div id="ingredients-list-section"></div>
@@ -304,14 +306,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 sorted.forEach(ing => {
                     const expired = ing.shelf_life <= 0;
                     html += `
-                        <label class="flex items-center space-x-2 p-1 bg-stone-50 rounded border border-stone-200 relative">
-                            <input type="checkbox" data-id="${ing.id}" ${ing.available ? 'checked' : ''}>
+                        <label class="flex items-center space-x-2 p-2 bg-pastel-mint clay shadow clay-shadow-outer border border-transparent relative">
+                            <input type="checkbox" data-id="${ing.id}" ${ing.available ? 'checked' : ''} class="clay-checkbox">
                             <span class="text-xs ingredient-name${expired ? ' line-through text-red-500' : ''}">${ing.name}</span>
                             <span class="ml-auto text-xs ${expired ? 'text-red-500 font-bold' : 'text-stone-500'}">
                                 ${expired ? 'Expired' : (ing.shelf_life === 1 ? '1 day left' : ing.shelf_life + ' days left')}
                             </span>
-                            <button type="button" data-id="${ing.id}" class="edit-shelf-life-btn absolute right-7 top-1 text-stone-400 hover:text-teal-600 text-xs font-bold transition-opacity duration-150" title="Edit shelf life">✎</button>
-                            <button type="button" data-id="${ing.id}" class="delete-ingredient-btn absolute right-1 top-1 text-stone-400 hover:text-red-600 text-xs font-bold transition-opacity duration-150" title="Delete">&times;</button>
+                            <button type="button" data-id="${ing.id}" class="edit-shelf-life-btn clay-btn absolute right-10 top-1 text-xs font-bold" title="Edit shelf life">✎</button>
+                            <button type="button" data-id="${ing.id}" class="delete-ingredient-btn clay-btn absolute right-1 top-1 text-xs font-bold" style="background:linear-gradient(135deg,#fbcfe8 60%,#c7d2fe 100%);color:#be185d;" title="Delete">&times;</button>
                         </label>
                     `;
                 });
@@ -327,14 +329,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 const letters = Object.keys(grouped).sort();
                 html += letters.map(letter => `
                     <div class="mb-2">
-                        <div class="font-bold text-stone-700 text-xs mb-1 pl-1">${letter}</div>
+                        <div class="font-bold clay-label text-xs mb-1 pl-1">${letter}</div>
                         <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-1">
                             ${grouped[letter].map(ing => `
-                                <label class="flex items-center space-x-1 p-1 bg-stone-50 rounded border border-stone-200 group relative">
-                                    <input type="checkbox" data-id="${ing.id}" ${ing.available ? 'checked' : ''}>
+                                <label class="flex items-center space-x-1 p-2 bg-pastel-blue clay shadow clay-shadow-outer group border border-transparent relative">
+                                    <input type="checkbox" data-id="${ing.id}" ${ing.available ? 'checked' : ''} class="clay-checkbox">
                                     <span class="text-xs">${ing.name}</span>
-                                    <button type="button" data-id="${ing.id}" class="edit-shelf-life-btn absolute right-7 top-1 text-stone-400 hover:text-teal-600 text-xs font-bold transition-opacity duration-150" title="Edit shelf life">✎</button>
-                                    <button type="button" data-id="${ing.id}" class="delete-ingredient-btn absolute right-1 top-1 text-stone-400 hover:text-red-600 text-xs font-bold transition-opacity duration-150" title="Delete">&times;</button>
+                                    <button type="button" data-id="${ing.id}" class="edit-shelf-life-btn clay-btn absolute right-10 top-1 text-xs font-bold" title="Edit shelf life">✎</button>
+                                    <button type="button" data-id="${ing.id}" class="delete-ingredient-btn clay-btn absolute right-1 top-1 text-xs font-bold" style="background:linear-gradient(135deg,#fbcfe8 60%,#c7d2fe 100%);color:#be185d;" title="Delete">&times;</button>
                                 </label>
                             `).join('')}
                         </div>
@@ -432,12 +434,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     addBtn.disabled = false;
                 }
             });
-            // Toggle logic (button instead of checkbox)
+            // Toggle logic (checkbox switch)
             const toggle = document.getElementById('toggle-shelf-life');
-            toggle.addEventListener('click', (e) => {
-                shelfLifeMode = !shelfLifeMode;
-                renderShoppingList();
-            });
+            if (toggle) {
+                toggle.checked = shelfLifeMode;
+                toggle.addEventListener('change', (e) => {
+                    shelfLifeMode = toggle.checked;
+                    renderShoppingList();
+                });
+            }
         } catch (error) {
             listSection.innerHTML = '<div class="text-red-600">Failed to load ingredient list.</div>';
         }
