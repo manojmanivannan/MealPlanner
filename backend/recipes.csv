@@ -1,47 +1,51 @@
-id,name,ingredients,instructions,meal_type
-1,Greek Yogurt Bowl,"yogurt, almonds, berries, banana","Combine yogurt with almonds, berries, and banana. Serve chilled.","breakfast"
-2,Moong Dal Chilla / Paneer Bhurji,"moong dal batter, paneer, spinach, toast, apple, orange","Prepare savory pancakes with moong dal batter or cook scrambled paneer with spinach. Serve with toast and apple or orange.","breakfast"
-3,Overnight Oats,"oats, berries, chia seeds, nuts, eggs","Combine oats, berries, chia seeds, and nuts. Refrigerate overnight. Serve with eggs.","breakfast"
-4,Veggie Omelette,"eggs, kale, capsicum, mushrooms, toast, apple","Whisk eggs and cook with kale, capsicum, and mushrooms. Serve with toast and apple.","breakfast"
-5,eggs Bhurji (Indian Style Scrambled Eggs),"eggs, tomatoes, onions, spices","Scramble eggs with tomatoes, onions, and spices until cooked.","breakfast"
-6,Spiced Yogurt Bowl,"yogurt, cashews, chili powder, banana","Mix yogurt with cashews and chili powder. Top with banana.","breakfast"
-7,Masala Omelette,"eggs, spices, toast, banana","Beat eggs with spices. Cook omelette. Serve with toast and banana.","breakfast"
-8,Quinoa Porridge,"quinoa, nuts, banana, berries","Cook quinoa into porridge. Top with nuts, banana, or berries.","breakfast"
-9,Shakshuka Breakfast / Spinach-Feta Scrambled Eggs,"eggs, tomato sauce, spinach, feta, banana","Poach eggs in tomato sauce or cook eggs with spinach and feta. Serve with roti and banana.","breakfast"
-10,Chickpea Salad,"chickpeas, greens, eggs","Mix chickpeas with greens. Add eggs if desired.","lunch"
-11,Fattoush Salad & Quinoa,"quinoa, feta, olives, orange, chicken","Mix fattoush salad ingredients with quinoa, feta, and olives. Serve with orange slices and chicken skewers.","lunch"
-12,Mediterranean Stir-fry,"peppers, onions, spinach, tomatoes, chickpeas, feta, chicken","Stir-fry peppers, onions, spinach, and tomatoes. Add chickpeas and feta or chicken.","lunch"
-13,Burrito Bowls,"cauliflower, black beans, salsa, avocado, yogurt, tofu, paneer, ground beef, chicken","Assemble bowls with cauliflower rice, black beans, salsa, avocado, and yogurt. Add tofu, paneer, ground meat, or chicken.","lunch"
-14,Wraps with Black Beans,"wraps, black beans, avocado, fruit, chicken, shrimp","Fill wraps with beans, avocado. Serve with fruit. Add chicken or shrimp.","lunch"
-15,Grilled Halloumi/Tofu & Roasted Veg,"halloumi, tofu, couscous, orange, salmon","Grill halloumi or tofu. Serve with couscous, orange, or salmon.","lunch"
-16,Pasta with Spinach,"pasta, spinach, beans, tomato sauce, apple, pear, tuna","Cook pasta with spinach, beans, tomato sauce. Serve with apple or pear. Add tuna.","lunch"
-17,Mezze Platter,"hummus, tzatziki, tabbouleh, falafel, eggs, melon, lamb, chicken","Assemble platter with hummus, tzatziki, tabbouleh, falafel or eggs. Serve with melon slices and lamb or chicken skewers.","lunch"
-18,Indian Curry Night,"curry base, cauliflower, paneer, spinach, lamb","Prepare curry base. Serve with cauliflower rice. Add paneer, spinach, or lamb.","dinner"
-19,Brown Rice & Chana Masala,"brown rice, chana masala, greens, salad, berries, chicken breast","Serve chana masala with brown rice, greens, salad, berries, and chicken breast.","dinner"
-20,Shakshuka,"eggs, tomato sauce, pepper sauce, lamb meatballs, turkey sausage","Poach eggs in tomato and pepper sauce. Add meatballs or sausage.","dinner"
-21,Sheet Pan Dinner,"broccoli, asparagus, capsicum, paneer, tofu, salmon, chicken thighs","Roast broccoli, asparagus, capsicum. Add paneer, tofu, salmon, or chicken thighs.","dinner"
-22,Kebab Night,"kebabs, green beans, cucumber yogurt salad","Grill kebabs with green beans. Serve with cucumber yogurt salad.","dinner"
-23,Moroccan Lentil & Vegetable Stew,"lentils, spices, chicken, lamb","Cook lentils with vegetables and spices. Add chicken or lamb.","dinner"
-24,Stir-fry Tofu/Chicken,"broccoli, peppers, tofu, chicken, rice, noodles, watermelon","Stir-fry broccoli and peppers. Add tofu or chicken. Serve with rice or noodles and watermelon.","dinner"
-25,Paneer & Chickpea Curry,"paneer, chickpeas, curry spices, rice, cucumber salad, orange, chicken","Cook paneer and chickpeas with curry spices. Serve with rice, cucumber salad, orange, and chicken.","dinner"
-26,Palak Paneer Chappathi,"paneer, spinach, onions, tomatoes","Cook spinach and paneer. Serve with chapati.","dinner"
-27,Chicken Tikka,"chicken, onions, tomatoes","Cook chicken tikka with onions and tomatoes. Serve with chapati.","dinner"
-28,Palak Tofu,"tofu, spinach, naan, vegetable sabzi, orange","Cook spinach with tofu curry. Serve with naan, vegetable sabzi, and orange slices.","dinner"
-29,Chicken Curry,"chicken, spinach, naan, vegetable sabzi, orange","Cook chicken curry with spinach. Serve with naan, vegetable sabzi, and orange slices.","dinner"
-30,Masala Boiled Eggs,"eggs, masala spice","Sprinkle masala on boiled eggs and serve.","snack"
-31,Mixed Nuts & Apple,"almonds, walnuts, apple","Serve almonds and walnuts with apple slices.","snack"
-32,Hummus & Veggie Sticks,"cucumber sticks, carrot sticks, hummus, grapes, melon","Serve vegetable sticks with hummus and grapes or melon.","snack"
-33,Cottage Cheese & Berries,"cottage cheese, berries, strawberries","Serve cottage cheese with berries or strawberries.","snack"
-34,"Nuts, Dried Fruit, Cheese & Crackers","nuts, dried fruit, cheese, crackers","Mix nuts, dried fruit, cheese, and crackers.","snack"
-35,Paneer Tikka & Pear,"paneer, spices, pear","Pan-fry paneer with spices. Serve with pear slices.","snack"
-36,Cumin Yogurt & Orange Segments,"yogurt, cumin powder, orange segments","Mix yogurt with cumin powder. Serve with orange segments.","snack"
-37,Veggies & Tzatziki,"vegetable sticks, tzatziki, grapes","Serve vegetable sticks with tzatziki and grapes.","snack"
-38,Smoothie,"yogurt, banana, berries, nuts","Blend yogurt, banana, berries, and nuts.","snack"
-39,Roasted Chickpeas & Grapes,"chickpeas, grapes","Serve roasted chickpeas with grapes.","snack"
-40,Cook Lentils/Dal,"lentils, dal","Cook lentils or dal. Store for meals.","weekend prep"
-41,Roast Vegetables,"capsicum, broccoli, zucchini, onions","Chop and roast vegetables. Store for later.","weekend prep"
-42,Marinate Proteins,"chicken, lamb, paneer, tofu, yogurt, spices","Marinate proteins in yogurt and spices.","weekend prep"
-43,Make Cauliflower Rice,"cauliflower","Grate or pulse cauliflower into rice texture.","weekend prep"
-44,Boil Eggs,"eggs","Boil eggs for 10-15 mins. Store for meals.","weekend prep"
-45,Mix Dips & Sauces,"hummus, cucumber, yogurt, tzatziki, curry paste","Prepare dips and sauces in advance.","weekend prep"
-46,Puliyar Chutney,"rice, tamarind, peanuts, spices","Cook rice and mix with tamarind, peanuts, and spices. Serve with yogurt.","sides"
+id,name,ingredients,instructions,meal_type,is_vegetarian
+2,Moong Dal Chilla / Paneer Bhurji,"moong dal batter, paneer, spinach, toast, apple, orange",Prepare savory pancakes with moong dal batter or cook scrambled paneer with spinach. Serve with toast and apple or orange.,breakfast,t
+3,Overnight Oats,"oats, berries, chia seeds, nuts, eggs","Combine oats, berries, chia seeds, and nuts. Refrigerate overnight. Serve with eggs.",breakfast,t
+4,Veggie Omelette,"eggs, kale, capsicum, mushrooms, toast, apple","Whisk eggs and cook with kale, capsicum, and mushrooms. Serve with toast and apple.",breakfast,t
+6,Spiced Yogurt Bowl,"yogurt, cashews, chili powder, banana",Mix yogurt with cashews and chili powder. Top with banana.,breakfast,t
+7,Masala Omelette,"eggs, spices, toast, banana",Beat eggs with spices. Cook omelette. Serve with toast and banana.,breakfast,t
+8,Quinoa Porridge,"quinoa, nuts, banana, berries","Cook quinoa into porridge. Top with nuts, banana, or berries.",breakfast,t
+9,Shakshuka Breakfast / Spinach-Feta Scrambled Eggs,"eggs, tomato sauce, spinach, feta, banana",Poach eggs in tomato sauce or cook eggs with spinach and feta. Serve with roti and banana.,breakfast,t
+10,Chickpea Salad,"chickpeas, greens, eggs",Mix chickpeas with greens. Add eggs if desired.,lunch,t
+11,Fattoush Salad & Quinoa,"quinoa, feta, olives, orange, chicken","Mix fattoush salad ingredients with quinoa, feta, and olives. Serve with orange slices and chicken skewers.",lunch,f
+12,Mediterranean Stir-fry,"peppers, onions, spinach, tomatoes, chickpeas, feta, chicken","Stir-fry peppers, onions, spinach, and tomatoes. Add chickpeas and feta or chicken.",lunch,f
+13,Burrito Bowls,"cauliflower, black beans, salsa, avocado, yogurt, tofu, paneer, ground beef, chicken","Assemble bowls with cauliflower rice, black beans, salsa, avocado, and yogurt. Add tofu, paneer, ground meat, or chicken.",lunch,t
+14,Wraps with Black Beans,"wraps, black beans, avocado, fruit, chicken, shrimp","Fill wraps with beans, avocado. Serve with fruit. Add chicken or shrimp.",lunch,f
+15,Grilled Halloumi/Tofu & Roasted Veg,"halloumi, tofu, couscous, orange, salmon","Grill halloumi or tofu. Serve with couscous, orange, or salmon.",lunch,t
+16,Pasta with Spinach,"pasta, spinach, beans, tomato sauce, apple, pear, tuna","Cook pasta with spinach, beans, tomato sauce. Serve with apple or pear. Add tuna.",lunch,t
+17,Mezze Platter,"hummus, tzatziki, tabbouleh, falafel, eggs, melon, lamb, chicken","Assemble platter with hummus, tzatziki, tabbouleh, falafel or eggs. Serve with melon slices and lamb or chicken skewers.",lunch,f
+18,Indian Curry Night,"curry base, cauliflower, paneer, spinach, lamb","Prepare curry base. Serve with cauliflower rice. Add paneer, spinach, or lamb.",dinner,t
+19,Brown Rice & Chana Masala,"brown rice, chana masala, greens, salad, berries, chicken breast","Serve chana masala with brown rice, greens, salad, berries, and chicken breast.",dinner,f
+20,Shakshuka,"eggs, tomato sauce, pepper sauce, lamb meatballs, turkey sausage",Poach eggs in tomato and pepper sauce. Add meatballs or sausage.,dinner,t
+21,Sheet Pan Dinner,"broccoli, asparagus, capsicum, paneer, tofu, salmon, chicken thighs","Roast broccoli, asparagus, capsicum. Add paneer, tofu, salmon, or chicken thighs.",dinner,f
+22,Kebab Night,"kebabs, green beans, cucumber yogurt salad",Grill kebabs with green beans. Serve with cucumber yogurt salad.,dinner,t
+23,Moroccan Lentil & Vegetable Stew,"lentils, spices, chicken, lamb",Cook lentils with vegetables and spices. Add chicken or lamb.,dinner,f
+24,Stir-fry Tofu/Chicken,"broccoli, peppers, tofu, chicken, rice, noodles, watermelon",Stir-fry broccoli and peppers. Add tofu or chicken. Serve with rice or noodles and watermelon.,dinner,f
+25,Paneer & Chickpea Curry,"paneer, chickpeas, curry spices, rice, cucumber salad, orange, chicken","Cook paneer and chickpeas with curry spices. Serve with rice, cucumber salad, orange, and chicken.",dinner,f
+26,Palak Paneer Chappathi,"paneer, spinach, onions, tomatoes",Cook spinach and paneer. Serve with chapati.,dinner,t
+27,Chicken Tikka,"chicken, onions, tomatoes",Cook chicken tikka with onions and tomatoes. Serve with chapati.,dinner,t
+28,Palak Tofu,"tofu, spinach, naan, vegetable sabzi, orange","Cook spinach with tofu curry. Serve with naan, vegetable sabzi, and orange slices.",dinner,t
+29,Chicken Curry,"chicken, spinach, naan, vegetable sabzi, orange","Cook chicken curry with spinach. Serve with naan, vegetable sabzi, and orange slices.",dinner,t
+30,Masala Boiled Eggs,"eggs, masala spice",Sprinkle masala on boiled eggs and serve.,snack,t
+31,Mixed Nuts & Apple,"almonds, walnuts, apple",Serve almonds and walnuts with apple slices.,snack,t
+32,Hummus & Veggie Sticks,"cucumber sticks, carrot sticks, hummus, grapes, melon",Serve vegetable sticks with hummus and grapes or melon.,snack,t
+33,Cottage Cheese & Berries,"cottage cheese, berries, strawberries",Serve cottage cheese with berries or strawberries.,snack,t
+34,"Nuts, Dried Fruit, Cheese & Crackers","nuts, dried fruit, cheese, crackers","Mix nuts, dried fruit, cheese, and crackers.",snack,t
+35,Paneer Tikka & Pear,"paneer, spices, pear",Pan-fry paneer with spices. Serve with pear slices.,snack,t
+36,Cumin Yogurt & Orange Segments,"yogurt, cumin powder, orange segments",Mix yogurt with cumin powder. Serve with orange segments.,snack,t
+37,Veggies & Tzatziki,"vegetable sticks, tzatziki, grapes",Serve vegetable sticks with tzatziki and grapes.,snack,t
+38,Smoothie,"yogurt, banana, berries, nuts","Blend yogurt, banana, berries, and nuts.",snack,t
+39,Roasted Chickpeas & Grapes,"chickpeas, grapes",Serve roasted chickpeas with grapes.,snack,t
+40,Cook Lentils/Dal,"lentils, dal",Cook lentils or dal. Store for meals.,weekend prep,t
+41,Roast Vegetables,"capsicum, broccoli, zucchini, onions",Chop and roast vegetables. Store for later.,weekend prep,t
+42,Marinate Proteins,"chicken, lamb, paneer, tofu, yogurt, spices",Marinate proteins in yogurt and spices.,weekend prep,t
+43,Make Cauliflower Rice,cauliflower,Grate or pulse cauliflower into rice texture.,weekend prep,t
+44,Boil Eggs,eggs,Boil eggs for 10-15 mins. Store for meals.,weekend prep,t
+45,Mix Dips & Sauces,"hummus, cucumber, yogurt, tzatziki, curry paste",Prepare dips and sauces in advance.,weekend prep,t
+46,Puliyar Chutney,"rice, tamarind, peanuts, spices","Cook rice and mix with tamarind, peanuts, and spices. Serve with yogurt.",sides,t
+5,Eggs / Paneer Bhurji Sandwich ,"Onion, Tomato, Eggs / Paneer, Green chillies, Ginger, Lettuce, cumin powder. ","chop onion, tomato, green chillies, cumin powder and saute. Add scrambled eggs / paneer, ginger and cook.,
+Top it on toast. Add lettuce if required.  ",breakfast,t
+1,Protein Smoothie Bowl,"Must: Protein Powder, Flax seed powder, Yoghurt.
+Fruit options: Avocado / Banana / Mango & Pineapple mix.
+Berries option: Strawberry / Blueberries/ Blackberry / Raspberry.
+Topping options: Apple / Kiwi & Nuts",Combine all ingredients.,breakfast,t

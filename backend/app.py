@@ -44,6 +44,7 @@ def get_health() -> HealthCheck:
     Returns:
         HealthCheck: Returns a JSON response with the health status
     """
+    logger.info("Health check endpoint called.")
     return HealthCheck(status="OK")
 
 
@@ -55,6 +56,7 @@ class Recipe(BaseModel):
     instructions: str
     # meal_type can only be 'breakfast', 'lunch', 'dinner', or 'snack'
     meal_type: Literal["breakfast", "lunch", "dinner", "snack", "weekend prep", "sides"]
+    is_vegetarian: bool
 
 
 class PlanSlot(BaseModel):
@@ -84,14 +86,16 @@ def get_db_connection():
 
 @app.get("/recipes", response_model=list[Recipe])
 def get_recipes():
+    logger.info("Fetching all recipes.")
     conn = get_db_connection()
     cur = conn.cursor()
     cur.execute(
-        "SELECT id, name, ingredients, instructions, meal_type FROM recipes ORDER BY name;"
+        "SELECT id, name, ingredients, instructions, meal_type, is_vegetarian FROM recipes ORDER BY name;"
     )
     rows = cur.fetchall()
     cur.close()
     conn.close()
+    logger.debug(f"Fetched {len(rows)} recipes from database.")
     recipes = [
         Recipe(
             id=row[0],
@@ -99,6 +103,7 @@ def get_recipes():
             ingredients=row[2],
             instructions=row[3],
             meal_type=row[4],
+            is_vegetarian=row[5],
         )
         for row in rows
     ]
@@ -107,64 +112,90 @@ def get_recipes():
 
 @app.post("/recipes", status_code=201, response_model=Recipe)
 def add_recipe(recipe: Recipe):
+    logger.info(f"Adding new recipe: {recipe.name}")
     conn = get_db_connection()
     cur = conn.cursor()
     cur.execute(
-        "INSERT INTO recipes (name, ingredients, instructions, meal_type) VALUES (%s, %s, %s, %s) RETURNING id",
-        (recipe.name, recipe.ingredients, recipe.instructions, recipe.meal_type),
-    )
-    new_id = cur.fetchone()[0]
-    conn.commit()
-    cur.close()
-    conn.close()
-    return Recipe(id=new_id, **recipe.dict(exclude={"id"}))
-
-
-@app.put("/recipes/{recipe_id}", response_model=Recipe)
-def update_recipe(recipe_id: int, recipe: Recipe):
-    conn = get_db_connection()
-    cur = conn.cursor()
-    cur.execute(
-        "UPDATE recipes SET name = %s, ingredients = %s, instructions = %s, meal_type = %s WHERE id = %s",
+        "INSERT INTO recipes (name, ingredients, instructions, meal_type, is_vegetarian) VALUES (%s, %s, %s, %s, %s) RETURNING id",
         (
             recipe.name,
             recipe.ingredients,
             recipe.instructions,
             recipe.meal_type,
+            recipe.is_vegetarian,
+        ),
+    )
+    row = cur.fetchone()
+    if not row:
+        logger.warning(
+            f"Failed to add recipe: {recipe.name}. No ID returned from database."
+        )
+        conn.rollback()
+        cur.close()
+        conn.close()
+        raise HTTPException(status_code=400, detail="Failed to add recipe.")
+    new_id = row[0]
+    conn.commit()
+    cur.close()
+    conn.close()
+    logger.debug(f"Recipe added with id: {new_id}")
+    return Recipe(id=new_id, **recipe.dict(exclude={"id"}))
+
+
+@app.put("/recipes/{recipe_id}", response_model=Recipe)
+def update_recipe(recipe_id: int, recipe: Recipe):
+    logger.info(f"Updating recipe id: {recipe_id}")
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute(
+        "UPDATE recipes SET name = %s, ingredients = %s, instructions = %s, meal_type = %s, is_vegetarian = %s WHERE id = %s",
+        (
+            recipe.name,
+            recipe.ingredients,
+            recipe.instructions,
+            recipe.meal_type,
+            recipe.is_vegetarian,
             recipe_id,
         ),
     )
     if cur.rowcount == 0:
+        logger.warning(f"Recipe id {recipe_id} not found for update.")
         conn.close()
         raise HTTPException(status_code=404, detail="Recipe not found")
     conn.commit()
     cur.close()
     conn.close()
+    logger.debug(f"Recipe id {recipe_id} updated.")
     return Recipe(id=recipe_id, **recipe.dict(exclude={"id"}))
 
 
 @app.delete("/recipes/{recipe_id}", status_code=204)
 def delete_recipe(recipe_id: int):
+    logger.info(f"Deleting recipe id: {recipe_id}")
     conn = get_db_connection()
     cur = conn.cursor()
     cur.execute("DELETE FROM recipes WHERE id = %s", (recipe_id,))
     if cur.rowcount == 0:
+        logger.warning(f"Recipe id {recipe_id} not found for deletion.")
         conn.close()
         raise HTTPException(status_code=404, detail="Recipe not found")
     conn.commit()
     cur.close()
     conn.close()
+    logger.debug(f"Recipe id {recipe_id} deleted.")
     return Response(status_code=204)
 
 
 @app.get("/weekly-plan", response_model=Dict[str, Dict[str, Optional[int]]])
 def get_weekly_plan():
+    logger.info("Fetching weekly plan.")
     conn = get_db_connection()
     cur = conn.cursor()
     cur.execute("SELECT day, meal_type, recipe_id FROM weekly_plan;")
     rows = cur.fetchall()
     cur.close()
     conn.close()
+    logger.debug(f"Fetched {len(rows)} weekly plan slots from database.")
     # Build nested dict: {day: {meal_type: recipe_id}}
     days = [
         "Monday",
@@ -184,6 +215,9 @@ def get_weekly_plan():
 
 @app.post("/weekly-plan", status_code=201)
 def set_weekly_plan_slot(slot: PlanSlot):
+    logger.info(
+        f"Setting weekly plan slot: {slot.day} {slot.meal_type} -> {slot.recipe_id}"
+    )
     conn = get_db_connection()
     cur = conn.cursor()
     # Upsert logic: update if exists, else insert
@@ -198,11 +232,13 @@ def set_weekly_plan_slot(slot: PlanSlot):
     conn.commit()
     cur.close()
     conn.close()
+    logger.debug(f"Weekly plan slot set for {slot.day} {slot.meal_type}.")
     return {"message": "Plan updated"}
 
 
 @app.get("/ingredients", response_model=List[str])
 def get_unique_ingredients():
+    logger.info("Fetching unique ingredients.")
     conn = get_db_connection()
     cur = conn.cursor()
     cur.execute("""
@@ -214,6 +250,7 @@ def get_unique_ingredients():
     rows = cur.fetchall()
     cur.close()
     conn.close()
+    logger.debug(f"Fetched {len(rows)} unique ingredients from database.")
     return [row[0] for row in rows]
 
 
@@ -221,14 +258,16 @@ def get_unique_ingredients():
 def get_ingredients_list():
     import datetime
 
+    logger.info("Fetching ingredients list.")
     conn = get_db_connection()
     cur = conn.cursor()
     cur.execute(
-        "SELECT id, name, available, shelf_life, last_available FROM ingredients ORDER BY name;"
+        "SELECT id, name, available, shelf_life, last_available FROM ingredients ORDER BY available desc, shelf_life;"
     )
     rows = cur.fetchall()
     cur.close()
     conn.close()
+    logger.debug(f"Fetched {len(rows)} ingredients from database.")
     result = []
     now = datetime.datetime.utcnow()
     for row in rows:
@@ -238,18 +277,13 @@ def get_ingredients_list():
         last_available_str = last_available.isoformat() if last_available else None
         if available and last_available and shelf_life is not None:
             try:
-                logger.debug(f"Calculating remaining shelf life for {name}")
                 last_dt = (
                     last_available
                     if isinstance(last_available, datetime.datetime)
                     else datetime.datetime.fromisoformat(str(last_available))
                 )
-                logger.debug(f"Last available: {last_dt}, Now: {now}")
                 days_passed = (now - last_dt).days
-                logger.debug(f"Days passed: {days_passed}")
                 remaining = max(0, shelf_life - days_passed)
-                logger.debug(f"Remaining shelf life: {remaining}")
-                logger.debug("-----------------------")
             except Exception:
                 pass
         result.append(
@@ -272,6 +306,7 @@ def update_ingredient_availability(
 ):
     import datetime
 
+    logger.info(f"Updating ingredient id: {ingredient_id}")
     conn = get_db_connection()
     cur = conn.cursor()
     set_clauses = []
@@ -286,6 +321,7 @@ def update_ingredient_availability(
         set_clauses.append("shelf_life = %s")
         params.append(shelf_life)
     if not set_clauses:
+        logger.warning(f"No valid fields to update for ingredient id: {ingredient_id}")
         conn.close()
         raise HTTPException(status_code=400, detail="No valid fields to update")
     set_clause = ", ".join(set_clauses)
@@ -299,6 +335,7 @@ def update_ingredient_availability(
     cur.close()
     conn.close()
     if not row:
+        logger.warning(f"Ingredient id {ingredient_id} not found for update.")
         raise HTTPException(status_code=404, detail="Ingredient not found")
     # Compute remaining shelf life for response
     id, name, available, shelf_life, last_available = row
@@ -327,6 +364,7 @@ def update_ingredient_availability(
 
 @app.post("/ingredients", response_model=Ingredient, status_code=201)
 def add_ingredient(name: str, shelf_life: int):
+    logger.info(f"Adding new ingredient: {name}")
     conn = get_db_connection()
     cur = conn.cursor()
     # Insert new ingredient, default available to False
@@ -339,21 +377,26 @@ def add_ingredient(name: str, shelf_life: int):
     cur.close()
     conn.close()
     if not row:
+        logger.warning(f"Ingredient '{name}' already exists or invalid name.")
         raise HTTPException(
             status_code=400, detail="Ingredient already exists or invalid name"
         )
+    logger.debug(f"Ingredient added with id: {row[0]}")
     return Ingredient(id=row[0], name=row[1], available=row[2])
 
 
 @app.delete("/ingredients/{ingredient_id}", status_code=204)
 def delete_ingredient(ingredient_id: int):
+    logger.info(f"Deleting ingredient id: {ingredient_id}")
     conn = get_db_connection()
     cur = conn.cursor()
     cur.execute("DELETE FROM ingredients WHERE id = %s", (ingredient_id,))
     if cur.rowcount == 0:
+        logger.warning(f"Ingredient id {ingredient_id} not found for deletion.")
         conn.close()
         raise HTTPException(status_code=404, detail="Ingredient not found")
     conn.commit()
     cur.close()
     conn.close()
+    logger.debug(f"Ingredient id {ingredient_id} deleted.")
     return Response(status_code=204)

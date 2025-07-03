@@ -1,2 +1,6 @@
 day,meal_type,recipe_id
-Monday,breakfast,8
+Sunday,breakfast,1
+Sunday,lunch,17
+Sunday,snack,35
+Sunday,dinner,22
+Monday,breakfast,1

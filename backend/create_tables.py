@@ -21,7 +21,8 @@ def create_tables():
                 name VARCHAR(255) NOT NULL,
                 ingredients TEXT NOT NULL,
                 instructions TEXT NOT NULL,
-                meal_type VARCHAR(50) CHECK (meal_type IN ('breakfast', 'lunch', 'dinner', 'snack','weekend prep','sides')) NOT NULL
+                meal_type VARCHAR(50) CHECK (meal_type IN ('breakfast', 'lunch', 'dinner', 'snack','weekend prep','sides')) NOT NULL,
+                is_vegetarian BOOLEAN DEFAULT TRUE
             );
         """)
         conn.commit()
@@ -52,30 +53,30 @@ def create_tables():
         """)
         conn.commit()
 
-        # Trigger function to sync ingredients
-        cur.execute("""
-        CREATE OR REPLACE FUNCTION sync_ingredients()
-        RETURNS TRIGGER AS $$
-        BEGIN
-            -- For each ingredient in the new recipe, insert if not exists
-            INSERT INTO ingredients (name)
-            SELECT DISTINCT LOWER(TRIM(ingredient))
-            FROM unnest(string_to_array(NEW.ingredients, ',')) AS ingredient
-            ON CONFLICT (name) DO NOTHING;
-            RETURN NEW;
-        END;
-        $$ LANGUAGE plpgsql;
-        """)
-        conn.commit()
+        # # Trigger function to sync ingredients
+        # cur.execute("""
+        # CREATE OR REPLACE FUNCTION sync_ingredients()
+        # RETURNS TRIGGER AS $$
+        # BEGIN
+        #     -- For each ingredient in the new recipe, insert if not exists
+        #     INSERT INTO ingredients (name)
+        #     SELECT DISTINCT LOWER(TRIM(ingredient))
+        #     FROM unnest(string_to_array(NEW.ingredients, ',')) AS ingredient
+        #     ON CONFLICT (name) DO NOTHING;
+        #     RETURN NEW;
+        # END;
+        # $$ LANGUAGE plpgsql;
+        # """)
+        # conn.commit()
 
-        # Trigger on insert to recipes
-        cur.execute("""
-        DROP TRIGGER IF EXISTS trg_sync_ingredients ON recipes;
-        CREATE TRIGGER trg_sync_ingredients
-        AFTER INSERT ON recipes
-        FOR EACH ROW EXECUTE FUNCTION sync_ingredients();
-        """)
-        conn.commit()
+        # # Trigger on insert to recipes
+        # cur.execute("""
+        # DROP TRIGGER IF EXISTS trg_sync_ingredients ON recipes;
+        # CREATE TRIGGER trg_sync_ingredients
+        # AFTER INSERT ON recipes
+        # FOR EACH ROW EXECUTE FUNCTION sync_ingredients();
+        # """)
+        # conn.commit()
 
         # Load initial data for ingredients from CSV file
         with open("ingredients.csv", "r") as f:
@@ -99,8 +100,8 @@ def create_tables():
             for row in reader:
                 cur.execute(
                     """
-                    INSERT INTO recipes (id, name, ingredients, instructions, meal_type)
-                    VALUES (%s, %s, %s, %s, %s)
+                    INSERT INTO recipes (id, name, ingredients, instructions, meal_type, is_vegetarian)
+                    VALUES (%s, %s, %s, %s, %s, %s)
                 """,
                     (
                         row["id"],
@@ -108,6 +109,7 @@ def create_tables():
                         row["ingredients"],
                         row["instructions"],
                         row["meal_type"],
+                        row["is_vegetarian"],
                     ),
                 )
         conn.commit()
