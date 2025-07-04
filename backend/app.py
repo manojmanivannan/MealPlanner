@@ -303,6 +303,7 @@ def update_ingredient_availability(
     ingredient_id: int,
     available: Optional[bool] = None,
     shelf_life: Optional[int] = None,
+    name: Optional[str] = None,
 ):
     import datetime
 
@@ -311,6 +312,9 @@ def update_ingredient_availability(
     cur = conn.cursor()
     set_clauses = []
     params = []
+    if name is not None:
+        set_clauses.append("name = %s")
+        params.append(name.strip())
     if available is not None:
         set_clauses.append("available = %s")
         params.append(available)
@@ -326,10 +330,17 @@ def update_ingredient_availability(
         raise HTTPException(status_code=400, detail="No valid fields to update")
     set_clause = ", ".join(set_clauses)
     params.append(ingredient_id)
-    cur.execute(
-        f"UPDATE ingredients SET {set_clause} WHERE id = %s RETURNING id, name, available, shelf_life, last_available;",
-        tuple(params),
-    )
+    try:
+        cur.execute(
+            f"UPDATE ingredients SET {set_clause} WHERE id = %s RETURNING id, name, available, shelf_life, last_available;",
+            tuple(params),
+        )
+    except psycopg2.errors.UniqueViolation:
+        conn.rollback()
+        cur.close()
+        conn.close()
+        logger.warning(f"Ingredient name '{name}' already exists.")
+        raise HTTPException(status_code=400, detail="Ingredient name already exists")
     row = cur.fetchone()
     conn.commit()
     cur.close()

@@ -421,31 +421,74 @@ document.addEventListener('DOMContentLoaded', () => {
                     renderShoppingList(); // Refresh to get updated shelf life from backend
                 });
             });
-            // Edit shelf life logic
+            // Edit shelf life and name logic
             listSection.querySelectorAll('.edit-shelf-life-btn').forEach(btn => {
                 btn.addEventListener('click', async (e) => {
                     e.preventDefault();
                     e.stopPropagation();
                     const id = btn.getAttribute('data-id');
                     const ing = ingredients.find(i => i.id == id);
-                    let newShelfLife = prompt(`Enter new shelf life (days) for '${ing.name}':`, ing.shelf_life);
-                    if (newShelfLife === null) return; // Cancelled
-                    newShelfLife = newShelfLife.trim();
-                    if (newShelfLife === '' || isNaN(newShelfLife) || parseInt(newShelfLife, 10) <= 0) {
-                        alert('Shelf life must be an integer greater than 0 (days).');
-                        return;
-                    }
-                    btn.disabled = true;
-                    try {
-                        await fetch(`${API_BASE}/ingredients/${id}?shelf_life=${encodeURIComponent(newShelfLife)}`, {
-                            method: 'PUT'
-                        });
-                        renderShoppingList();
-                    } catch (error) {
-                        alert('Failed to update shelf life.');
-                    } finally {
-                        btn.disabled = false;
-                    }
+                    // Modal for editing name and shelf life
+                    const modalId = 'edit-ingredient-modal';
+                    if (document.getElementById(modalId)) document.getElementById(modalId).remove();
+                    const modalHTML = `
+                        <div id="${modalId}" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                            <div class="bg-white p-6 rounded-lg shadow-lg w-full max-w-xs relative" onclick="event.stopPropagation()">
+                                <button class="absolute top-2 right-2 text-2xl text-stone-400 hover:text-stone-700" onclick="document.getElementById('${modalId}').remove()">&times;</button>
+                                <h2 class="text-xl font-bold mb-4">Edit Ingredient</h2>
+                                <form id="edit-ingredient-form">
+                                    <div class="mb-4">
+                                        <label class="block text-sm font-medium text-stone-700">Name</label>
+                                        <input type="text" id="edit-ingredient-name" class="mt-1 block w-full rounded-sm border-stone-300 shadow-sm focus:border-teal-500 focus:ring-teal-500" value="${ing.name}" required>
+                                    </div>
+                                    <div class="mb-4">
+                                        <label class="block text-sm font-medium text-stone-700">Shelf Life (days)</label>
+                                        <input type="number" id="edit-ingredient-shelf-life" class="mt-1 block w-full rounded-sm border-stone-300 shadow-sm focus:border-teal-500 focus:ring-teal-500" value="${ing.shelf_life}" min="1" required>
+                                    </div>
+                                    <div class="flex justify-end space-x-4">
+                                        <button type="button" id="cancel-edit-ingredient" class="bg-stone-200 text-stone-800 px-4 py-2 rounded-lg hover:bg-stone-300">Cancel</button>
+                                        <button type="submit" class="bg-teal-600 text-white px-4 py-2 rounded-lg hover:bg-teal-700">Save</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    `;
+                    document.body.insertAdjacentHTML('beforeend', modalHTML);
+                    const overlay = document.getElementById(modalId);
+                    overlay.addEventListener('click', () => overlay.remove());
+                    overlay.querySelector('div.bg-white').addEventListener('click', e => e.stopPropagation());
+                    document.getElementById('cancel-edit-ingredient').addEventListener('click', () => overlay.remove());
+                    document.getElementById('edit-ingredient-form').addEventListener('submit', async (ev) => {
+                        ev.preventDefault();
+                        const newName = document.getElementById('edit-ingredient-name').value.trim();
+                        const newShelfLife = document.getElementById('edit-ingredient-shelf-life').value.trim();
+                        if (!newName) {
+                            alert('Name is required.');
+                            return;
+                        }
+                        if (!newShelfLife || isNaN(newShelfLife) || parseInt(newShelfLife, 10) <= 0) {
+                            alert('Shelf life must be an integer greater than 0 (days).');
+                            return;
+                        }
+                        try {
+                            const params = new URLSearchParams({
+                                name: newName,
+                                shelf_life: newShelfLife
+                            });
+                            const resp = await fetch(`${API_BASE}/ingredients/${id}?${params.toString()}`, {
+                                method: 'PUT'
+                            });
+                            if (!resp.ok) {
+                                const err = await resp.json();
+                                alert(err.detail || 'Failed to update ingredient.');
+                                return;
+                            }
+                            overlay.remove();
+                            renderShoppingList();
+                        } catch (error) {
+                            alert('Failed to update ingredient.');
+                        }
+                    });
                 });
             });
             // Delete ingredient logic

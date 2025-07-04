@@ -79,7 +79,7 @@ services:
       - POSTGRES_DB=recipes
       - PGUSER=postgres
     volumes:
-      - db-data:/var/lib/postgresql/data
+      - ./postgres-data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready", "-d", "recipes", "-U", "postgres"]
       interval: 10s
@@ -88,4 +88,4 @@ services:
       start_period: 10s
 
 volumes:
-  db-data:
+  # db-data:  # (no longer needed, using host directory)
