@@ -1,104 +1,101 @@
 id,name,shelf_life,available
 1,almonds,365,f
-3,frozen fruits,90,f
-5,spinach,2,f
-6,orange,7,f
-7,toast,7,f
-8,moong dal batter,3,f
-9,apple,14,f
-10,paneer,60,f
-11,chia seeds,1095,f
-13,nuts,365,f
-14,oats,2190,f
-15,mushrooms,7,f
-16,kale,7,f
-20,cashews,365,f
-21,chili powder,1095,f
-22,quinoa,1095,f
-23,feta cheese,7,f
-24,tomato sauce,14,f
-26,chickpeas,365,f
-28,olives,21,f
-29,black peppers,365,f
-32,black beans,4,f
-33,avocado,7,f
-35,fruit,5,f
-38,halloumi,14,f
-39,couscous,4,f
-41,beans,5,f
-42,tuna,4,f
-43,pasta,7,f
-44,pear,42,f
-45,melon slices,3,f
-46,tzatziki,14,f
-47,hummus,7,f
-48,lamb,3,f
-49,tabbouleh,3,f
-50,falafel,3,f
-51,curry base,7,f
-52,brown rice,5,f
-53,chana masala,3,f
-55,salad,3,f
-56,turkey sausage,4,f
-57,lamb meatballs,4,f
-58,pepper sauce,14,f
-61,broccoli,7,f
-62,cucumber yogurt salad,3,f
-63,kebabs,3,f
-25,green beans,7,f
-65,lentils,5,f
-67,watermelon,14,f
-68,rice,5,f
-69,curry spices,1095,f
-70,cucumber salad,3,f
-71,naan,3,f
-72,vegetable sabzi,3,f
-73,masala spice,1095,f
-74,walnuts,365,f
-75,grapes,14,f
-76,carrot sticks,7,f
-77,cucumber sticks,7,f
-78,melon,14,f
-79,cottage cheese,7,f
-80,strawberries,5,f
-81,crackers,91,f
-82,dried fruit,1095,f
-83,cheese,14,f
-84,pear slices,3,f
-85,orange segments,4,f
-86,cumin powder,1095,f
-87,vegetable sticks,7,f
-88,dal,5,f
-89,zucchini,7,f
-31,cauliflower,7,f
-91,curry paste,21,f
-92,peanuts,365,f
-93,tamarind,1095,f
-96,berries,10,f
-117,spices,10,f
-133,feta,10,f
-136,greens,10,f
-147,peppers,10,f
-154,salsa,10,f
-295,cucumber,10,f
-2,banana,5,t
-27,chicken,6,t
-40,salmon,2,t
-306,Lettuce,5,t
-18,onions,14,t
-311,Soy milk,5,t
-19,tomatoes,10,t
-302,Frozen mutton,120,t
-303,Celery,5,t
-30,tofu,30,t
-60,asparagus,7,t
-304,Spring onions,14,t
-305,Aubergine,4,t
-312,Salad radish,5,t
-17,capsicum,4,t
-12,eggs,21,t
-4,yogurt,7,t
-307,Coriander leaves,7,t
-308,Cabbage,14,t
-66,noodles,3,t
-310,Bread,5,t
+2,frozen fruits,90,f
+3,spinach,2,f
+4,orange,7,f
+5,toast,7,f
+6,moong dal batter,3,f
+7,apple,14,f
+8,paneer,60,f
+9,chia seeds,1095,f
+10,nuts,365,f
+11,oats,2190,f
+12,mushrooms,7,f
+13,kale,7,f
+14,cashews,365,f
+15,chili powder,1095,f
+16,quinoa,1095,f
+17,feta cheese,7,f
+18,tomato sauce,14,f
+19,chickpeas,365,f
+20,olives,21,f
+21,black peppers,365,f
+22,black beans,4,f
+23,avocado,7,f
+24,fruit,5,f
+25,halloumi,14,f
+26,couscous,4,f
+28,tuna,4,f
+29,pasta,7,f
+30,pear,42,f
+31,melon slices,3,f
+32,tzatziki,14,f
+33,hummus,7,f
+34,lamb,3,f
+35,tabbouleh,3,f
+36,falafel,3,f
+37,curry base,7,f
+38,brown rice,5,f
+39,chana masala,3,f
+40,salad,3,f
+41,turkey sausage,4,f
+42,lamb meatballs,4,f
+44,broccoli,7,f
+45,cucumber yogurt salad,3,f
+46,kebabs,3,f
+47,green beans,7,f
+48,lentils,5,f
+49,watermelon,14,f
+50,rice,5,f
+51,curry spices,1095,f
+52,cucumber salad,3,f
+53,naan,3,f
+54,vegetable sabzi,3,f
+56,walnuts,365,f
+57,grapes,14,f
+59,cucumber sticks,7,f
+60,melon,14,f
+61,cottage cheese,7,f
+62,strawberries,5,f
+63,crackers,91,f
+64,dried fruit,1095,f
+65,cheese,14,f
+67,orange segments,4,f
+68,cumin powder,1095,f
+69,vegetable sticks,7,f
+70,dal,5,f
+71,zucchini,7,f
+72,cauliflower,7,f
+73,curry paste,21,f
+74,peanuts,365,f
+75,tamarind,1095,f
+76,berries,10,f
+77,spices,10,f
+78,feta,10,f
+79,greens,10,f
+80,peppers,10,f
+81,salsa,10,f
+82,cucumber,10,f
+83,banana,5,t
+84,chicken,6,t
+86,Lettuce,5,t
+87,onions,14,t
+88,Soy milk,5,t
+89,tomatoes,10,t
+90,Frozen mutton,120,t
+91,Celery,5,t
+92,tofu,30,t
+93,asparagus,7,t
+94,Spring onions,14,t
+95,Aubergine,4,t
+96,Salad radish,5,t
+97,capsicum,4,t
+98,eggs,21,t
+99,yogurt,7,t
+100,Coriander leaves,7,t
+101,Cabbage,14,t
+102,noodles,3,t
+103,Bread,5,t
+85,salmon,2,f
+27,beans,5,t
+104,carrot,10,t,

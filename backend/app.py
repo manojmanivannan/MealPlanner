@@ -282,7 +282,7 @@ def get_ingredients_list():
                     if isinstance(last_available, datetime.datetime)
                     else datetime.datetime.fromisoformat(str(last_available))
                 )
-                days_passed = (now - last_dt).days
+                days_passed = (now.date() - last_dt.date()).days
                 remaining = max(0, shelf_life - days_passed)
             except Exception:
                 pass
