@@ -87,5 +87,5 @@ services:
       retries: 5
       start_period: 10s
 
-volumes:
+# volumes:
   # db-data:  # (no longer needed, using host directory)
