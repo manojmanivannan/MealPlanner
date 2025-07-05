@@ -37,9 +37,16 @@ def create_tables():
         """)
         conn.commit()
 
-        cur.execute("""
-            ALTER TABLE weekly_plan ADD CONSTRAINT unique_day_meal UNIQUE(day, meal_type);
-        """)
+        # drop the unique constraint if it exists
+        cur.execute(
+            """ALTER TABLE weekly_plan DROP CONSTRAINT IF EXISTS unique_day_meal;"""
+        )
+        conn.commit()
+
+        # add the unique constraint back
+        cur.execute(
+            """ALTER TABLE weekly_plan ADD CONSTRAINT unique_day_meal UNIQUE(day, meal_type);"""
+        )
         conn.commit()
 
         cur.execute("""
