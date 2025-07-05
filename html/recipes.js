@@ -355,21 +355,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Sort by available (true first), then by shelf_life ascending
                 const sorted = [...ingredients].sort((a, b) => {
                     if (a.available === b.available) {
-                        return (a.shelf_life ?? 9999) - (b.shelf_life ?? 9999);
+                        return (a.remaining_shelf_life ?? 9999) - (b.remaining_shelf_life ?? 9999);
                     }
                     return (b.available ? 1 : 0) - (a.available ? 1 : 0);
                 });
                 // Render as 2 columns
                 html += `<div class="grid grid-cols-1 sm:grid-cols-2 gap-2">`;
                 sorted.forEach(ing => {
-                    const expired = ing.shelf_life <= 0;
+                    const expired = ing.remaining_shelf_life <= 0;
                     html += `
                         <label class="ingredient-card flex items-center justify-between space-x-2 p-2 border border-transparent relative">
                             <div class="flex items-center space-x-2 flex-1 min-w-0">
                                 <input type="checkbox" data-id="${ing.id}" ${ing.available ? 'checked' : ''} class="clay-checkbox">
                                 <span class="text-xs ingredient-name${expired ? ' line-through text-red-500' : ''} truncate">${ing.name}</span>
                                 <span class="ml-2 text-xs ${expired ? 'text-red-500 font-bold' : 'text-stone-500'}">
-                                    ${expired ? 'Expired' : (ing.shelf_life === 1 ? '1 day left' : ing.shelf_life + ' days left')}
+                                    ${expired ? 'Expired' : (ing.remaining_shelf_life === 1 ? '1 day left' : ing.remaining_shelf_life + ' days left')}
                                 </span>
                             </div>
                             <div class="flex items-center space-x-2 ml-2">

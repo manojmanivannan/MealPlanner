@@ -53,31 +53,6 @@ def create_tables():
         """)
         conn.commit()
 
-        # # Trigger function to sync ingredients
-        # cur.execute("""
-        # CREATE OR REPLACE FUNCTION sync_ingredients()
-        # RETURNS TRIGGER AS $$
-        # BEGIN
-        #     -- For each ingredient in the new recipe, insert if not exists
-        #     INSERT INTO ingredients (name)
-        #     SELECT DISTINCT LOWER(TRIM(ingredient))
-        #     FROM unnest(string_to_array(NEW.ingredients, ',')) AS ingredient
-        #     ON CONFLICT (name) DO NOTHING;
-        #     RETURN NEW;
-        # END;
-        # $$ LANGUAGE plpgsql;
-        # """)
-        # conn.commit()
-
-        # # Trigger on insert to recipes
-        # cur.execute("""
-        # DROP TRIGGER IF EXISTS trg_sync_ingredients ON recipes;
-        # CREATE TRIGGER trg_sync_ingredients
-        # AFTER INSERT ON recipes
-        # FOR EACH ROW EXECUTE FUNCTION sync_ingredients();
-        # """)
-        # conn.commit()
-
         # Load initial data for ingredients from CSV file
         with open("ingredients.csv", "r") as f:
             reader = csv.DictReader(f)
@@ -87,8 +62,7 @@ def create_tables():
                     INSERT INTO ingredients (name, shelf_life, available)
                     VALUES (%s, %s, %s)
                     ON CONFLICT (name) DO UPDATE SET
-                        shelf_life = EXCLUDED.shelf_life,
-                        available = EXCLUDED.available
+                        shelf_life = EXCLUDED.shelf_life
                 """,
                     (row["name"], row["shelf_life"], row["available"]),
                 )
@@ -102,6 +76,7 @@ def create_tables():
                     """
                     INSERT INTO recipes (id, name, ingredients, instructions, meal_type, is_vegetarian)
                     VALUES (%s, %s, %s, %s, %s, %s)
+                    ON CONFLICT (id) DO NOTHING
                 """,
                     (
                         row["id"],

@@ -71,6 +71,7 @@ class Ingredient(BaseModel):
     available: bool
     shelf_life: Optional[int] = None  # original shelf life in days
     last_available: Optional[str] = None  # ISO timestamp
+    remaining_shelf_life: Optional[int] = None  # days left
 
 
 # DB Connection function
@@ -291,8 +292,9 @@ def get_ingredients_list():
                 id=id,
                 name=name,
                 available=available,
-                shelf_life=remaining,
+                shelf_life=shelf_life,  # original shelf life
                 last_available=last_available_str,
+                remaining_shelf_life=remaining,  # days left
             )
         )
     return result

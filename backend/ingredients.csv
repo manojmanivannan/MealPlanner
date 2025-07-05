@@ -94,7 +94,7 @@ id,name,shelf_life,available
 99,yogurt,7,t
 100,Coriander leaves,7,t
 101,Cabbage,14,t
-102,noodles,3,t
+102,noodles,3,f
 103,Bread,5,t
 85,salmon,2,f
 27,beans,5,t
