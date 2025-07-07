@@ -1,3 +1,4 @@
+id,name,ingredients,instructions,meal_type,is_vegetarian
 2,Moong Dal Chilla / Paneer Bhurji,"moong dal batter, paneer, spinach, toast, apple, orange",Prepare savory pancakes with moong dal batter or cook scrambled paneer with spinach. Serve with toast and apple or orange.,breakfast,t
 3,Overnight Oats,"oats, berries, chia seeds, nuts, eggs","Combine oats, berries, chia seeds, and nuts. Refrigerate overnight. Serve with eggs.",breakfast,t
 6,Spiced Yogurt Bowl,"yogurt, cashews, chili powder, banana",Mix yogurt with cashews and chili powder. Top with banana.,breakfast,t
