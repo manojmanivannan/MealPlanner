@@ -8,6 +8,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const API_BASE = '/api';
 
     const mealTypeMap = {
+        '☕ Pre-Breakfast': ['pre-breakfast'],
         '🍳 Breakfast': ['breakfast'],
         '🍲 Lunch & Dinner': ['lunch', 'dinner'],
         '🥜 Snacks': ['snack'],
@@ -146,6 +147,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <div class="mb-4">
                             <label for="recipe-meal-type" class="block text-sm font-medium text-stone-700">Meal Type</label>
                             <select id="recipe-meal-type" class="mt-1 block w-full rounded-sm border-stone-300 shadow-sm focus:border-teal-500 focus:ring-teal-500" required>
+                                <option value="pre-breakfast" ${(recipe && recipe.meal_type === 'pre-breakfast') || (!recipe && defaultMealType === 'pre-breakfast') ? 'selected' : ''}>Pre-Breakfast</option>
                                 <option value="breakfast" ${(recipe && recipe.meal_type === 'breakfast') || (!recipe && defaultMealType === 'breakfast') ? 'selected' : ''}>Breakfast</option>
                                 <option value="lunch" ${(recipe && recipe.meal_type === 'lunch') || (!recipe && defaultMealType === 'lunch') ? 'selected' : ''}>Lunch</option>
                                 <option value="dinner" ${(recipe && recipe.meal_type === 'dinner') || (!recipe && defaultMealType === 'dinner') ? 'selected' : ''}>Dinner</option>
@@ -213,7 +215,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Weekly Planner Logic ---
     const daysOfWeek = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
-    const mealSlots = ["breakfast", "lunch", "snack", "dinner"];
+    const mealSlots = ["pre-breakfast", "breakfast", "lunch", "snack", "dinner"];
     let weeklyPlan = {};
 
     async function fetchWeeklyPlan() {
@@ -247,54 +249,101 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="meal-card ${dayBgClass[idx]} flex flex-col">
                 <h4 class="text-lg font-bold card-title mb-1 text-center">${day}</h4>
                 ${mealSlots.map(meal => {
-                    const recipeId = weeklyPlan[day]?.[meal] || null;
-                    const recipe = recipes.find(r => r.id === recipeId);
+                    let recipeIds = weeklyPlan[day]?.[meal] || [];
+                    if (!Array.isArray(recipeIds)) recipeIds = recipeIds ? [recipeIds] : [];
+                    // Render each recipe name as a separate clickable span (not as a comma-separated string)
+                    const recipeNameSpans = recipeIds.map(rid => {
+                        const recipe = recipes.find(r => r.id === rid);
+                        return recipe ? `<span class='font-extrabold text-base text-teal-800 cursor-pointer hover:underline recipe-link' data-recipe-id='${recipe.id}'>${recipe.name}</span>` : '';
+                    }).filter(Boolean).join(', ');
                     return `
                         <div class="mb-2">
                             <div class="flex items-center justify-between">
                                 <span class="font-medium text-xs text-stone-500 capitalize">${meal}</span>
-                                <button class="text-xs px-2 py-1 rounded font-semibold transition ${recipe ? 'bg-orange-100 text-orange-700 hover:bg-orange-200' : 'bg-green-100 text-green-700 hover:bg-green-200'}" onclick="window.selectRecipeForSlot('${day}','${meal}')">${recipe ? 'Change' : 'Add'}</button>
+                                <button class="text-xs px-2 py-1 rounded font-semibold transition ${recipeIds.length ? 'bg-orange-100 text-orange-700 hover:bg-orange-200' : 'bg-green-100 text-green-700 hover:bg-green-200'}" type="button" onclick="window.selectRecipeForSlot('${day}','${meal}')">${recipeIds.length ? 'Change' : 'Add'}</button>
                             </div>
-                            <div class="ml-2">
-                                ${recipe ? `<span class='font-extrabold text-base text-teal-800 cursor-pointer hover:underline' onclick='window.showRecipeDetails(${recipe.id})'>${recipe.name}</span>` : '<span class="text-stone-400">No recipe</span>'}
+                            <div class="ml-2 recipe-names-container">
+                                ${recipeNameSpans || '<span class="text-stone-400">No recipe</span>'}
                             </div>
                         </div>
                     `;
                 }).join('')}
             </div>
         `).join('');
+        // Attach click listeners to all recipe links (use event delegation for robustness)
+        plannerGrid.querySelectorAll('.recipe-names-container').forEach(container => {
+            container.addEventListener('click', function(e) {
+                const target = e.target;
+                if (target.classList.contains('recipe-link')) {
+                    e.stopPropagation();
+                    const id = parseInt(target.getAttribute('data-recipe-id'));
+                    window.showRecipeDetails(id);
+                }
+            });
+        });
     }
 
     window.selectRecipeForSlot = (day, meal) => {
-        // Show modal to pick recipe for this meal type
-        const filtered = recipes.filter(r => r.meal_type === meal);
+        // Show modal to pick multiple recipes for this meal type
+        const filtered = recipes; // Optionally filter by meal type
+        // Get current selection
+        let selectedIds = weeklyPlan[day]?.[meal] || [];
+        if (!Array.isArray(selectedIds)) selectedIds = selectedIds ? [selectedIds] : [];
         const modalHTML = `
             <div id="select-recipe-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
                 <div class="bg-white p-6 rounded-lg shadow-lg w-full max-w-md" onclick="event.stopPropagation()">
                     <h2 class="text-xl font-bold mb-4">Select ${meal.charAt(0).toUpperCase() + meal.slice(1)} for ${day}</h2>
-                    <div class="mb-4 max-h-60 overflow-y-auto">
-                        ${filtered.length ? filtered.map(r => `
-                            <div class="mb-2 flex items-center justify-between border-b pb-1">
-                                <span>${r.name}</span>
-                                <button class="text-xs bg-teal-600 text-white px-2 py-1 rounded" onclick="window.assignRecipeToSlot('${day}','${meal}',${r.id})">Select</button>
-                            </div>
-                        `).join('') : '<div class="text-stone-400">No recipes available for this meal type.</div>'}
-                    </div>
-                    <button class="mt-2 bg-stone-200 text-stone-800 px-4 py-2 rounded-lg hover:bg-stone-300" onclick="document.getElementById('select-recipe-modal').remove()">Cancel</button>
+                    <form id="multi-recipe-form">
+                        <div class="mb-4 max-h-60 overflow-y-auto">
+                            ${filtered.length ? filtered.map(r => `
+                                <div class="mb-2 flex items-center justify-between border-b pb-1">
+                                    <label class="flex items-center space-x-2">
+                                        <input type="checkbox" name="recipeIds" value="${r.id}" ${selectedIds.includes(r.id) ? 'checked' : ''}>
+                                        <span>${r.name}</span>
+                                    </label>
+                                </div>
+                            `).join('') : '<div class="text-stone-400">No recipes available for this meal type.</div>'}
+                        </div>
+                        <div class="flex justify-end space-x-2 mt-2">
+                            <button type="button" class="bg-stone-200 text-stone-800 px-4 py-2 rounded-lg hover:bg-stone-300" onclick="document.getElementById('select-recipe-modal').remove()">Cancel</button>
+                            <button type="submit" class="bg-teal-600 text-white px-4 py-2 rounded-lg hover:bg-teal-700">Save</button>
+                        </div>
+                    </form>
                 </div>
             </div>
         `;
         document.body.insertAdjacentHTML('beforeend', modalHTML);
         const overlay = document.getElementById('select-recipe-modal');
         overlay.addEventListener('click', () => overlay.remove());
+        overlay.querySelector('div.bg-white').addEventListener('click', e => e.stopPropagation());
+        document.getElementById('multi-recipe-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const checked = Array.from(this.elements['recipeIds']).filter(cb => cb.checked).map(cb => parseInt(cb.value));
+            window.assignRecipeToSlot(day, meal, checked);
+            overlay.remove();
+        });
     };
 
-    window.assignRecipeToSlot = (day, meal, recipeId) => {
-        saveWeeklyPlanSlot(day, meal, recipeId);
-        document.getElementById('select-recipe-modal').remove();
+    window.assignRecipeToSlot = (day, meal, recipeIds) => {
+        // Save array of recipe IDs for the slot
+        saveWeeklyPlanSlot(day, meal, recipeIds);
     };
 
-    window.showRecipeDetails = (id) => {
+    async function saveWeeklyPlanSlot(day, meal, recipeIds) {
+        try {
+            await fetch(`${API_BASE}/weekly-plan`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ day, meal_type: meal, recipe_ids: recipeIds })
+            });
+            weeklyPlan[day][meal] = recipeIds;
+            renderPlanner();
+        } catch (error) {
+            console.error('Error saving weekly plan slot:', error);
+        }
+    }
+
+    const showRecipeDetails = (id) => {
         if (!id) return;
         const recipe = recipes.find(r => r.id === id);
         if (!recipe) return;
@@ -319,6 +368,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Make showRecipeModal globally available for inline event handlers
     window.showRecipeModal = showRecipeModal;
+    // Make showRecipeDetails globally available for planner click events
+    window.showRecipeDetails = showRecipeDetails;
 
     // --- End Weekly Planner Logic ---
 

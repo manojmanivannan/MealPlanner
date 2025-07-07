@@ -21,7 +21,7 @@ def create_tables():
                 name VARCHAR(255) NOT NULL,
                 ingredients TEXT NOT NULL,
                 instructions TEXT NOT NULL,
-                meal_type VARCHAR(50) CHECK (meal_type IN ('breakfast', 'lunch', 'dinner', 'snack','weekend prep','sides')) NOT NULL,
+                meal_type VARCHAR(50) CHECK (meal_type IN ('pre-breakfast','breakfast', 'lunch', 'dinner', 'snack','weekend prep','sides')) NOT NULL,
                 is_vegetarian BOOLEAN DEFAULT TRUE
             );
         """)
@@ -31,8 +31,8 @@ def create_tables():
             CREATE TABLE IF NOT EXISTS weekly_plan (
                 id SERIAL PRIMARY KEY,
                 day VARCHAR(16) NOT NULL,
-                meal_type VARCHAR(50) CHECK (meal_type IN ('breakfast', 'lunch', 'dinner', 'snack')) NOT NULL,
-                recipe_id INTEGER REFERENCES recipes(id) ON DELETE SET NULL
+                meal_type VARCHAR(50) CHECK (meal_type IN ('pre-breakfast','breakfast', 'lunch', 'dinner', 'snack')) NOT NULL,
+                recipe_ids INTEGER[]
             );
         """)
         conn.commit()
@@ -99,13 +99,19 @@ def create_tables():
         with open("weekly_plan.csv", "r") as f:
             reader = csv.DictReader(f)
             for row in reader:
+                # Expecting recipe_ids as comma-separated string
+                recipe_ids = row["recipe_ids"]
+                if recipe_ids:
+                    recipe_ids = [int(x) for x in recipe_ids.split(",") if x.strip()]
+                else:
+                    recipe_ids = []
                 cur.execute(
                     """
-                    INSERT INTO weekly_plan (day, meal_type, recipe_id)
+                    INSERT INTO weekly_plan (day, meal_type, recipe_ids)
                     VALUES (%s, %s, %s)
-                    ON CONFLICT (day, meal_type) DO UPDATE SET recipe_id = EXCLUDED.recipe_id
+                    ON CONFLICT (day, meal_type) DO UPDATE SET recipe_ids = EXCLUDED.recipe_ids
                 """,
-                    (row["day"], row["meal_type"], row["recipe_id"]),
+                    (row["day"], row["meal_type"], recipe_ids),
                 )
 
         conn.commit()
@@ -114,6 +120,37 @@ def create_tables():
         cur.execute(
             """SELECT setval('recipes_id_seq', (SELECT MAX(id) FROM recipes));"""
         )
+        conn.commit()
+
+        # Add trigger to check all recipe_ids exist in recipes
+        cur.execute("""
+            CREATE OR REPLACE FUNCTION check_recipe_ids_exist()
+            RETURNS trigger AS $$
+            DECLARE
+                rid integer;
+            BEGIN
+                IF NEW.recipe_ids IS NOT NULL THEN
+                    FOREACH rid IN ARRAY NEW.recipe_ids LOOP
+                        IF NOT EXISTS (SELECT 1 FROM recipes WHERE id = rid) THEN
+                            RAISE EXCEPTION 'Recipe id % does not exist', rid;
+                        END IF;
+                    END LOOP;
+                END IF;
+                RETURN NEW;
+            END;
+            $$ LANGUAGE plpgsql;
+        """)
+        conn.commit()
+        cur.execute("""
+            DROP TRIGGER IF EXISTS trg_check_recipe_ids_exist ON weekly_plan;
+        """)
+        conn.commit()
+        cur.execute("""
+            CREATE CONSTRAINT TRIGGER trg_check_recipe_ids_exist
+            AFTER INSERT OR UPDATE ON weekly_plan
+            DEFERRABLE INITIALLY DEFERRED
+            FOR EACH ROW EXECUTE FUNCTION check_recipe_ids_exist();
+        """)
         conn.commit()
 
     except Exception as e:

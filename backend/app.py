@@ -55,14 +55,24 @@ class Recipe(BaseModel):
     ingredients: str
     instructions: str
     # meal_type can only be 'breakfast', 'lunch', 'dinner', or 'snack'
-    meal_type: Literal["breakfast", "lunch", "dinner", "snack", "weekend prep", "sides"]
+    meal_type: Literal[
+        "pre-breakfast",
+        "breakfast",
+        "lunch",
+        "dinner",
+        "snack",
+        "weekend prep",
+        "sides",
+    ]
     is_vegetarian: bool
 
 
 class PlanSlot(BaseModel):
     day: str
-    meal_type: Literal["breakfast", "lunch", "dinner", "snack"]
-    recipe_id: Optional[int] = None
+    meal_type: Literal[
+        "pre-breakfast", "breakfast", "lunch", "dinner", "snack", "sides"
+    ]
+    recipe_ids: Optional[List[int]] = []
 
 
 class Ingredient(BaseModel):
@@ -187,12 +197,12 @@ def delete_recipe(recipe_id: int):
     return Response(status_code=204)
 
 
-@app.get("/weekly-plan", response_model=Dict[str, Dict[str, Optional[int]]])
+@app.get("/weekly-plan", response_model=Dict[str, Dict[str, List[int]]])
 def get_weekly_plan():
     logger.info("Fetching weekly plan.")
     conn = get_db_connection()
     cur = conn.cursor()
-    cur.execute("SELECT day, meal_type, recipe_id FROM weekly_plan;")
+    cur.execute("SELECT day, meal_type, recipe_ids FROM weekly_plan;")
     rows = cur.fetchall()
     cur.close()
     conn.close()
@@ -207,28 +217,28 @@ def get_weekly_plan():
         "Saturday",
         "Sunday",
     ]
-    meal_types = ["breakfast", "lunch", "snack", "dinner"]
-    plan = {day: {meal: None for meal in meal_types} for day in days}
-    for day, meal, recipe_id in rows:
-        plan[day][meal] = recipe_id
+    meal_types = ["pre-breakfast", "breakfast", "lunch", "snack", "dinner"]
+    plan = {day: {meal: [] for meal in meal_types} for day in days}
+    for day, meal, recipe_ids in rows:
+        plan[day][meal] = recipe_ids
     return plan
 
 
 @app.post("/weekly-plan", status_code=201)
 def set_weekly_plan_slot(slot: PlanSlot):
     logger.info(
-        f"Setting weekly plan slot: {slot.day} {slot.meal_type} -> {slot.recipe_id}"
+        f"Setting weekly plan slot: {slot.day} {slot.meal_type} -> {slot.recipe_ids}"
     )
     conn = get_db_connection()
     cur = conn.cursor()
     # Upsert logic: update if exists, else insert
     cur.execute(
         """
-        INSERT INTO weekly_plan (day, meal_type, recipe_id)
+        INSERT INTO weekly_plan (day, meal_type, recipe_ids)
         VALUES (%s, %s, %s)
-        ON CONFLICT (day, meal_type) DO UPDATE SET recipe_id = EXCLUDED.recipe_id
+        ON CONFLICT (day, meal_type) DO UPDATE SET recipe_ids = EXCLUDED.recipe_ids
         """,
-        (slot.day, slot.meal_type, slot.recipe_id),
+        (slot.day, slot.meal_type, slot.recipe_ids),
     )
     conn.commit()
     cur.close()
