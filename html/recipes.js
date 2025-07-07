@@ -21,9 +21,9 @@ document.addEventListener('DOMContentLoaded', () => {
     ];
 
     const renderRecipes = () => {
-        // Add filter dropdown at the top right of the hub frame
+        // Add filter dropdown at the top right of the hub frame, but hide it when a modal is open
         const filterDropdown = `
-            <div class="flex items-center space-x-2 absolute right-4 top-0 z-10">
+            <div id="veg-filter-dropdown-container" class="flex items-center space-x-2 absolute right-4 top-0 z-10">
                 <select id="veg-filter-dropdown" class="clay-input px-2 py-1 rounded border border-stone-300 text-sm">
                     <option value="both" ${vegFilter === 'both' ? 'selected' : ''}>Both</option>
                     <option value="veg" ${vegFilter === 'veg' ? 'selected' : ''}>Vegetarian</option>
@@ -71,7 +71,20 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
         `;
 
-        document.getElementById('add-recipe-btn').addEventListener('click', () => showRecipeModal());
+        document.getElementById('add-recipe-btn').addEventListener('click', () => {
+            showRecipeModal();
+            // Hide veg filter dropdown when modal is open
+            const dropdownContainer = document.getElementById('veg-filter-dropdown-container');
+            if (dropdownContainer) dropdownContainer.style.display = 'none';
+            // Restore on modal close
+            const observer = new MutationObserver(() => {
+                if (!document.getElementById('recipe-modal')) {
+                    dropdownContainer.style.display = '';
+                    observer.disconnect();
+                }
+            });
+            observer.observe(document.body, { childList: true });
+        });
         document.getElementById('veg-filter-dropdown').addEventListener('change', (e) => {
             vegFilter = e.target.value;
             renderRecipes();
