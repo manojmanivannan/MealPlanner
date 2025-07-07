@@ -5,7 +5,6 @@ id,name,ingredients,instructions,meal_type,is_vegetarian
 7,Masala Omelette,"eggs, spices, toast, banana",Beat eggs with spices. Cook omelette. Serve with toast and banana.,breakfast,t
 8,Quinoa Porridge,"quinoa, nuts, banana, berries","Cook quinoa into porridge. Top with nuts, banana, or berries.",breakfast,t
 9,Shakshuka Breakfast / Spinach-Feta Scrambled Eggs,"eggs, tomato sauce, spinach, feta, banana",Poach eggs in tomato sauce or cook eggs with spinach and feta. Serve with roti and banana.,breakfast,t
-10,Chickpea Salad,"chickpeas, greens, eggs",Mix chickpeas with greens. Add eggs if desired.,lunch,t
 11,Fattoush Salad & Quinoa,"quinoa, feta, olives, orange, chicken","Mix fattoush salad ingredients with quinoa, feta, and olives. Serve with orange slices and chicken skewers.",lunch,f
 12,Mediterranean Stir-fry,"peppers, onions, spinach, tomatoes, chickpeas, feta, chicken","Stir-fry peppers, onions, spinach, and tomatoes. Add chickpeas and feta or chicken.",lunch,f
 13,Burrito Bowls,"cauliflower, black beans, salsa, avocado, yogurt, tofu, paneer, ground beef, chicken","Assemble bowls with cauliflower rice, black beans, salsa, avocado, and yogurt. Add tofu, paneer, ground meat, or chicken.",lunch,t
@@ -22,74 +21,150 @@ id,name,ingredients,instructions,meal_type,is_vegetarian
 26,Palak Paneer Chappathi,"paneer, spinach, onions, tomatoes",Cook spinach and paneer. Serve with chapati.,dinner,t
 27,Chicken Tikka,"chicken, onions, tomatoes",Cook chicken tikka with onions and tomatoes. Serve with chapati.,dinner,t
 28,Palak Tofu,"tofu, spinach, naan, vegetable sabzi, orange","Cook spinach with tofu curry. Serve with naan, vegetable sabzi, and orange slices.",dinner,t
-29,Chicken Curry,"chicken, spinach, naan, vegetable sabzi, orange","Cook chicken curry with spinach. Serve with naan, vegetable sabzi, and orange slices.",dinner,t
 30,Masala Boiled Eggs,"eggs, masala spice",Sprinkle masala on boiled eggs and serve.,snack,t
-31,Mixed Nuts & Apple,"almonds, walnuts, apple",Serve almonds and walnuts with apple slices.,snack,t
 32,Hummus & Veggie Sticks,"cucumber sticks, carrot sticks, hummus, grapes, melon",Serve vegetable sticks with hummus and grapes or melon.,snack,t
 33,Cottage Cheese & Berries,"cottage cheese, berries, strawberries",Serve cottage cheese with berries or strawberries.,snack,t
-34,"Nuts, Dried Fruit, Cheese & Crackers","nuts, dried fruit, cheese, crackers","Mix nuts, dried fruit, cheese, and crackers.",snack,t
-35,Paneer Tikka & Pear,"paneer, spices, pear",Pan-fry paneer with spices. Serve with pear slices.,snack,t
 37,Veggies & Tzatziki,"vegetable sticks, tzatziki, grapes",Serve vegetable sticks with tzatziki and grapes.,snack,t
 39,Roasted Chickpeas & Grapes,"chickpeas, grapes",Serve roasted chickpeas with grapes.,snack,t
 46,Puliyar Chutney,"rice, tamarind, peanuts, spices","Cook rice and mix with tamarind, peanuts, and spices. Serve with yogurt.",sides,t
 25,Paneer Paratha with Masala Yogurt,"Paneer, Onion, tomato, Garlic, Dry methi leaves, green chillies, Roti flour.
+
 Masala: turmeric, cumin, chilli, chaat etc. ","Shred paneer, add masala and onions. Stuff in paratha.
+
 Saute onion, tomatoes, add masala. Once cooled, add yogurt. ",dinner,t
 16,Pasta with a veggie ,"Pasta, Garlic and a choice of vegetable (Asparagus/ Broccoli / Artichoke)  ",Boil pasta. Sauté garlic and vegetable. Add pasta and pesto / sauce. ,dinner,t
 4,Veggie Omelette,"eggs, cabbage, carrot, capsicum, mushrooms, green chillies, besan flour, beans",Whisk all ingredients. Toast it on pan. ,breakfast,t
 1,Protein Smoothie Bowl,"Must: Protein Powder, Flax seed powder, Yoghurt.
+
 Fruit options: Avocado / Banana / Mango & Pineapple mix.
+
 Berries option: Strawberry / Blueberries/ Blackberry / Raspberry.
+
 Topping options: Apple / Kiwi & Nuts",Combine all ingredients.,breakfast,t
+29,Chicken Curry,"chicken, spinach, naan, vegetable sabzi, orange","Cook chicken curry with spinach. Serve with naan, vegetable sabzi, and orange slices.",sides,t
+10,Chickpea Salad,"chickpeas, lettuce, any salad leaves, tomato, onion, cheddar, olive oil, lemon juice, couscous ","Soak chickpeas overnight and pressure cook next day. Cook couscous by steaming it hot water. Add salad veggies and leaves, chickpeas. Dress it with lemon / balsamic vinegar / olive oil. ",dinner,t
+31,Nut Mix,"Almonds - 5
+Peanuts - 8
+Walnuts - 1
+Pistachios - 10 
+Roasted pumpkin seeds - 1tsp
+Dried fruit - 2 
+",Serve almonds and walnuts with apple slices.,snack,t
 47,Salna - Hotel style,"* Spices: Garam masala, turmeric powder, mutton masala, fennel seeds, cumin powder, chili powder, coriander powder, pepper powder
+
  * Pastes: Ginger paste, garlic paste
+
  * Vegetables: Tomatoes, onions, green chilies
+
  * Herbs: Mint leaves, coriander leaves
+
  * Whole Spices: Bay leaves, cardamom, cinnamon, cloves, kalpasi (stone flower), star anise
+
  * For Grinding: Roasted gram (pottukadalai), peanuts, coconut, fennel seeds
+
  * Other: Salt, oil"," * Prepare the Paste:
+
    * Combine roasted gram (pottukadalai), peanuts, coconut, cardamom, star anise, a small piece of cinnamon, kalpasi, two cloves, and a little fennel seeds in a blender.
+
    * Grind these ingredients into a smooth paste.
+
  * Sauté Aromatics:
+
    * Heat 150 ml of oil in a large pot.
+
    * Add two bay leaves, two cloves, two small pieces of cinnamon, a small amount of kalpasi, a small piece of star anise, and four cloves to the hot oil.
+
    * Add 200 grams of sliced onions and sauté until golden brown.
+
    * Add one spoon of garlic paste and one spoon of ginger paste, then mix well.
+
    * Add six green chilies and continue to sauté.
+
  * Add Spices and Tomatoes:
+
    * Add half a spoon of turmeric powder, two spoons of chili powder, two spoons of cumin powder, one spoon of coriander powder, two spoons of mutton masala, and one spoon of garam masala.
+
    * Mix the spices thoroughly with the sautéed ingredients.
+
    * Add five chopped tomatoes and mix until they soften.
+
    * Add a little water and salt to taste.
+
    * Add a small bunch of coriander leaves and a slightly larger amount of mint leaves.
+
    * Continue to cook until the tomatoes are well mashed and the oil separates.
+
  * Incorporate the Ground Paste and Finish:
+
    * Add the previously ground paste to the pot and mix it in.
+
    * Pour in about 3 liters of water.
+
    * Check the salt level and adjust if needed.
+
    * Cover the pot and let it boil for about 10 minutes.
+
    * Once cooked, garnish with coriander leaves.",lunch,f
 5,Eggs / Paneer / Tofu Bhurji Sandwich ,"Onion, Tomato, Eggs / Paneer, Green chillies, Ginger, Lettuce, cumin powder. ","chop onion, tomato, green chillies, cumin powder and saute. Add scrambled eggs / paneer, ginger and cook.,
+
 Top it on toast. Add lettuce if required.  ",breakfast,t
 48,Overnight rice,"Rice, onion shallots, green chillies. ",Soak rice overnight. ,breakfast,t
 49,Guacamole with boiled eggs ,"Avocado, tomato, bread, onion.
+
 Boiled egg. ",Toast bread. Mash avocado. Top with onion and tomato. Season with Masala if needed. Have with boiled egg. ,breakfast,t
 50,Celery soup,"Carrot, celery, potatoes, Garlic, fried onions","Pressure cook carrot, celery, potato. Once cooled down, grind it in the mixer. Heat sauce pan, sauté garlic and pour soup. Top with fried onions. ",dinner,t
 51,Savoury overnight oats,"Green chilli, corriander, yogurt, oats, carrot, salt",Mix all ingredients the previous night. Keep it in fridge. Have it next morning. ,breakfast,t
 52,Salad & Pickle,"Cucumber, carrot, onion, salad tomatoes, grapes, pomegranate, pickle",Take one pickle. And a choice of salad vegetables / fruits in a bowl. Have them 30mins before dinner. ,snack,t
 53,Mediterranean Lentil & Chickpea salad,"- 1 can (400g) chickpeas, drained and rinsed
+
 - 1 cup cooked green or brown lentils (canned is fine)
+
 - 1 red bell pepper, diced
+
 - 1/2 red onion, finely sliced
+
 - 100g baby spinach (high in iron)
+
 - 100g feta cheese, crumbled (optional, for extra protein)
+
 - 2 tablespoons extra virgin olive oil
+
 - 1 lemon, juiced
+
 - 2 teaspoons dried oregano
+
 - Salt and pepper to taste","1. In a large bowl, combine chickpeas, lentils, bell pepper, and red onion.
+
 2. Add the baby spinach and gently toss together.
+
 3. In a small bowl, whisk together olive oil, lemon juice, oregano, salt, and pepper.
+
 4. Pour the dressing over the salad and mix well.
+
 5. Top with crumbled feta cheese if using.
+
 6. Serve immediately or refrigerate for up to 24 hours (the flavors will develop nicely).",lunch,t
-54,coffee,"coffee,milk",Prepare coffee with milk.,pre-breakfast,t
+54,Cumin tea,"Cumin, ginger, lemon ","Soak cumin overnight, boil with ginger and serve with lemon",pre-breakfast,t
+55,Soaked raisins and nuts,"almonds, fig, raisins. ","Soak almonds, fig, raisins overnight. ",pre-breakfast,t
+56,Overnight rice water,"Rice / oats, yogurt, onion",Soak 3 spoons of rice or oats overnight with a 2spoons of yogurt. Have them with onions. ,pre-breakfast,t
+57,Lemon tea,"Lemon, honey, ginger",In warm water squeeze half lemon and honey. Ginger is optional ,pre-breakfast,t
+58,Mint tea ,"Mint, ginger, lemon","Boil mint and ginger. Serve with lemon. 
+
+Best to have after meal. ",snack,t
+59,Ragi idly / dosa,"Ragi flour, urad dhal",Soak urad dhal for 5 hours. Grind it with ragi ,breakfast,t
+60,Peanut protein chutney,"Peanuts, split peas, coconut, curry leaves, green chillies, tamarind, garlic. ",Roast all ingredients (except curry leaves) on a pan and grind it for chutney. Tadka with curry leaves. Use less oil. ,sides,t
+61,Vit-C boost snack box,"Choice below: 
+
+1 full kiwi. 
+
+10-15 strawberries. 
+
+1 full guava
+
+1 orange for H and 1.5 for M
+
+1 cup of Papaya
+
+2 cup of pineapple 
+
+1/2 cup chopped red capsicum ",Choice of snack for a day. Have BEFORE your meal to increase iron absorption. ,sides,t
