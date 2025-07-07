@@ -66,12 +66,17 @@ def create_tables():
             for row in reader:
                 cur.execute(
                     """
-                    INSERT INTO ingredients (name, shelf_life, available)
-                    VALUES (%s, %s, %s)
+                    INSERT INTO ingredients (name, shelf_life, available,last_available)
+                    VALUES (%s, %s, %s, %s)
                     ON CONFLICT (name) DO UPDATE SET
                         shelf_life = EXCLUDED.shelf_life
                 """,
-                    (row["name"], row["shelf_life"], row["available"]),
+                    (
+                        row["name"],
+                        row["shelf_life"],
+                        row["available"],
+                        row["last_available"],
+                    ),
                 )
         conn.commit()
 
@@ -99,19 +104,22 @@ def create_tables():
         with open("weekly_plan.csv", "r") as f:
             reader = csv.DictReader(f)
             for row in reader:
-                # Expecting recipe_ids as comma-separated string
-                recipe_ids = row["recipe_ids"]
-                if recipe_ids:
-                    recipe_ids = [int(x) for x in recipe_ids.split(",") if x.strip()]
-                else:
-                    recipe_ids = []
+                recipe_ids_str = row["recipe_ids"]
+                recipe_ids = []  # Default to an empty list
+
+                if recipe_ids_str:
+                    # Strip the curly braces, then split by comma
+                    cleaned_str = recipe_ids_str.strip("{}")
+                    if cleaned_str:  # Ensure it's not empty after stripping
+                        recipe_ids = [int(x.strip()) for x in cleaned_str.split(",")]
+
                 cur.execute(
                     """
-                    INSERT INTO weekly_plan (day, meal_type, recipe_ids)
-                    VALUES (%s, %s, %s)
+                    INSERT INTO weekly_plan (id, day, meal_type, recipe_ids)
+                    VALUES (%s, %s, %s, %s)
                     ON CONFLICT (day, meal_type) DO UPDATE SET recipe_ids = EXCLUDED.recipe_ids
                 """,
-                    (row["day"], row["meal_type"], recipe_ids),
+                    (row["id"], row["day"], row["meal_type"], recipe_ids),
                 )
 
         conn.commit()

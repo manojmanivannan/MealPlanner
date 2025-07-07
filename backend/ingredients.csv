@@ -1,101 +1,103 @@
-id,name,shelf_life,available
-1,almonds,365,f
-2,frozen fruits,90,f
-3,spinach,2,f
-4,orange,7,f
-5,toast,7,f
-6,moong dal batter,3,f
-7,apple,14,f
-8,paneer,60,f
-9,chia seeds,1095,f
-10,nuts,365,f
-11,oats,2190,f
-12,mushrooms,7,f
-13,kale,7,f
-14,cashews,365,f
-15,chili powder,1095,f
-16,quinoa,1095,f
-17,feta cheese,7,f
-18,tomato sauce,14,f
-19,chickpeas,365,f
-20,olives,21,f
-21,black peppers,365,f
-22,black beans,4,f
-23,avocado,7,f
-24,fruit,5,f
-25,halloumi,14,f
-26,couscous,4,f
-28,tuna,4,f
-29,pasta,7,f
-30,pear,42,f
-31,melon slices,3,f
-32,tzatziki,14,f
-33,hummus,7,f
-34,lamb,3,f
-35,tabbouleh,3,f
-36,falafel,3,f
-37,curry base,7,f
-38,brown rice,5,f
-39,chana masala,3,f
-40,salad,3,f
-41,turkey sausage,4,f
-42,lamb meatballs,4,f
-44,broccoli,7,f
-45,cucumber yogurt salad,3,f
-46,kebabs,3,f
-47,green beans,7,f
-48,lentils,5,f
-49,watermelon,14,f
-50,rice,5,f
-51,curry spices,1095,f
-52,cucumber salad,3,f
-53,naan,3,f
-54,vegetable sabzi,3,f
-56,walnuts,365,f
-57,grapes,14,f
-59,cucumber sticks,7,f
-60,melon,14,f
-61,cottage cheese,7,f
-62,strawberries,5,f
-63,crackers,91,f
-64,dried fruit,1095,f
-65,cheese,14,f
-67,orange segments,4,f
-68,cumin powder,1095,f
-69,vegetable sticks,7,f
-70,dal,5,f
-71,zucchini,7,f
-72,cauliflower,7,f
-73,curry paste,21,f
-74,peanuts,365,f
-75,tamarind,1095,f
-76,berries,10,f
-77,spices,10,f
-78,feta,10,f
-79,greens,10,f
-80,peppers,10,f
-81,salsa,10,f
-82,cucumber,10,f
-83,banana,5,t
-84,chicken,6,t
-86,Lettuce,5,t
-87,onions,14,t
-88,Soy milk,5,t
-89,tomatoes,10,t
-90,Frozen mutton,120,t
-91,Celery,5,t
-92,tofu,30,t
-93,asparagus,7,t
-94,Spring onions,14,t
-95,Aubergine,4,t
-96,Salad radish,5,t
-97,capsicum,4,t
-98,eggs,21,t
-99,yogurt,7,t
-100,Coriander leaves,7,t
-101,Cabbage,14,t
-102,noodles,3,f
-103,Bread,5,t
-85,salmon,2,f
-27,beans,5,t
-104,carrot,10,t,
+id,name,shelf_life,available,last_available
+201,Plantain,4,t,2025-07-07 18:02:07.50056
+8,paneer,60,t,2025-07-03 18:23:11.312069
+1,almonds,365,f,2025-07-07 12:44:02.098519
+2,frozen fruits,90,f,2025-07-07 12:44:02.098519
+3,spinach,2,f,2025-07-07 12:44:02.098519
+4,orange,7,f,2025-07-07 12:44:02.098519
+5,toast,7,f,2025-07-07 12:44:02.098519
+6,moong dal batter,3,f,2025-07-07 12:44:02.098519
+7,apple,14,f,2025-07-07 12:44:02.098519
+9,chia seeds,1095,f,2025-07-07 12:44:02.098519
+10,nuts,365,f,2025-07-07 12:44:02.098519
+11,oats,2190,f,2025-07-07 12:44:02.098519
+12,mushrooms,7,f,2025-07-07 12:44:02.098519
+13,kale,7,f,2025-07-07 12:44:02.098519
+14,cashews,365,f,2025-07-07 12:44:02.098519
+15,chili powder,1095,f,2025-07-07 12:44:02.098519
+16,quinoa,1095,f,2025-07-07 12:44:02.098519
+17,feta cheese,7,f,2025-07-07 12:44:02.098519
+18,tomato sauce,14,f,2025-07-07 12:44:02.098519
+19,chickpeas,365,f,2025-07-07 12:44:02.098519
+20,olives,21,f,2025-07-07 12:44:02.098519
+21,black peppers,365,f,2025-07-07 12:44:02.098519
+22,black beans,4,f,2025-07-07 12:44:02.098519
+23,avocado,7,f,2025-07-07 12:44:02.098519
+24,fruit,5,f,2025-07-07 12:44:02.098519
+25,halloumi,14,f,2025-07-07 12:44:02.098519
+26,couscous,4,f,2025-07-07 12:44:02.098519
+27,tuna,4,f,2025-07-07 12:44:02.098519
+28,pasta,7,f,2025-07-07 12:44:02.098519
+29,pear,42,f,2025-07-07 12:44:02.098519
+30,melon slices,3,f,2025-07-07 12:44:02.098519
+31,tzatziki,14,f,2025-07-07 12:44:02.098519
+32,hummus,7,f,2025-07-07 12:44:02.098519
+33,lamb,3,f,2025-07-07 12:44:02.098519
+34,tabbouleh,3,f,2025-07-07 12:44:02.098519
+35,falafel,3,f,2025-07-07 12:44:02.098519
+36,curry base,7,f,2025-07-07 12:44:02.098519
+37,brown rice,5,f,2025-07-07 12:44:02.098519
+38,chana masala,3,f,2025-07-07 12:44:02.098519
+39,salad,3,f,2025-07-07 12:44:02.098519
+40,turkey sausage,4,f,2025-07-07 12:44:02.098519
+41,lamb meatballs,4,f,2025-07-07 12:44:02.098519
+42,broccoli,7,f,2025-07-07 12:44:02.098519
+43,cucumber yogurt salad,3,f,2025-07-07 12:44:02.098519
+44,kebabs,3,f,2025-07-07 12:44:02.098519
+45,green beans,7,f,2025-07-07 12:44:02.098519
+46,lentils,5,f,2025-07-07 12:44:02.098519
+47,watermelon,14,f,2025-07-07 12:44:02.098519
+48,rice,5,f,2025-07-07 12:44:02.098519
+49,curry spices,1095,f,2025-07-07 12:44:02.098519
+50,cucumber salad,3,f,2025-07-07 12:44:02.098519
+51,naan,3,f,2025-07-07 12:44:02.098519
+52,vegetable sabzi,3,f,2025-07-07 12:44:02.098519
+53,walnuts,365,f,2025-07-07 12:44:02.098519
+54,grapes,14,f,2025-07-07 12:44:02.098519
+55,cucumber sticks,7,f,2025-07-07 12:44:02.098519
+56,melon,14,f,2025-07-07 12:44:02.098519
+57,cottage cheese,7,f,2025-07-07 12:44:02.098519
+58,strawberries,5,f,2025-07-07 12:44:02.098519
+59,crackers,91,f,2025-07-07 12:44:02.098519
+60,dried fruit,1095,f,2025-07-07 12:44:02.098519
+61,cheese,14,f,2025-07-07 12:44:02.098519
+62,orange segments,4,f,2025-07-07 12:44:02.098519
+63,cumin powder,1095,f,2025-07-07 12:44:02.098519
+64,vegetable sticks,7,f,2025-07-07 12:44:02.098519
+65,dal,5,f,2025-07-07 12:44:02.098519
+66,zucchini,7,f,2025-07-07 12:44:02.098519
+67,cauliflower,7,f,2025-07-07 12:44:02.098519
+68,curry paste,21,f,2025-07-07 12:44:02.098519
+69,peanuts,365,f,2025-07-07 12:44:02.098519
+70,tamarind,1095,f,2025-07-07 12:44:02.098519
+71,berries,10,f,2025-07-07 12:44:02.098519
+72,spices,10,f,2025-07-07 12:44:02.098519
+73,feta,10,f,2025-07-07 12:44:02.098519
+74,greens,10,f,2025-07-07 12:44:02.098519
+75,peppers,10,f,2025-07-07 12:44:02.098519
+76,salsa,10,f,2025-07-07 12:44:02.098519
+77,cucumber,10,f,2025-07-07 12:44:02.098519
+96,noodles,3,f,2025-07-07 12:44:02.098519
+98,salmon,2,f,2025-07-07 12:44:02.098519
+202,Shallots,10,t,2025-07-07 18:03:23.002622
+89,Aubergine,4,f,2025-07-07 12:44:02.098519
+78,banana,5,t,2025-07-03 18:23:11.312069
+79,chicken,6,t,2025-07-03 18:23:11.312069
+80,Lettuce,5,t,2025-07-03 18:23:11.312069
+81,onions,14,t,2025-07-03 18:23:11.312069
+82,Soy milk,5,t,2025-07-03 18:23:11.312069
+83,tomatoes,10,t,2025-07-03 18:23:11.312069
+84,Frozen mutton,120,t,2025-07-03 18:23:11.312069
+85,Celery,5,t,2025-07-03 18:23:11.312069
+86,tofu,30,t,2025-07-03 18:23:11.312069
+87,asparagus,7,t,2025-07-03 18:23:11.312069
+88,Spring onions,14,t,2025-07-03 18:23:11.312069
+90,Salad radish,5,t,2025-07-03 18:23:11.312069
+91,capsicum,4,t,2025-07-03 18:23:11.312069
+92,eggs,21,t,2025-07-03 18:23:11.312069
+93,yogurt,7,t,2025-07-03 18:23:11.312069
+94,Coriander leaves,7,t,2025-07-03 18:23:11.312069
+95,Cabbage,14,t,2025-07-03 18:23:11.312069
+97,Bread,5,t,2025-07-03 18:23:11.312069
+99,beans,5,t,2025-07-03 18:23:11.312069
+100,carrot,10,t,2025-07-03 18:23:11.312069

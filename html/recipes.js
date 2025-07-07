@@ -297,8 +297,23 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     window.selectRecipeForSlot = (day, meal) => {
-        // Show modal to pick multiple recipes for this meal type
-        const filtered = recipes; // Optionally filter by meal type
+        // Show modal to pick multiple recipes for this meal type, unless the meal type is 'pre-breakfast' or 'sides'
+        // const filtered = recipes.filter(r => r.meal_type === meal); // Filter out pre-breakfast and sides
+        let filtered = [];
+
+        // Check if the current meal is 'pre-breakfast' or 'sides'
+        if (meal === 'pre-breakfast') {
+            // If it is pre-breakfast, show only 'pre-breakfast'
+            filtered = recipes.filter(r => r.meal_type === 'pre-breakfast');
+        } else if (meal === 'snack') {
+            // If it is snack, show only 'snack'
+            filtered = recipes.filter(r => r.meal_type === 'snack');
+        } else {
+            // Otherwise, show all recipes except 'pre-breakfast' and 'snack'
+            filtered = recipes.filter(r => !['pre-breakfast', 'snack'].includes(r.meal_type));
+            // filtered = recipes; //.filter(r => r.meal_type === meal);
+        }
+        // const filtered = recipes.filter(r => r.meal_type === meal); // Optionally filter by meal type
         // Get current selection
         let selectedIds = weeklyPlan[day]?.[meal] || [];
         if (!Array.isArray(selectedIds)) selectedIds = selectedIds ? [selectedIds] : [];
