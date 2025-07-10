@@ -15,7 +15,7 @@ TABLES_TO_RESTORE="ingredients recipes weekly_plan"
 
 # for each table in the list, perform a restore
 for TABLE in $TABLES_TO_RESTORE; do
-    CSV_FILE="./backend/${TABLE}.csv"
+    CSV_FILE="./backend/db/${TABLE}.csv"
 
     if [ ! -f "$CSV_FILE" ]; then
         echo "Error: Backup file $CSV_FILE not found. Skipping restore for table $TABLE."
