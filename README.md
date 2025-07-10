@@ -81,3 +81,39 @@ This project uses Docker for easy setup and deployment. You can run it locally o
     *   [Docker](https://www.docker.com/): For containerization.
     *   [Nginx](https://www.nginx.com/): As a reverse proxy.
     *   [Tailscale](https://tailscale.com/): For secure networking.
+
+
+### Database Schema Migrations
+
+This project uses Alembic to manage database schema changes.
+
+#### Upgrade Workflow
+
+1. Modify Models: Make schema changes in `backend/db/models.py`.
+2. Generate Script: Create a new migration script from your changes.
+```bash
+alembic -c backend/db/alembic.ini revision --autogenerate -m "Your summary message"
+```
+3. Review Script (Crucial): Always open and verify the new file in `backend/db/alembic/versions/.`
+4. Apply Migration: Apply the change to your database. This is run automatically by the container on startup.
+```bash
+alembic -c backend/db/alembic.ini upgrade head
+```
+
+#### Downgrade Workflow
+
+⚠️ Warning: Downgrading is destructive and can cause permanent data loss. Use with extreme caution.
+
+- **Undo the Last Migration**:
+```bash
+alembic -c backend/db/alembic.ini downgrade -1
+```
+
+- **Revert to a Specific Version**:
+1. Find the version hash with `alembic -c backend/db/alembic.ini history`.
+2. Run `alembic -c backend/db/alembic.ini downgrade <revision_hash>`.
+
+- **Reset the Entire Schema** (for development only):
+```bash
+alembic -c backend/db/alembic.ini downgrade base
+```

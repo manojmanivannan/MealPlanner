@@ -1,7 +1,6 @@
 id,day,meal_type,recipe_ids
 1,Sunday,breakfast,{1}
 2,Sunday,lunch,{17}
-3,Sunday,snack,{35}
 4,Sunday,dinner,{22}
 5,Monday,breakfast,{5}
 6,Monday,dinner,{16}
