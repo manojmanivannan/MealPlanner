@@ -16,7 +16,7 @@ db_user = os.getenv("POSTGRES_USER", "postgres")
 db_password = os.getenv("POSTGRES_PASSWORD", "postgres")
 db_name = os.getenv("POSTGRES_DB", "recipes")
 # Use POSTGRES_HOST if it's set (for local commands), otherwise default to 'db' (for inside Docker)
-db_host = os.getenv("POSTGRES_HOST", "db")
+db_host = os.getenv("POSTGRES_HOST", "localhost")
 # Add the port
 db_port = os.getenv("POSTGRES_PORT", "5432") # Default to 5432
 

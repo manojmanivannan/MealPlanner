@@ -6,9 +6,6 @@
 # Exit immediately if a command exits with a non-zero status.
 set -e
 
-echo "Waiting for the database to be ready..."
-sleep 10
-
 # Apply database migrations
 echo "Applying database migrations..."
 alembic -c /app/db/alembic.ini upgrade head
