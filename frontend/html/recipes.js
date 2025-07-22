@@ -573,7 +573,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                     </div>
                                     <div class="mb-4">
                                         <label class="block text-sm font-medium text-stone-700">Serving Unit</label>
-                                        <input type="number" id="edit-ingredient-unit" class="mt-1 block w-full rounded-sm border-stone-300 shadow-sm focus:border-teal-500 focus:ring-teal-500" value="${ing.serving_unit}" min="1" required>
+                                        <input type="text" id="edit-ingredient-unit" class="mt-1 block w-full rounded-sm border-stone-300 shadow-sm focus:border-teal-500 focus:ring-teal-500" value="${ing.serving_unit}" min="1" required>
                                     </div>
                                     <div class="flex justify-end space-x-4">
                                         <button type="button" id="cancel-edit-ingredient" class="bg-stone-200 text-stone-800 px-4 py-2 rounded-lg hover:bg-stone-300">Cancel</button>

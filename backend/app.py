@@ -82,7 +82,7 @@ class Ingredient(BaseModel):
     shelf_life: Optional[int] = None  # original shelf life in days
     last_available: Optional[str] = None  # ISO timestamp
     remaining_shelf_life: Optional[int] = None  # days left
-    serving_unit: Literal['g', 'kg', 'ml', 'l', 'cup', 'tbsp', 'tsp', 'unit'] = 'unit'
+    serving_unit: Literal['g', 'kg', 'ml', 'l', 'cup', 'tbsp', 'tsp', 'unit','nos'] = 'unit'
 
 
 # DB Connection function
@@ -369,7 +369,7 @@ def update_ingredient_availability(
         logger.warning(f"Ingredient id {ingredient_id} not found for update.")
         raise HTTPException(status_code=404, detail="Ingredient not found")
     # Compute remaining shelf life for response
-    id, name, available, shelf_life, last_available = row
+    id, name, available, shelf_life, last_available, serving_unit = row
     remaining = shelf_life
     last_available_str = last_available.isoformat() if last_available else None
     if available and last_available and shelf_life is not None:
@@ -390,6 +390,7 @@ def update_ingredient_availability(
         available=available,
         shelf_life=remaining,
         last_available=last_available_str,
+        serving_unit=serving_unit,
     )
 
 
