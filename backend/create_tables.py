@@ -73,14 +73,15 @@ queries: Dict[str, str] = {
             name VARCHAR(255) UNIQUE NOT NULL,
             shelf_life INTEGER CHECK (shelf_life >= 0) DEFAULT NULL,
             available BOOLEAN DEFAULT FALSE,
-            last_available TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            last_available TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            serving_unit VARCHAR(10) DEFAULT NULL
         );
     """,
     "drop_unique_constraint": "ALTER TABLE weekly_plan DROP CONSTRAINT IF EXISTS unique_day_meal;",
     "add_unique_constraint": "ALTER TABLE weekly_plan ADD CONSTRAINT unique_day_meal UNIQUE(day, meal_type);",
     "insert_ingredient": """
-        INSERT INTO ingredients (name, shelf_life, available, last_available)
-        VALUES (%(name)s, %(shelf_life)s, %(available)s, %(last_available)s)
+        INSERT INTO ingredients (name, shelf_life, available, last_available, serving_unit)
+        VALUES (%(name)s, %(shelf_life)s, %(available)s, %(last_available)s, %(serving_unit)s)
         ON CONFLICT (name) DO UPDATE SET shelf_life = EXCLUDED.shelf_life;
     """,
     "insert_recipe": """

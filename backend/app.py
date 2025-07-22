@@ -1,7 +1,7 @@
 import logging
 import os
 from typing import Dict, List, Literal, Optional
-
+import datetime
 import psycopg2
 from fastapi import FastAPI, HTTPException, Response, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -82,6 +82,7 @@ class Ingredient(BaseModel):
     shelf_life: Optional[int] = None  # original shelf life in days
     last_available: Optional[str] = None  # ISO timestamp
     remaining_shelf_life: Optional[int] = None  # days left
+    serving_unit: Literal['g', 'kg', 'ml', 'l', 'cup', 'tbsp', 'tsp', 'unit'] = 'unit'
 
 
 # DB Connection function
@@ -266,14 +267,16 @@ def get_unique_ingredients():
 
 
 @app.get("/ingredients-list", response_model=List[Ingredient])
-def get_ingredients_list():
-    import datetime
+def get_ingredients_list(sort: Optional[str] = None):
+    
+
+    SORTING = f"ORDER BY {sort}" if sort else "ORDER BY available desc, shelf_life"
 
     logger.info("Fetching ingredients list.")
     conn = get_db_connection()
     cur = conn.cursor()
     cur.execute(
-        "SELECT id, name, available, shelf_life, last_available FROM ingredients ORDER BY available desc, shelf_life;"
+        f"SELECT id, name, available, shelf_life, last_available, serving_unit FROM ingredients {SORTING};"
     )
     rows = cur.fetchall()
     cur.close()
@@ -282,7 +285,7 @@ def get_ingredients_list():
     result = []
     now = datetime.datetime.utcnow()
     for row in rows:
-        id, name, available, shelf_life, last_available = row
+        id, name, available, shelf_life, last_available, serving_unit = row
         # Compute remaining shelf life if available and last_available is set
         remaining = shelf_life
         last_available_str = last_available.isoformat() if last_available else None
@@ -305,6 +308,7 @@ def get_ingredients_list():
                 shelf_life=shelf_life,  # original shelf life
                 last_available=last_available_str,
                 remaining_shelf_life=remaining,  # days left
+                serving_unit=serving_unit,
             )
         )
     return result
@@ -316,6 +320,7 @@ def update_ingredient_availability(
     available: Optional[bool] = None,
     shelf_life: Optional[int] = None,
     name: Optional[str] = None,
+    serving_unit: Optional[str] = None,
 ):
     import datetime
 
@@ -336,6 +341,9 @@ def update_ingredient_availability(
     if shelf_life is not None:
         set_clauses.append("shelf_life = %s")
         params.append(shelf_life)
+    if serving_unit is not None:
+        set_clauses.append("serving_unit = %s")
+        params.append(serving_unit.strip())
     if not set_clauses:
         logger.warning(f"No valid fields to update for ingredient id: {ingredient_id}")
         conn.close()
@@ -344,7 +352,7 @@ def update_ingredient_availability(
     params.append(ingredient_id)
     try:
         cur.execute(
-            f"UPDATE ingredients SET {set_clause} WHERE id = %s RETURNING id, name, available, shelf_life, last_available;",
+            f"UPDATE ingredients SET {set_clause} WHERE id = %s RETURNING id, name, available, shelf_life, last_available, serving_unit;",
             tuple(params),
         )
     except psycopg2.errors.UniqueViolation:

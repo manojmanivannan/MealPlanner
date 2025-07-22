@@ -3,16 +3,25 @@ services:
   nginx-local:
     profiles:
       - local
-    image: nginx:latest
+    # image: nginx:latest
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
     ports:
       - "8080:80"
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf
-      - ./html:/usr/share/nginx/html
+      # - ./html:/usr/share/nginx/html
     depends_on:
       backend:
         condition: service_healthy
+    
     restart: unless-stopped
+    develop:
+      watch:
+        - action: sync
+          path: ./frontend/html
+          target: /usr/share/nginx/html
 
   # --- PRODUCTION PROFILE ---
   tailscale-nginx:
@@ -37,10 +46,13 @@ services:
   nginx-prod:
     profiles:
       - prod
-    image: nginx:latest
+    # image: nginx:latest
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf
-      - ./html:/usr/share/nginx/html
+      # - ./frontend/html:/usr/share/nginx/html
     depends_on:
       backend:
         condition: service_healthy
@@ -70,7 +82,11 @@ services:
       timeout: 5s
       retries: 5
       start_period: 10s
-
+    develop:
+      watch:
+        - action: sync
+          path: ./backend/
+          target: /app
   db:
     image: postgres:latest
     environment:
