@@ -1,6 +1,7 @@
 import logging
 import os
 from typing import Dict, List, Literal, Optional
+from enum import Enum
 import datetime
 import psycopg2
 from fastapi import FastAPI, HTTPException, Response, status
@@ -48,7 +49,16 @@ def get_health() -> HealthCheck:
     return HealthCheck(status="OK")
 
 
-# Pydantic model for validation
+class ServingUnits(str, Enum):
+    GRAMS = "g"
+    KILOGRAMS = "kg"
+    MILLILITERS = "ml"
+    LITERS = "l"
+    CUP = "cup"
+    TABLESPOON = "tbsp"
+    TEASPOON = "tsp"
+    UNIT = "unit"  # generic unit
+    NOS = "nos"  # number of items, e.g. eggs
 class Recipe(BaseModel):
     id: Optional[int] = None
     name: str
@@ -95,6 +105,15 @@ def get_db_connection():
     )
     return conn
 
+@app.get("/list-serving-units", response_model=List[str])
+def get_serving_units():
+    """
+    Endpoint to get the list of serving units.
+    Returns:
+        List[str]: List of serving units available in the system.
+    """
+    logger.info("Fetching list of serving units.")
+    return [unit.value for unit in ServingUnits]
 
 @app.get("/recipes", response_model=list[Recipe])
 def get_recipes():
@@ -320,7 +339,7 @@ def update_ingredient_availability(
     available: Optional[bool] = None,
     shelf_life: Optional[int] = None,
     name: Optional[str] = None,
-    serving_unit: Optional[str] = None,
+    serving_unit: Optional[ServingUnits] = None,
 ):
     import datetime
 
@@ -361,6 +380,12 @@ def update_ingredient_availability(
         conn.close()
         logger.warning(f"Ingredient name '{name}' already exists.")
         raise HTTPException(status_code=400, detail="Ingredient name already exists")
+    # except Exception as e:
+    #     conn.rollback()
+    #     cur.close()
+    #     conn.close()
+    #     logger.error(f"Error updating ingredient: {e}")
+    #     raise HTTPException(status_code=500, detail=str(e))
     row = cur.fetchone()
     conn.commit()
     cur.close()
