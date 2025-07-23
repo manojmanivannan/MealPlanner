@@ -146,6 +146,26 @@ document.addEventListener('DOMContentLoaded', () => {
                                         <label class="block text-sm font-medium text-stone-700">Serving Unit</label>
                                         <select id="edit-ingredient-unit" class="mt-1 block w-full rounded-sm border-stone-300 shadow-sm focus:border-teal-500 focus:ring-teal-500" required></select>
                                     </div>
+                                    <div class="mb-4">
+                                        <label id="edit-kcal-label" class="block text-sm font-medium text-stone-700">Energy (kcal)</label>
+                                        <input type="number" id="edit-ingredient-kcal" class="mt-1 block w-full rounded-sm border-stone-300 shadow-sm focus:border-teal-500 focus:ring-teal-500"></select>
+                                    </div>
+                                    <div class="mb-4">
+                                        <label id="edit-protein-label" class="block text-sm font-medium text-stone-700">Protein (g)</label>
+                                        <input type="number" id="edit-ingredient-protein" class="mt-1 block w-full rounded-sm border-stone-300 shadow-sm focus:border-teal-500 focus:ring-teal-500"></select>
+                                    </div>
+                                    <div class="mb-4">
+                                        <label class="block text-sm font-medium text-stone-700">Fat (g)</label>
+                                        <input type="number" id="edit-ingredient-fat" class="mt-1 block w-full rounded-sm border-stone-300 shadow-sm focus:border-teal-500 focus:ring-teal-500"></select>
+                                    </div>
+                                    <div class="mb-4">
+                                        <label class="block text-sm font-medium text-stone-700">Carbs (g)</label>
+                                        <input type="number" id="edit-ingredient-carbs" class="mt-1 block w-full rounded-sm border-stone-300 shadow-sm focus:border-teal-500 focus:ring-teal-500"></select>
+                                    </div>
+                                    <div class="mb-4">
+                                        <label class="block text-sm font-medium text-stone-700">Fiber (g)</label>
+                                        <input type="number" id="edit-ingredient-fiber" class="mt-1 block w-full rounded-sm border-stone-300 shadow-sm focus:border-teal-500 focus:ring-teal-500"></select>
+                                    </div>
                                     <div class="flex justify-end space-x-4">
                                         <button type="button" id="cancel-edit-ingredient" class="bg-stone-200 text-stone-800 px-4 py-2 rounded-lg hover:bg-stone-300">Cancel</button>
                                         <button type="submit" class="bg-teal-600 text-white px-4 py-2 rounded-lg hover:bg-teal-700">Save</button>
@@ -155,7 +175,37 @@ document.addEventListener('DOMContentLoaded', () => {
                         </div>
                     `;
                     document.body.insertAdjacentHTML('beforeend', modalHTML);
+                    // --- DYNAMIC LABEL LOGIC ---
+                    // Step 2: Create a function to update the labels based on the selected unit.
+                    const updateNutritionLabels = (unit) => {
+                        const kcalLabel = document.getElementById('edit-kcal-label');
+                        const proteinLabel = document.getElementById('edit-protein-label');
+                        // Add other nutrition labels here if needed
+
+                        let perUnitText = '';
+                        switch (unit) {
+                            case 'g':
+                                perUnitText = '100g';
+                                break;
+                            case 'kg':
+                                perUnitText = 'kg';
+                                break;
+                            case 'ml':
+                                perUnitText = '100ml';
+                                break;
+                            case 'l':
+                                perUnitText = 'l';
+                                break;
+                            default:
+                                perUnitText = `${unit}`; // For 'cup', 'tsp', 'unit', etc.
+                        }
+                        
+                        kcalLabel.textContent = `Energy (kcal/${perUnitText})`;
+                        proteinLabel.textContent = `Protein (g/${perUnitText})`;
+                        // ... update other labels ...
+                    };
                     populateUnitSelect('edit-ingredient-unit', ing.serving_unit);
+                    updateNutritionLabels(ing.serving_unit); 
                     const overlay = document.getElementById(modalId);
                     overlay.addEventListener('click', () => overlay.remove());
                     overlay.querySelector('div.bg-white').addEventListener('click', e => e.stopPropagation());
