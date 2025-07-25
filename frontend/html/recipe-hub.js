@@ -35,7 +35,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 ${filteredRecipes.map(recipe => {
                     const maxLen = 250;
                     let instr = recipe.instructions || '';
-                    let ingr = recipe.ingredients || '';
+                    // let ingr = recipe.ingredients || '';
+                    let ingr = Array.isArray(recipe.ingredients) ? recipe.ingredients.map(i => `${i.quantity} ${i.serving_unit} ${i.name}`).join('; ') : '';
                     let instrTrunc = instr.length > maxLen ? instr.slice(0, maxLen) + '…' : instr;
                     let ingrTrunc = ingr.length > maxLen ? ingr.slice(0, maxLen) + '…' : ingr;
                     instrTrunc = instrTrunc.replace(/\n/g, '<br>');
@@ -49,6 +50,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 <h5 class="font-bold text-sm card-title mb-1">${recipe.name}</h5>
                                 <p class="text-xs text-stone-600 mt-1 card-instructions" style="max-height:4.5em;overflow:hidden;">${instrTrunc}</p>
                                 <p class="text-xs text-stone-500 mt-1 card-ingredients" style="max-height:3.5em;overflow:hidden;"><span class="font-semibold">Ingredients:</span> ${ingrTrunc}</p>
+                                <p class="text-xs text-stone-500 mt-1 card-nutrition" style="max-height:3.5em;overflow:hidden;">${recipe.energy ? `<span class="font-semibold">Energy:</span> ${recipe.energy} kcal, ` : ''}${recipe.protein ? `<span class="font-semibold">Protein:</span> ${recipe.protein} g, ` : ''}${recipe.carbs ? `<span class="font-semibold">Carbs:</span> ${recipe.carbs} g, ` : ''}${recipe.fat ? `<span class="font-semibold">Fat:</span> ${recipe.fat} g, ` : ''}${recipe.fiber ? `<span class="font-semibold">Fiber:</span> ${recipe.fiber} g` : ''}</p>
                             </div>
                             <div class="absolute bottom-3 right-3 flex space-x-2">
                                 <button class="text-xs px-2 py-1 clay-btn" onclick="editRecipe(${recipe.id})">Edit</button>
@@ -119,10 +121,7 @@ document.addEventListener('DOMContentLoaded', () => {
             ingredientList = [];
         }
         ingredientList = ingredientList.sort((a, b) => a.name.localeCompare(b.name));
-        let selectedIngredients = [];
-        if (recipe && Array.isArray(recipe.ingredients)) {
-            selectedIngredients = recipe.ingredients;
-        }
+        let selectedIngredients = (recipe && Array.isArray(recipe.ingredients)) ? recipe.ingredients : [];
         const modalHTML = `
             <div id="recipe-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
                 <div class="bg-white p-8 rounded-lg shadow-lg w-full max-w-md max-h-[90vh] overflow-y-auto">
@@ -137,13 +136,14 @@ document.addEventListener('DOMContentLoaded', () => {
                             <label class="block text-sm font-medium text-stone-700 mb-1">Ingredients</label>
                             <div id="ingredient-select-list" class="space-y-2 max-h-72 overflow-y-auto border rounded p-2 bg-stone-50">
                                 ${ingredientList.map(ing => {
-                                    const sel = selectedIngredients.find(si => si.id === ing.id);
+                                    const sel = selectedIngredients.find(si => si.name === ing.name);
                                     return `
                                     <div class="flex items-center space-x-2">
                                         <input type="checkbox" class="ingredient-checkbox" data-id="${ing.id}" ${sel ? 'checked' : ''}>
                                         <span>${ing.name}</span>
                                         <input type="number" min="0" step="any" class="ingredient-qty w-16 px-1 border rounded" placeholder="Qty" value="${sel ? sel.quantity : ''}" ${sel ? '' : 'disabled'}>
-                                        <span class="ingredient-unit w-16 px-1 border rounded bg-gray-100 text-gray-600" style="padding:2px 6px;">${ing.serving_unit}</span>
+            
+                                        <span class="ingredient-unit w-16 px-1 border rounded bg-gray-100 text-gray-600" style="padding:2px 6px;">${sel ? sel.serving_unit : ing.serving_unit}</span>
                                     </div>
                                     `;
                                 }).join('')}
@@ -202,9 +202,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const ingredientElements = document.querySelectorAll('.ingredient-checkbox:checked');
         ingredientElements.forEach(cb => {
             const parent = cb.parentElement;
+            const ingredientName = parent.querySelector('span').textContent;
             const qty = parent.querySelector('.ingredient-qty').value;
-            const unit = parent.querySelector('.ingredient-unit').textContent;
-            ingredients.push({ id: cb.getAttribute('data-id'), quantity: qty, unit });
+            const serving_unit = parent.querySelector('.ingredient-unit').textContent;
+            ingredients.push({ name: ingredientName, quantity: parseFloat(qty) || 0, serving_unit: serving_unit });
         });
         const recipeData = { name, ingredients, instructions, meal_type, is_vegetarian };
         try {
@@ -216,7 +217,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
                 const updatedRecipe = await response.json();
                 const index = recipes.findIndex(r => r.id == id);
-                recipes[index] = updatedRecipe;
+                if (index !== -1) recipes[index] = updatedRecipe;
             } else {
                 const response = await fetch(`${API_BASE}/recipes`, {
                     method: 'POST',

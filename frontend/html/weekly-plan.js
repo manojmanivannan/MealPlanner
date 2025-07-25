@@ -135,8 +135,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!id) return;
         const recipe = recipes.find(r => r.id === id);
         if (!recipe) return;
+
         const instr = (recipe.instructions || '').replace(/\n/g, '<br>');
-        const ingr = (recipe.ingredients || '').replace(/\n/g, '<br>');
+        let ingr = Array.isArray(recipe.ingredients) ? recipe.ingredients.map(i => `${i.quantity} ${i.serving_unit} ${i.name}`).join('; ') : '';
+        ingr = ingr.replace(/\n/g, '<br>');
         const modalHTML = `
             <div id="recipe-detail-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
                 <div class="bg-white p-6 rounded-lg shadow-lg w-full max-w-lg relative" onclick="event.stopPropagation()">

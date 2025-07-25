@@ -128,6 +128,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const ing = ingredients.find(i => i.id == id);
                     const modalId = 'edit-ingredient-modal';
                     if (document.getElementById(modalId)) document.getElementById(modalId).remove();
+                    console.log(ing);
                     const modalHTML = `
                         <div id="${modalId}" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
                             <div class="bg-white p-6 rounded-lg shadow-lg w-full max-w-xs relative" onclick="event.stopPropagation()">
@@ -148,23 +149,23 @@ document.addEventListener('DOMContentLoaded', () => {
                                     </div>
                                     <div class="mb-4">
                                         <label id="edit-kcal-label" class="block text-sm font-medium text-stone-700">Energy (kcal)</label>
-                                        <input type="number" id="edit-ingredient-kcal" class="mt-1 block w-full rounded-sm border-stone-300 shadow-sm focus:border-teal-500 focus:ring-teal-500"></select>
+                                        <input type="number" id="edit-ingredient-kcal" class="mt-1 block w-full rounded-sm border-stone-300 shadow-sm focus:border-teal-500 focus:ring-teal-500" value="${ing.energy}" min="0" step="any">
                                     </div>
                                     <div class="mb-4">
                                         <label id="edit-protein-label" class="block text-sm font-medium text-stone-700">Protein (g)</label>
-                                        <input type="number" id="edit-ingredient-protein" class="mt-1 block w-full rounded-sm border-stone-300 shadow-sm focus:border-teal-500 focus:ring-teal-500"></select>
+                                        <input type="number" id="edit-ingredient-protein" class="mt-1 block w-full rounded-sm border-stone-300 shadow-sm focus:border-teal-500 focus:ring-teal-500" value="${ing.protein}" min="0" step="any">
                                     </div>
                                     <div class="mb-4">
                                         <label class="block text-sm font-medium text-stone-700">Fat (g)</label>
-                                        <input type="number" id="edit-ingredient-fat" class="mt-1 block w-full rounded-sm border-stone-300 shadow-sm focus:border-teal-500 focus:ring-teal-500"></select>
+                                        <input type="number" id="edit-ingredient-fat" class="mt-1 block w-full rounded-sm border-stone-300 shadow-sm focus:border-teal-500 focus:ring-teal-500" value="${ing.fat}" min="0" step="any">
                                     </div>
                                     <div class="mb-4">
                                         <label class="block text-sm font-medium text-stone-700">Carbs (g)</label>
-                                        <input type="number" id="edit-ingredient-carbs" class="mt-1 block w-full rounded-sm border-stone-300 shadow-sm focus:border-teal-500 focus:ring-teal-500"></select>
+                                        <input type="number" id="edit-ingredient-carbs" class="mt-1 block w-full rounded-sm border-stone-300 shadow-sm focus:border-teal-500 focus:ring-teal-500" value="${ing.carbs}" min="0" step="any">
                                     </div>
                                     <div class="mb-4">
                                         <label class="block text-sm font-medium text-stone-700">Fiber (g)</label>
-                                        <input type="number" id="edit-ingredient-fiber" class="mt-1 block w-full rounded-sm border-stone-300 shadow-sm focus:border-teal-500 focus:ring-teal-500"></select>
+                                        <input type="number" id="edit-ingredient-fiber" class="mt-1 block w-full rounded-sm border-stone-300 shadow-sm focus:border-teal-500 focus:ring-teal-500" value="${ing.fiber}" min="0" step="any">
                                     </div>
                                     <div class="flex justify-end space-x-4">
                                         <button type="button" id="cancel-edit-ingredient" class="bg-stone-200 text-stone-800 px-4 py-2 rounded-lg hover:bg-stone-300">Cancel</button>
@@ -187,14 +188,8 @@ document.addEventListener('DOMContentLoaded', () => {
                             case 'g':
                                 perUnitText = '100g';
                                 break;
-                            case 'kg':
-                                perUnitText = 'kg';
-                                break;
                             case 'ml':
                                 perUnitText = '100ml';
-                                break;
-                            case 'l':
-                                perUnitText = 'l';
                                 break;
                             default:
                                 perUnitText = `${unit}`; // For 'cup', 'tsp', 'unit', etc.
@@ -215,6 +210,11 @@ document.addEventListener('DOMContentLoaded', () => {
                         const newName = document.getElementById('edit-ingredient-name').value.trim();
                         const newShelfLife = document.getElementById('edit-ingredient-shelf-life').value.trim();
                         const newUnit = document.getElementById('edit-ingredient-unit').value.trim();
+                        const energy = document.getElementById('edit-ingredient-kcal').value.trim();
+                        const protein = document.getElementById('edit-ingredient-protein').value.trim();
+                        const carbs = document.getElementById('edit-ingredient-carbs').value.trim();
+                        const fat = document.getElementById('edit-ingredient-fat').value.trim();
+                        const fiber = document.getElementById('edit-ingredient-fiber').value.trim();
                         if (!newName) {
                             alert('Name is required.');
                             return;
@@ -227,11 +227,36 @@ document.addEventListener('DOMContentLoaded', () => {
                             alert('Unit must be a one of the valid units (g, kg, ml, l, cup, tbsp, tsp).');
                             return;
                         }
+                        // If energy is blank, set to 0
+                        if (!energy) {
+                            energy = 0;
+                        }
+                        // If protein is blank, set to 0
+                        if (!protein) {
+                            protein = 0;
+                        }
+                        // If carbs is blank, set to 0
+                        if (!carbs) {
+                            carbs = 0;
+                        }
+                        // If fat is blank, set to 0
+                        if (!fat) {
+                            fat = 0;
+                        }
+                        // If fiber is blank, set to 0
+                        if (!fiber) {
+                            fiber = 0;
+                        }
                         try {
                             const params = new URLSearchParams({
                                 name: newName,
                                 shelf_life: newShelfLife,
-                                serving_unit: newUnit
+                                serving_unit: newUnit,
+                                energy: energy,
+                                protein: protein,
+                                carbs: carbs,
+                                fat: fat,
+                                fiber: fiber
                             });
                             const resp = await fetch(`${API_BASE}/ingredients/${id}?${params.toString()}`, {
                                 method: 'PUT'

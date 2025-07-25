@@ -451,9 +451,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <input id="new-ingredient-shelf-life" type="number" min="0" placeholder="Shelf life (days)" class="clay-input border border-transparent w-full sm:w-auto">
                 <select id="new-ingredient-unit" class="clay-input border border-transparent w-full sm:w-auto" >
                     <option value="g">g</option>
-                    <option value="kg">kg</option>
                     <option value="ml">ml</option>
-                    <option value="l">l</option>
                     <option value="cup">cup</option>
                     <option value="tbsp">tbsp</option>
                     <option value="tsp">tsp</option>
@@ -603,7 +601,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         }
                         // validate unit, should a string like g, kg, ml, etc.
                         if (!newUnit) {
-                            alert('Unit must be a one of the valid units (g, kg, ml, l, cup, tbsp, tsp).');
+                            alert('Unit must be a one of the valid units (g, ml, cup, tbsp, tsp).');
                             return;
                         }
                         try {
