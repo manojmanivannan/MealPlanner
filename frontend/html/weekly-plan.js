@@ -36,7 +36,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 body: JSON.stringify({ day, meal_type: meal, recipe_ids: recipeIds })
             });
             weeklyPlan[day][meal] = recipeIds;
-            renderPlanner();
+            // No need to fetch, just re-render with the new state
+            renderPlanner(); 
         } catch (error) {
             console.error('Error saving weekly plan slot:', error);
         }
@@ -45,30 +46,92 @@ document.addEventListener('DOMContentLoaded', () => {
     const plannerGrid = document.getElementById('meal-plan-grid');
 
     function renderPlanner() {
-        plannerGrid.innerHTML = daysOfWeek.map((day, idx) => `
-            <div class="meal-card ${dayBgClass[idx]} flex flex-col">
-                <h4 class="text-lg font-bold card-title mb-1 text-center">${day}</h4>
-                ${mealSlots.map(meal => {
-                    let recipeIds = weeklyPlan[day]?.[meal] || [];
-                    if (!Array.isArray(recipeIds)) recipeIds = recipeIds ? [recipeIds] : [];
-                    const recipeNameSpans = recipeIds.map(rid => {
-                        const recipe = recipes.find(r => r.id === rid);
-                        return recipe ? `<span class='font-extrabold text-base text-teal-800 cursor-pointer hover:underline recipe-link' data-recipe-id='${recipe.id}'>${recipe.name}</span>` : '';
-                    }).filter(Boolean).join(', ');
-                    return `
-                        <div class="mb-2">
-                            <div class="flex items-center justify-between">
-                                <span class="font-medium text-xs text-stone-500 capitalize">${meal}</span>
-                                <button class="text-xs px-2 py-1 rounded font-semibold transition ${recipeIds.length ? 'bg-orange-100 text-orange-700 hover:bg-orange-200' : 'bg-green-100 text-green-700 hover:bg-green-200'}" type="button" onclick="window.selectRecipeForSlot('${day}','${meal}')">${recipeIds.length ? 'Change' : 'Add'}</button>
-                            </div>
-                            <div class="ml-2 recipe-names-container">
-                                ${recipeNameSpans || '<span class="text-stone-400">No recipe</span>'}
-                            </div>
+        const plannerHTML = daysOfWeek.map((day, idx) => {
+            // Object to hold the total nutrition for the day
+            const dayTotals = { protein: 0, carbs: 0, fat: 0, fiber: 0, energy: 0 };
+
+            const mealsHTML = mealSlots.map(meal => {
+                let recipeIds = weeklyPlan[day]?.[meal] || [];
+                if (!Array.isArray(recipeIds)) recipeIds = recipeIds ? [recipeIds] : [];
+                
+                const mealNutrition = { protein: 0, carbs: 0, fat: 0, fiber: 0, energy: 0 };
+
+                const recipeDetails = recipeIds.map(rid => {
+                    const recipe = recipes.find(r => r.id === rid);
+                    if (recipe) {
+                        // Add this recipe's nutrition to the meal's total
+                        mealNutrition.protein += recipe.protein || 0;
+                        mealNutrition.carbs += recipe.carbs || 0;
+                        mealNutrition.fat += recipe.fat || 0;
+                        mealNutrition.fiber += recipe.fiber || 0;
+                        mealNutrition.energy += recipe.energy || 0;
+                    }
+                    return recipe;
+                }).filter(Boolean); // Filter out any nulls if a recipe wasn't found
+
+                // Add the meal's nutrition to the day's grand total
+                dayTotals.protein += mealNutrition.protein;
+                dayTotals.carbs += mealNutrition.carbs;
+                dayTotals.fat += mealNutrition.fat;
+                dayTotals.fiber += mealNutrition.fiber;
+                dayTotals.energy += mealNutrition.energy;
+
+                const recipeNameSpans = recipeDetails.map(recipe => 
+                    `<span class='font-extrabold text-base text-teal-800 cursor-pointer hover:underline recipe-link' data-recipe-id='${recipe.id}'>${recipe.name}</span>`
+                ).join(', ');
+                
+                // HTML for the meal's nutrition breakdown
+                const mealNutritionHTML = recipeIds.length > 0 ? `
+                    <div class="ml-2 mt-1 text-stone-500">
+                    <p class="text-[9px] text-gray-450">
+                        E: ${mealNutrition.energy.toFixed(0)}kcal | Pr: ${mealNutrition.protein.toFixed(1)}g | Ca: ${mealNutrition.carbs.toFixed(1)}g | Fa: ${mealNutrition.fat.toFixed(1)}g | Fb: ${mealNutrition.fiber.toFixed(0)}g
+                    </p>
+                    </div>
+                ` : '';
+
+                return `
+                    <div class="mb-2">
+                        <div class="flex items-center justify-between">
+                            <span class="font-medium text-xs text-stone-500 capitalize">${meal}</span>
+                            <button class="text-xs px-2 py-1 rounded font-semibold transition ${recipeIds.length ? 'bg-orange-100 text-orange-700 hover:bg-orange-200' : 'bg-green-100 text-green-700 hover:bg-green-200'}" type="button" onclick="window.selectRecipeForSlot('${day}','${meal}')">${recipeIds.length ? 'Change' : 'Add'}</button>
                         </div>
-                    `;
-                }).join('')}
-            </div>
-        `).join('');
+                        <div class="ml-2 recipe-names-container">
+                            ${recipeNameSpans || '<span class="text-stone-400">No recipe</span>'}
+                        </div>
+                        ${mealNutritionHTML}
+                    </div>
+                `;
+            }).join('');
+
+            // HTML for the day's total nutrition footer
+            const dayTotalNutritionHTML = `
+                <div class="mt-auto pt-2 border-t border-stone-300/50 text-center">
+                    <!--<h7 class="font-bold text-sm text-teal-900">Day Total</h7>-->
+                    <p class="text-xs text-stone-700 text-gray-500">
+                        <strong>Energy:</strong> ${dayTotals.energy.toFixed(0)} kcal<br>
+                        <strong>Pr:</strong> ${dayTotals.protein.toFixed(1)}g | 
+                        <strong>Ca:</strong> ${dayTotals.carbs.toFixed(1)}g | 
+                        <strong>Fa:</strong> ${dayTotals.fat.toFixed(1)}g | 
+                        <strong>Fb:</strong> ${dayTotals.fiber.toFixed(1)}g
+                    </p>
+                </div>
+            `;
+
+            // The main card structure, using flexbox to push the footer to the bottom
+            return `
+                <div class="meal-card ${dayBgClass[idx]} flex flex-col p-3">
+                    <h4 class="text-lg font-bold card-title mb-2 text-center">${day}</h4>
+                    <div class="flex-grow">
+                        ${mealsHTML}
+                    </div>
+                    ${dayTotalNutritionHTML}
+                </div>
+            `;
+        }).join('');
+        
+        plannerGrid.innerHTML = plannerHTML;
+
+        // Re-attach event listeners for recipe links
         plannerGrid.querySelectorAll('.recipe-names-container').forEach(container => {
             container.addEventListener('click', function(e) {
                 const target = e.target;
@@ -139,6 +202,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const instr = (recipe.instructions || '').replace(/\n/g, '<br>');
         let ingr = Array.isArray(recipe.ingredients) ? recipe.ingredients.map(i => `${i.quantity} ${i.serving_unit} ${i.name}`).join('; ') : '';
         ingr = ingr.replace(/\n/g, '<br>');
+
+        // Safely access nutrition data with defaults
+        const energy = recipe.energy || 0;
+        const protein = recipe.protein || 0;
+        const carbs = recipe.carbs || 0;
+        const fat = recipe.fat || 0;
+        const fiber = recipe.fiber || 0;
+
         const modalHTML = `
             <div id="recipe-detail-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
                 <div class="bg-white p-6 rounded-lg shadow-lg w-full max-w-lg relative" onclick="event.stopPropagation()">
@@ -147,6 +218,16 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div class="mb-2"><span class="font-semibold">Ingredients:</span><br>${ingr}</div>
                     <div class="mb-2"><span class="font-semibold">Instructions:</span><br>${instr}</div>
                     <div class="mt-2 text-xs text-stone-500">Meal type: ${recipe.meal_type}</div>
+                    <div class="mt-4 pt-3 border-t">
+                        <h3 class="font-semibold mb-1">Nutrition:</h3>
+                        <p class="text-sm text-stone-700">
+                            <strong>Energy:</strong> ${energy.toFixed(0)} kcal<br>
+                            <strong>Protein:</strong> ${protein.toFixed(1)}g | 
+                            <strong>Carbs:</strong> ${carbs.toFixed(1)}g | 
+                            <strong>Fat:</strong> ${fat.toFixed(1)}g | 
+                            <strong>Fiber:</strong> ${fiber.toFixed(1)}g
+                        </p>
+                    </div>
                 </div>
             </div>
         `;
