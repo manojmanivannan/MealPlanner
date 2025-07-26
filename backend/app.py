@@ -90,15 +90,26 @@ class Recipe(BaseModel):
     def __str__(self) -> str:
         return super().__str__()
 
-
+class MealTypes(str, Enum):
+    PRE_BREAKFAST = "pre-breakfast"
+    BREAKFAST = "breakfast"
+    LUNCH = "lunch"
+    DINNER = "dinner"
+    SNACK = "snack"
+    SIDES = "sides"
 class PlanSlot(BaseModel):
     day: str
-    meal_type: Literal[
-        "pre-breakfast", "breakfast", "lunch", "dinner", "snack", "sides"
-    ]
+    meal_type: MealTypes
     recipe_ids: Optional[List[int]] = []
 
-
+class DaysOfWeek(str, Enum):
+    MONDAY = "Monday"
+    TUESDAY = "Tuesday"
+    WEDNESDAY = "Wednesday"
+    THURSDAY = "Thursday"
+    FRIDAY = "Friday"
+    SATURDAY = "Saturday"
+    SUNDAY = "Sunday"
 class Ingredient(BaseModel):
     id: int
     name: str
@@ -523,3 +534,91 @@ def delete_ingredient(ingredient_id: int):
     conn.close()
     logger.debug(f"Ingredient id {ingredient_id} deleted.")
     return Response(status_code=204)
+
+@app.get("/recipe/{recipe_id}", response_model=Recipe)
+def get_nutrition_for_recipe(recipe_id: int):
+    logger.info(f"Fetching nutrition for recipe id: {recipe_id}")
+    conn = get_db_connection(factory=True)
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT id, name, ingredients, instructions, meal_type, is_vegetarian, protein, carbs, fat, fiber, energy FROM recipes WHERE id = %s;",
+        (recipe_id,),
+    )
+    row = cur.fetchone()
+    cur.close()
+    conn.close()
+    if not row:
+        logger.warning(f"Recipe id {recipe_id} not found.")
+        raise HTTPException(status_code=404, detail="Recipe not found")
+    logger.debug(f"Fetched nutrition for recipe id: {recipe_id}")
+    return Recipe(**row)
+
+@app.get("/nutrition/{day}", response_model=Dict[str, float])
+def get_nutrition_for_day(day: DaysOfWeek):
+    logger.info(f"Fetching nutrition for {day}")
+    conn = get_db_connection(factory=True)
+    cur = conn.cursor()
+    cur.execute(
+        """
+        SELECT SUM(r.protein) AS total_protein,
+               SUM(r.carbs) AS total_carbs,
+               SUM(r.fat) AS total_fat,
+               SUM(r.fiber) AS total_fiber,
+               SUM(r.energy) AS total_energy
+        FROM weekly_plan wp
+        JOIN recipes r ON r.id = ANY(wp.recipe_ids)
+        WHERE wp.day = %s;
+        """,
+        (day,),
+    )
+    row = cur.fetchone()
+    cur.close()
+    conn.close()
+    if not row:
+        logger.warning(f"No meals found for {day}")
+        raise HTTPException(status_code=404, detail="No meals found")
+    print(row)
+    nutrition = {
+        "protein": dict(row).get("total_protein") or 0.0,
+        "carbs": dict(row).get("total_carbs") or 0.0,
+        "fat": dict(row).get("total_fat") or 0.0,
+        "fiber": dict(row).get("total_fiber") or 0.0,
+        "energy": dict(row).get("total_energy") or 0.0,
+    }
+    logger.debug(f"Nutrition for {day}: {nutrition}")
+    return nutrition
+
+@app.get("/nutrition/{day}/{meal_type}", response_model=Dict[str, float])
+def get_nutrition_for_meal(day: DaysOfWeek, meal_type: MealTypes):
+    logger.info(f"Fetching nutrition for {day} {meal_type}")
+    conn = get_db_connection(factory=True)
+    cur = conn.cursor()
+    cur.execute(
+        """
+        SELECT SUM(r.protein) AS total_protein,
+               SUM(r.carbs) AS total_carbs,
+               SUM(r.fat) AS total_fat,
+               SUM(r.fiber) AS total_fiber,
+               SUM(r.energy) AS total_energy
+        FROM weekly_plan wp
+        JOIN recipes r ON r.id = ANY(wp.recipe_ids)
+        WHERE wp.day = %s AND wp.meal_type = %s;
+        """,
+        (day, meal_type),
+    )
+    row = cur.fetchone()
+    cur.close()
+    conn.close()
+    if not row:
+        logger.warning(f"No meals found for {day} {meal_type}")
+        raise HTTPException(status_code=404, detail="No meals found")
+    print(row)
+    nutrition = {
+        "protein": dict(row).get("total_protein") or 0.0,
+        "carbs": dict(row).get("total_carbs") or 0.0,
+        "fat": dict(row).get("total_fat") or 0.0,
+        "fiber": dict(row).get("total_fiber") or 0.0,
+        "energy": dict(row).get("total_energy") or 0.0,
+    }
+    logger.debug(f"Nutrition for {day} {meal_type}: {nutrition}")
+    return nutrition

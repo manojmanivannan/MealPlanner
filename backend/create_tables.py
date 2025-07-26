@@ -178,6 +178,49 @@ queries: Dict[str, str] = {
         FOR EACH ROW
         EXECUTE FUNCTION calculate_recipe_nutrients();
     """,
+    "create_serving_unit_trigger_function": """
+        CREATE OR REPLACE FUNCTION update_recipe_ingredient_unit()
+        RETURNS TRIGGER AS $$
+        BEGIN
+            -- This function updates all recipes that contain the modified ingredient.
+            -- It reconstructs the JSONB array for each affected recipe.
+            UPDATE recipes
+            SET ingredients = (
+                SELECT jsonb_agg(
+                    -- Use a CASE statement to find the correct ingredient element to update
+                    CASE
+                        -- If the ingredient name matches the one that was updated...
+                        WHEN (elem->>'name') = NEW.name
+                        -- ...then update its 'serving_unit' using jsonb_set.
+                        THEN jsonb_set(elem, '{serving_unit}', to_jsonb(NEW.serving_unit))
+                        -- Otherwise, keep the element as is.
+                        ELSE elem
+                    END
+                )
+                -- This subquery unnests the ingredients array for the current recipe row
+                FROM jsonb_array_elements(recipes.ingredients) AS elem
+            )
+            -- The WHERE clause ensures we only update recipes that actually contain the ingredient.
+            -- The @> operator checks if the left JSONB contains the right JSONB.
+            -- We're looking for any recipe where the 'ingredients' array contains an object with a 'name' key matching the updated ingredient.
+            WHERE recipes.ingredients @> jsonb_build_array(jsonb_build_object('name', NEW.name));
+
+            RETURN NEW;
+        END;
+        $$ LANGUAGE plpgsql;
+    """,
+    "drop_serving_unit_trigger": "DROP TRIGGER IF EXISTS trg_after_ingredient_unit_update ON ingredients;",
+    "create_serving_unit_trigger": """
+        CREATE TRIGGER trg_after_ingredient_unit_update
+        -- Fire AFTER the update operation is completed
+        AFTER UPDATE ON ingredients
+        -- The trigger will execute for each row that is updated
+        FOR EACH ROW
+        -- IMPORTANT: Only fire the trigger if the serving_unit was actually changed
+        WHEN (OLD.serving_unit IS DISTINCT FROM NEW.serving_unit)
+        -- Execute the function we created above
+        EXECUTE FUNCTION update_recipe_ingredient_unit();
+    """,
 }
 
 # --- Data Loading ---
@@ -242,9 +285,22 @@ def setup_database() -> None:
                         print(f"-- Executing query for {key}...")
                         cur.execute(query)
 
+
+
+                print("Setting up triggers database setup...")
+
+                cur.execute(queries["create_nutrition_trigger_function"])
+                cur.execute(queries["drop_nutrition_trigger"])
+                cur.execute(queries["create_nutrition_trigger"])
+                cur.execute(queries["create_serving_unit_trigger_function"])
+                cur.execute(queries["drop_serving_unit_trigger"])
+                cur.execute(queries["create_serving_unit_trigger"])
+
                 print("Loading initial data...")
                 load_data_from_csv(cur, "ingredients.csv", queries["insert_ingredient"])
                 load_data_from_csv(cur, "recipes.csv", queries["insert_recipe"])
+                
+                
                 load_data_from_csv(
                     cur,
                     "weekly_plan.csv",
@@ -252,14 +308,10 @@ def setup_database() -> None:
                     transform_weekly_plan_row,
                 )
 
-                print("Finalizing database setup...")
                 cur.execute(queries["update_sequence"])
-                cur.execute(queries["create_recipe_ids_trigger_function"])
-                cur.execute(queries["drop_recipe_ids_trigger"])
-                cur.execute(queries["create_recipe_ids_trigger"])
-                cur.execute(queries["create_nutrition_trigger_function"])
-                cur.execute(queries["drop_nutrition_trigger"])
-                cur.execute(queries["create_nutrition_trigger"])
+                # cur.execute(queries["create_recipe_ids_trigger_function"])
+                # cur.execute(queries["drop_recipe_ids_trigger"])
+                # cur.execute(queries["create_recipe_ids_trigger"])
 
                 conn.commit()
         print("Database setup completed successfully.")
