@@ -97,8 +97,8 @@ queries: Dict[str, str] = {
         ON CONFLICT (name) DO UPDATE SET shelf_life = EXCLUDED.shelf_life;
     """,
     "insert_recipe": """
-        INSERT INTO recipes (id, name, ingredients, instructions, meal_type, is_vegetarian)
-        VALUES (%(id)s, %(name)s, %(ingredients)s, %(instructions)s, %(meal_type)s, %(is_vegetarian)s)
+        INSERT INTO recipes (id, name, ingredients, instructions, meal_type, is_vegetarian, protein, carbs, fat, fiber, energy)
+        VALUES (%(id)s, %(name)s, %(ingredients)s, %(instructions)s, %(meal_type)s, %(is_vegetarian)s , %(protein)s, %(carbs)s, %(fat)s, %(fiber)s, %(energy)s)
         ON CONFLICT (id) DO NOTHING;
     """,
     "insert_weekly_plan": """
