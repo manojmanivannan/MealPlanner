@@ -290,10 +290,14 @@ document.addEventListener('DOMContentLoaded', () => {
             const addBtn = document.getElementById('add-ingredient-btn');
             const input = document.getElementById('new-ingredient-input');
             const shelfLifeInput = document.getElementById('new-ingredient-shelf-life');
+            const servingUnit = document.getElementById('new-ingredient-unit');
             addBtn.addEventListener('click', async (e) => {
                 e.preventDefault();
                 const name = input.value.trim();
                 const shelf_life = shelfLifeInput.value.trim();
+                console.log(servingUnit.value);
+                const serving_unit = servingUnit.value.trim();
+
                 if (!name) return;
                 if (shelf_life === '') {
                     alert('Shelf life is required and must be an integer greater than 0 (days).');
@@ -308,7 +312,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 addBtn.disabled = true;
                 try {
-                    let url = `${API_BASE}/ingredients?name=${encodeURIComponent(name)}&shelf_life=${encodeURIComponent(shelf_life)}`;
+                    let url = `${API_BASE}/ingredients?name=${encodeURIComponent(name)}&shelf_life=${encodeURIComponent(shelf_life)}&serving_unit=${encodeURIComponent(serving_unit)}`;
                     const resp = await fetch(url, {
                         method: 'POST'
                     });
