@@ -1,8 +1,11 @@
+import json
 import logging
 import os
 from typing import Dict, List, Literal, Optional
-
+from enum import Enum
+import datetime
 import psycopg2
+from psycopg2.extras import RealDictCursor
 from fastapi import FastAPI, HTTPException, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -48,11 +51,24 @@ def get_health() -> HealthCheck:
     return HealthCheck(status="OK")
 
 
-# Pydantic model for validation
+class ServingUnits(str, Enum):
+    GRAMS = "g"
+    MILLILITERS = "ml"
+    CUP = "cup"
+    TABLESPOON = "tbsp"
+    TEASPOON = "tsp"
+    NOS = "nos"  # number of items, e.g. eggs
+
+class IngredientItem(BaseModel):
+    """Represents a single ingredient with its quantity and unit."""
+    name: str
+    quantity: float
+    serving_unit: ServingUnits
+
 class Recipe(BaseModel):
     id: Optional[int] = None
     name: str
-    ingredients: str
+    ingredients: List[IngredientItem]
     instructions: str
     # meal_type can only be 'breakfast', 'lunch', 'dinner', or 'snack'
     meal_type: Literal[
@@ -65,16 +81,35 @@ class Recipe(BaseModel):
         "sides",
     ]
     is_vegetarian: bool
+    protein: Optional[float] = 0
+    carbs: Optional[float] = 0
+    fat: Optional[float] = 0
+    fiber: Optional[float] = 0
+    energy: Optional[float] = 0
 
+    def __str__(self) -> str:
+        return super().__str__()
 
+class MealTypes(str, Enum):
+    PRE_BREAKFAST = "pre-breakfast"
+    BREAKFAST = "breakfast"
+    LUNCH = "lunch"
+    DINNER = "dinner"
+    SNACK = "snack"
+    SIDES = "sides"
 class PlanSlot(BaseModel):
     day: str
-    meal_type: Literal[
-        "pre-breakfast", "breakfast", "lunch", "dinner", "snack", "sides"
-    ]
+    meal_type: MealTypes
     recipe_ids: Optional[List[int]] = []
 
-
+class DaysOfWeek(str, Enum):
+    MONDAY = "Monday"
+    TUESDAY = "Tuesday"
+    WEDNESDAY = "Wednesday"
+    THURSDAY = "Thursday"
+    FRIDAY = "Friday"
+    SATURDAY = "Saturday"
+    SUNDAY = "Sunday"
 class Ingredient(BaseModel):
     id: int
     name: str
@@ -82,18 +117,35 @@ class Ingredient(BaseModel):
     shelf_life: Optional[int] = None  # original shelf life in days
     last_available: Optional[str] = None  # ISO timestamp
     remaining_shelf_life: Optional[int] = None  # days left
+    serving_unit: ServingUnits = ServingUnits.GRAMS  # default to grams
+    serving_size: Optional[int] = 100
+    energy: Optional[float] = 0
+    protein: Optional[float] = 0
+    carbs: Optional[float] = 0
+    fat: Optional[float] = 0
+    fiber: Optional[float] = 0
 
 
 # DB Connection function
-def get_db_connection():
+def get_db_connection(factory=None):
     conn = psycopg2.connect(
         dbname=os.environ["POSTGRES_DB"],
         user=os.environ["POSTGRES_USER"],
         password=os.environ["POSTGRES_PASSWORD"],
         host="db",
+        cursor_factory=RealDictCursor if factory else None,  # Use RealDictCursor for dict-like access
     )
     return conn
 
+@app.get("/list-serving-units", response_model=List[str])
+def get_serving_units():
+    """
+    Endpoint to get the list of serving units.
+    Returns:
+        List[str]: List of serving units available in the system.
+    """
+    logger.info("Fetching list of serving units.")
+    return [unit.value for unit in ServingUnits]
 
 @app.get("/recipes", response_model=list[Recipe])
 def get_recipes():
@@ -101,7 +153,7 @@ def get_recipes():
     conn = get_db_connection()
     cur = conn.cursor()
     cur.execute(
-        "SELECT id, name, ingredients, instructions, meal_type, is_vegetarian FROM recipes ORDER BY name;"
+        "SELECT id, name, ingredients, instructions, meal_type, is_vegetarian, protein, carbs, fat, fiber, energy FROM recipes ORDER BY name;"
     )
     rows = cur.fetchall()
     cur.close()
@@ -115,6 +167,11 @@ def get_recipes():
             instructions=row[3],
             meal_type=row[4],
             is_vegetarian=row[5],
+            protein=row[6],
+            carbs=row[7],
+            fat=row[8],
+            fiber=row[9],
+            energy=row[10],
         )
         for row in rows
     ]
@@ -124,13 +181,14 @@ def get_recipes():
 @app.post("/recipes", status_code=201, response_model=Recipe)
 def add_recipe(recipe: Recipe):
     logger.info(f"Adding new recipe: {recipe.name}")
+    ingredients_json_list = [ing.model_dump() for ing in recipe.ingredients]
     conn = get_db_connection()
     cur = conn.cursor()
     cur.execute(
         "INSERT INTO recipes (name, ingredients, instructions, meal_type, is_vegetarian) VALUES (%s, %s, %s, %s, %s) RETURNING id",
         (
             recipe.name,
-            recipe.ingredients,
+            json.dumps(ingredients_json_list),
             recipe.instructions,
             recipe.meal_type,
             recipe.is_vegetarian,
@@ -156,13 +214,17 @@ def add_recipe(recipe: Recipe):
 @app.put("/recipes/{recipe_id}", response_model=Recipe)
 def update_recipe(recipe_id: int, recipe: Recipe):
     logger.info(f"Updating recipe id: {recipe_id}")
-    conn = get_db_connection()
+    # Convert the list of Pydantic models to a list of dicts for the DB driver
+    ingredients_for_db = [item.model_dump() for item in recipe.ingredients]
+
+    conn = get_db_connection(factory=True)
     cur = conn.cursor()
+
     cur.execute(
         "UPDATE recipes SET name = %s, ingredients = %s, instructions = %s, meal_type = %s, is_vegetarian = %s WHERE id = %s",
         (
             recipe.name,
-            recipe.ingredients,
+            json.dumps(ingredients_for_db),
             recipe.instructions,
             recipe.meal_type,
             recipe.is_vegetarian,
@@ -173,11 +235,17 @@ def update_recipe(recipe_id: int, recipe: Recipe):
         logger.warning(f"Recipe id {recipe_id} not found for update.")
         conn.close()
         raise HTTPException(status_code=404, detail="Recipe not found")
+
+    # # get the updated record again
+    cur.execute("SELECT * FROM recipes WHERE id = %s", (recipe_id,))
+    updated_recipe_from_db = cur.fetchone()
+
     conn.commit()
     cur.close()
     conn.close()
     logger.debug(f"Recipe id {recipe_id} updated.")
-    return Recipe(id=recipe_id, **recipe.dict(exclude={"id"}))
+    # return Recipe(id=recipe_id, **recipe.model_dump(exclude={"id"}))
+    return Recipe(**updated_recipe_from_db)
 
 
 @app.delete("/recipes/{recipe_id}", status_code=204)
@@ -266,14 +334,16 @@ def get_unique_ingredients():
 
 
 @app.get("/ingredients-list", response_model=List[Ingredient])
-def get_ingredients_list():
-    import datetime
+def get_ingredients_list(sort: Optional[str] = None):
+    
+
+    SORTING = f"ORDER BY {sort}" if sort else "ORDER BY available desc, shelf_life"
 
     logger.info("Fetching ingredients list.")
     conn = get_db_connection()
     cur = conn.cursor()
     cur.execute(
-        "SELECT id, name, available, shelf_life, last_available FROM ingredients ORDER BY available desc, shelf_life;"
+        f"SELECT id, name, available, shelf_life, last_available, serving_unit, serving_size, energy, protein, carbs, fat, fiber FROM ingredients {SORTING};"
     )
     rows = cur.fetchall()
     cur.close()
@@ -282,7 +352,7 @@ def get_ingredients_list():
     result = []
     now = datetime.datetime.utcnow()
     for row in rows:
-        id, name, available, shelf_life, last_available = row
+        id, name, available, shelf_life, last_available, serving_unit, serving_size, energy, protein, carbs, fat, fiber = row
         # Compute remaining shelf life if available and last_available is set
         remaining = shelf_life
         last_available_str = last_available.isoformat() if last_available else None
@@ -305,6 +375,13 @@ def get_ingredients_list():
                 shelf_life=shelf_life,  # original shelf life
                 last_available=last_available_str,
                 remaining_shelf_life=remaining,  # days left
+                serving_unit=serving_unit,
+                serving_size=serving_size,
+                energy=energy,
+                protein=protein,
+                carbs=carbs,
+                fat=fat,
+                fiber=fiber
             )
         )
     return result
@@ -316,6 +393,13 @@ def update_ingredient_availability(
     available: Optional[bool] = None,
     shelf_life: Optional[int] = None,
     name: Optional[str] = None,
+    serving_unit: Optional[ServingUnits] = None,
+    serving_size: Optional[int] = None,
+    energy: Optional[float] = None,
+    protein: Optional[float] = None,
+    carbs: Optional[float] = None,
+    fat: Optional[float] = None,
+    fiber: Optional[float] = None,
 ):
     import datetime
 
@@ -336,6 +420,27 @@ def update_ingredient_availability(
     if shelf_life is not None:
         set_clauses.append("shelf_life = %s")
         params.append(shelf_life)
+    if serving_unit is not None:
+        set_clauses.append("serving_unit = %s")
+        params.append(serving_unit.strip())
+    if serving_size is not None:
+        set_clauses.append("serving_size = %s")
+        params.append(serving_size)
+    if energy is not None:
+        set_clauses.append("energy = %s")
+        params.append(energy)
+    if protein is not None:
+        set_clauses.append("protein = %s")
+        params.append(protein)
+    if carbs is not None:
+        set_clauses.append("carbs = %s")
+        params.append(carbs)
+    if fat is not None:
+        set_clauses.append("fat = %s")
+        params.append(fat)
+    if fiber is not None:
+        set_clauses.append("fiber = %s")
+        params.append(fiber)
     if not set_clauses:
         logger.warning(f"No valid fields to update for ingredient id: {ingredient_id}")
         conn.close()
@@ -344,7 +449,7 @@ def update_ingredient_availability(
     params.append(ingredient_id)
     try:
         cur.execute(
-            f"UPDATE ingredients SET {set_clause} WHERE id = %s RETURNING id, name, available, shelf_life, last_available;",
+            f"UPDATE ingredients SET {set_clause} WHERE id = %s RETURNING id, name, available, shelf_life, last_available, serving_unit, serving_size, energy, protein, carbs, fat, fiber;",
             tuple(params),
         )
     except psycopg2.errors.UniqueViolation:
@@ -353,6 +458,12 @@ def update_ingredient_availability(
         conn.close()
         logger.warning(f"Ingredient name '{name}' already exists.")
         raise HTTPException(status_code=400, detail="Ingredient name already exists")
+    # except Exception as e:
+    #     conn.rollback()
+    #     cur.close()
+    #     conn.close()
+    #     logger.error(f"Error updating ingredient: {e}")
+    #     raise HTTPException(status_code=500, detail=str(e))
     row = cur.fetchone()
     conn.commit()
     cur.close()
@@ -361,7 +472,7 @@ def update_ingredient_availability(
         logger.warning(f"Ingredient id {ingredient_id} not found for update.")
         raise HTTPException(status_code=404, detail="Ingredient not found")
     # Compute remaining shelf life for response
-    id, name, available, shelf_life, last_available = row
+    id, name, available, shelf_life, last_available, serving_unit, serving_size, energy, protein, carbs, fat, fiber = row
     remaining = shelf_life
     last_available_str = last_available.isoformat() if last_available else None
     if available and last_available and shelf_life is not None:
@@ -382,19 +493,24 @@ def update_ingredient_availability(
         available=available,
         shelf_life=remaining,
         last_available=last_available_str,
+        serving_unit=serving_unit,
+        energy=energy,
+        protein=protein,
+        carbs=carbs,
+        fat=fat,
+        fiber=fiber
     )
 
 
 @app.post("/ingredients", response_model=Ingredient, status_code=201)
-def add_ingredient(name: str, shelf_life: int):
+def add_ingredient(name: str, shelf_life: int, serving_unit: ServingUnits):
     logger.info(f"Adding new ingredient: {name}")
     conn = get_db_connection()
     cur = conn.cursor()
     # Insert new ingredient, default available to False
     cur.execute(
-        "INSERT INTO ingredients (name, available, shelf_life) VALUES (%s, %s, %s) ON CONFLICT (name) DO NOTHING RETURNING id, name, available, shelf_life;",
-        (name.strip(), False, shelf_life),
-    )
+        "INSERT INTO ingredients (name, available, shelf_life, serving_unit) VALUES (%s, %s, %s, %s) ON CONFLICT (name) DO NOTHING RETURNING id, name, available, shelf_life, serving_unit;",
+        (name.strip(), False, shelf_life, serving_unit),   )
     row = cur.fetchone()
     conn.commit()
     cur.close()
@@ -423,3 +539,91 @@ def delete_ingredient(ingredient_id: int):
     conn.close()
     logger.debug(f"Ingredient id {ingredient_id} deleted.")
     return Response(status_code=204)
+
+@app.get("/recipe/{recipe_id}", response_model=Recipe)
+def get_nutrition_for_recipe(recipe_id: int):
+    logger.info(f"Fetching nutrition for recipe id: {recipe_id}")
+    conn = get_db_connection(factory=True)
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT id, name, ingredients, instructions, meal_type, is_vegetarian, protein, carbs, fat, fiber, energy FROM recipes WHERE id = %s;",
+        (recipe_id,),
+    )
+    row = cur.fetchone()
+    cur.close()
+    conn.close()
+    if not row:
+        logger.warning(f"Recipe id {recipe_id} not found.")
+        raise HTTPException(status_code=404, detail="Recipe not found")
+    logger.debug(f"Fetched nutrition for recipe id: {recipe_id}")
+    return Recipe(**row)
+
+@app.get("/nutrition/{day}", response_model=Dict[str, float])
+def get_nutrition_for_day(day: DaysOfWeek):
+    logger.info(f"Fetching nutrition for {day}")
+    conn = get_db_connection(factory=True)
+    cur = conn.cursor()
+    cur.execute(
+        """
+        SELECT SUM(r.protein) AS total_protein,
+               SUM(r.carbs) AS total_carbs,
+               SUM(r.fat) AS total_fat,
+               SUM(r.fiber) AS total_fiber,
+               SUM(r.energy) AS total_energy
+        FROM weekly_plan wp
+        JOIN recipes r ON r.id = ANY(wp.recipe_ids)
+        WHERE wp.day = %s;
+        """,
+        (day,),
+    )
+    row = cur.fetchone()
+    cur.close()
+    conn.close()
+    if not row:
+        logger.warning(f"No meals found for {day}")
+        raise HTTPException(status_code=404, detail="No meals found")
+    print(row)
+    nutrition = {
+        "protein": dict(row).get("total_protein") or 0.0,
+        "carbs": dict(row).get("total_carbs") or 0.0,
+        "fat": dict(row).get("total_fat") or 0.0,
+        "fiber": dict(row).get("total_fiber") or 0.0,
+        "energy": dict(row).get("total_energy") or 0.0,
+    }
+    logger.debug(f"Nutrition for {day}: {nutrition}")
+    return nutrition
+
+@app.get("/nutrition/{day}/{meal_type}", response_model=Dict[str, float])
+def get_nutrition_for_meal(day: DaysOfWeek, meal_type: MealTypes):
+    logger.info(f"Fetching nutrition for {day} {meal_type}")
+    conn = get_db_connection(factory=True)
+    cur = conn.cursor()
+    cur.execute(
+        """
+        SELECT SUM(r.protein) AS total_protein,
+               SUM(r.carbs) AS total_carbs,
+               SUM(r.fat) AS total_fat,
+               SUM(r.fiber) AS total_fiber,
+               SUM(r.energy) AS total_energy
+        FROM weekly_plan wp
+        JOIN recipes r ON r.id = ANY(wp.recipe_ids)
+        WHERE wp.day = %s AND wp.meal_type = %s;
+        """,
+        (day, meal_type),
+    )
+    row = cur.fetchone()
+    cur.close()
+    conn.close()
+    if not row:
+        logger.warning(f"No meals found for {day} {meal_type}")
+        raise HTTPException(status_code=404, detail="No meals found")
+    print(row)
+    nutrition = {
+        "protein": dict(row).get("total_protein") or 0.0,
+        "carbs": dict(row).get("total_carbs") or 0.0,
+        "fat": dict(row).get("total_fat") or 0.0,
+        "fiber": dict(row).get("total_fiber") or 0.0,
+        "energy": dict(row).get("total_energy") or 0.0,
+    }
+    logger.debug(f"Nutrition for {day} {meal_type}: {nutrition}")
+    return nutrition

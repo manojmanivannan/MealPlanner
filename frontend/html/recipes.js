@@ -130,18 +130,26 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    const showRecipeModal = (recipe = null) => {
-        // Determine default meal type for new recipe based on activeCategory
-        let defaultMealType = 'breakfast';
-        if (!recipe) {
-            const cat = Object.entries(mealTypeMap).find(([k, v]) => k === activeCategory);
-            if (cat && cat[1].length === 1) {
-                defaultMealType = cat[1][0];
-            }
+    const showRecipeModal = async (recipe = null) => {
+        
+        // Fetch ingredients list from backend
+        let ingredientList = [];
+        try {
+            const resp = await fetch(`${API_BASE}/ingredients-list?sort=name`);
+            ingredientList = await resp.json();
+        } catch (e) {
+            ingredientList = [];
+        }
+        // Sort ingredientList alphabetically by name
+        ingredientList = ingredientList.sort((a, b) => a.name.localeCompare(b.name));
+        // Parse recipe ingredients if editing
+        let selectedIngredients = [];
+        if (recipe && Array.isArray(recipe.ingredients)) {
+            selectedIngredients = recipe.ingredients;
         }
         const modalHTML = `
-            <div id="recipe-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-                <div class="bg-white p-8 rounded-lg shadow-lg w-full max-w-md">
+            <div id="recipe-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                <div class="bg-white p-8 rounded-lg shadow-lg w-full max-w-md max-h-[90vh] overflow-y-auto">
                     <h2 class="text-2xl font-bold mb-4">${recipe ? 'Edit' : 'Add'} Recipe</h2>
                     <form id="recipe-form">
                         <input type="hidden" id="recipe-id" value="${recipe ? recipe.id : ''}">
@@ -150,8 +158,21 @@ document.addEventListener('DOMContentLoaded', () => {
                             <input type="text" id="recipe-name" class="mt-1 block w-full rounded-sm border-stone-300 shadow-sm focus:border-teal-500 focus:ring-teal-500" value="${recipe ? recipe.name : ''}" required>
                         </div>
                         <div class="mb-4">
-                            <label for="recipe-ingredients" class="block text-sm font-medium text-stone-700">Ingredients</label>
-                            <textarea id="recipe-ingredients" rows="4" class="mt-1 block w-full rounded-sm border-stone-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 p-1" required>${recipe ? recipe.ingredients : ''}</textarea>
+                            <label class="block text-sm font-medium text-stone-700 mb-1">Ingredients</label>
+                            <div id="ingredient-select-list" class="space-y-2 max-h-72 overflow-y-auto border rounded p-2 bg-stone-50">
+                                ${ingredientList.map(ing => {
+                                    // Find if selected
+                                    const sel = selectedIngredients.find(si => si.id === ing.id);
+                                    return `
+                                    <div class="flex items-center space-x-2">
+                                        <input type="checkbox" class="ingredient-checkbox" data-id="${ing.id}" ${sel ? 'checked' : ''}>
+                                        <span>${ing.name}</span>
+                                        <input type="number" min="0" step="any" class="ingredient-qty w-16 px-1 border rounded" placeholder="Qty" value="${sel ? sel.quantity : ''}" ${sel ? '' : 'disabled'}>
+                                        <span class="ingredient-unit w-16 px-1 border rounded bg-gray-100 text-gray-600" style="padding:2px 6px;">${ing.serving_unit}</span>
+                                    </div>
+                                    `;
+                                }).join('')}
+                            </div>
                         </div>
                         <div class="mb-4">
                             <label for="recipe-instructions" class="block text-sm font-medium text-stone-700">Instructions</label>
@@ -185,7 +206,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const overlay = document.getElementById('recipe-modal');
         overlay.addEventListener('click', () => overlay.remove());
         overlay.querySelector('div.bg-white').addEventListener('click', e => e.stopPropagation());
-
+        // Enable/disable qty/unit fields based on checkbox
+        overlay.querySelectorAll('.ingredient-checkbox').forEach(cb => {
+            cb.addEventListener('change', function() {
+                const parent = cb.parentElement;
+                parent.querySelector('.ingredient-qty').disabled = !cb.checked;
+                parent.querySelector('.ingredient-unit').disabled = !cb.checked;
+            });
+        });
         document.getElementById('recipe-form').addEventListener('submit', saveRecipe);
         document.getElementById('cancel-btn').addEventListener('click', () => document.getElementById('recipe-modal').remove());
     };
@@ -194,10 +222,20 @@ document.addEventListener('DOMContentLoaded', () => {
         e.preventDefault();
         const id = document.getElementById('recipe-id').value;
         const name = document.getElementById('recipe-name').value;
-        const ingredients = document.getElementById('recipe-ingredients').value;
         const instructions = document.getElementById('recipe-instructions').value;
         const meal_type = document.getElementById('recipe-meal-type').value;
         const is_vegetarian = document.getElementById('recipe-veg').checked;
+
+        // Gather ingredients data
+        const ingredients = [];
+        const ingredientElements = document.querySelectorAll('.ingredient-checkbox:checked');
+        ingredientElements.forEach(cb => {
+            const parent = cb.parentElement;
+            const qty = parent.querySelector('.ingredient-qty').value;
+            const unit = parent.querySelector('.ingredient-unit').value;
+            ingredients.push({ id: cb.getAttribute('data-id'), quantity: qty, unit });
+        });
+
         const recipeData = { name, ingredients, instructions, meal_type, is_vegetarian };
         try {
             if (id) { // Edit
@@ -411,6 +449,13 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="flex flex-col sm:flex-row sm:items-center sm:space-x-2 space-y-2 sm:space-y-0 mb-4">
                 <input id="new-ingredient-input" type="text" placeholder="Ingredient..." class="clay-input border border-transparent w-full sm:w-auto">
                 <input id="new-ingredient-shelf-life" type="number" min="0" placeholder="Shelf life (days)" class="clay-input border border-transparent w-full sm:w-auto">
+                <select id="new-ingredient-unit" class="clay-input border border-transparent w-full sm:w-auto" >
+                    <option value="g">g</option>
+                    <option value="ml">ml</option>
+                    <option value="cup">cup</option>
+                    <option value="tbsp">tbsp</option>
+                    <option value="tsp">tsp</option>
+                </select>
                 <button id="add-ingredient-btn" class="clay-btn text-sm w-full sm:w-auto px-6 py-2">Add</button>
                 <div class="flex-1"></div>
                 <label class="flex items-center cursor-pointer ml-auto">
@@ -452,7 +497,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 </span>
                             </div>
                             <div class="flex items-center space-x-2 ml-2">
-                                <button type="button" data-id="${ing.id}" class="edit-shelf-life-btn clay-btn px-2 py-1 rounded-full text-xs font-bold focus:outline-none focus:ring-2 focus:ring-blue-300 hover:bg-blue-50" title="Edit shelf life">✎</button>
+                                <button type="button" data-id="${ing.id}" class="edit-ingredient-btn clay-btn px-2 py-1 rounded-full text-xs font-bold focus:outline-none focus:ring-2 focus:ring-blue-300 hover:bg-blue-50" title="Edit shelf life">✎</button>
                                 <button type="button" data-id="${ing.id}" class="delete-ingredient-btn clay-btn px-2 py-1 rounded-full text-xs font-bold focus:outline-none focus:ring-2 focus:ring-pink-300 hover:bg-pink-50" style="background:linear-gradient(135deg,#fbcfe8 60%,#c7d2fe 100%);color:#be185d;" title="Delete">&times;</button>
                             </div>
                         </label>
@@ -479,7 +524,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                         <span class="text-xs truncate">${ing.name}</span>
                                     </div>
                                     <div class="flex items-center space-x-2 ml-2">
-                                        <button type="button" data-id="${ing.id}" class="edit-shelf-life-btn clay-btn px-2 py-1 rounded-full text-xs font-bold focus:outline-none focus:ring-2 focus:ring-blue-300 hover:bg-blue-50" title="Edit shelf life">✎</button>
+                                        <button type="button" data-id="${ing.id}" class="edit-ingredient-btn clay-btn px-2 py-1 rounded-full text-xs font-bold focus:outline-none focus:ring-2 focus:ring-blue-300 hover:bg-blue-50" title="Edit ingredient">✎</button>
                                         <button type="button" data-id="${ing.id}" class="delete-ingredient-btn clay-btn px-2 py-1 rounded-full text-xs font-bold focus:outline-none focus:ring-2 focus:ring-pink-300 hover:bg-pink-50" style="background:linear-gradient(135deg,#fbcfe8 60%,#c7d2fe 100%);color:#be185d;" title="Delete">&times;</button>
                                     </div>
                                 </label>
@@ -501,7 +546,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             });
             // Edit shelf life and name logic
-            listSection.querySelectorAll('.edit-shelf-life-btn').forEach(btn => {
+            listSection.querySelectorAll('.edit-ingredient-btn').forEach(btn => {
                 btn.addEventListener('click', async (e) => {
                     e.preventDefault();
                     e.stopPropagation();
@@ -524,6 +569,10 @@ document.addEventListener('DOMContentLoaded', () => {
                                         <label class="block text-sm font-medium text-stone-700">Shelf Life (days)</label>
                                         <input type="number" id="edit-ingredient-shelf-life" class="mt-1 block w-full rounded-sm border-stone-300 shadow-sm focus:border-teal-500 focus:ring-teal-500" value="${ing.shelf_life}" min="1" required>
                                     </div>
+                                    <div class="mb-4">
+                                        <label class="block text-sm font-medium text-stone-700">Serving Unit</label>
+                                        <input type="text" id="edit-ingredient-unit" class="mt-1 block w-full rounded-sm border-stone-300 shadow-sm focus:border-teal-500 focus:ring-teal-500" value="${ing.serving_unit}" min="1" required>
+                                    </div>
                                     <div class="flex justify-end space-x-4">
                                         <button type="button" id="cancel-edit-ingredient" class="bg-stone-200 text-stone-800 px-4 py-2 rounded-lg hover:bg-stone-300">Cancel</button>
                                         <button type="submit" class="bg-teal-600 text-white px-4 py-2 rounded-lg hover:bg-teal-700">Save</button>
@@ -541,6 +590,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         ev.preventDefault();
                         const newName = document.getElementById('edit-ingredient-name').value.trim();
                         const newShelfLife = document.getElementById('edit-ingredient-shelf-life').value.trim();
+                        const newUnit = document.getElementById('edit-ingredient-unit').value.trim();
                         if (!newName) {
                             alert('Name is required.');
                             return;
@@ -549,10 +599,16 @@ document.addEventListener('DOMContentLoaded', () => {
                             alert('Shelf life must be an integer greater than 0 (days).');
                             return;
                         }
+                        // validate unit, should a string like g, kg, ml, etc.
+                        if (!newUnit) {
+                            alert('Unit must be a one of the valid units (g, ml, cup, tbsp, tsp).');
+                            return;
+                        }
                         try {
                             const params = new URLSearchParams({
                                 name: newName,
-                                shelf_life: newShelfLife
+                                shelf_life: newShelfLife,
+                                serving_unit: newUnit
                             });
                             const resp = await fetch(`${API_BASE}/ingredients/${id}?${params.toString()}`, {
                                 method: 'PUT'

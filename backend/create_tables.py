@@ -49,12 +49,18 @@ queries: Dict[str, str] = {
         CREATE TABLE IF NOT EXISTS recipes (
             id SERIAL PRIMARY KEY,
             name VARCHAR(255) NOT NULL,
-            ingredients TEXT NOT NULL,
+            ingredients JSONB NOT NULL,
             instructions TEXT NOT NULL,
             meal_type VARCHAR(50) CHECK (meal_type IN (
                 'pre-breakfast', 'breakfast', 'lunch', 'dinner', 'snack', 'weekend prep', 'sides'
             )) NOT NULL,
-            is_vegetarian BOOLEAN DEFAULT TRUE
+            is_vegetarian BOOLEAN DEFAULT TRUE,
+            protein NUMERIC(10, 2) DEFAULT 0.0,
+            carbs NUMERIC(10, 2) DEFAULT 0.0,
+            fat NUMERIC(10, 2) DEFAULT 0.0,
+            fiber NUMERIC(10, 2) DEFAULT 0.0,
+            energy NUMERIC(10, 2) DEFAULT 0.0
+
         );
     """,
     "table_create_weekly_plan": """
@@ -73,19 +79,26 @@ queries: Dict[str, str] = {
             name VARCHAR(255) UNIQUE NOT NULL,
             shelf_life INTEGER CHECK (shelf_life >= 0) DEFAULT NULL,
             available BOOLEAN DEFAULT FALSE,
-            last_available TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            last_available TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            serving_unit VARCHAR(10) DEFAULT NULL,
+            serving_size FLOAT DEFAULT 100,
+            protein NUMERIC(10, 2) DEFAULT 0.0,
+            carbs NUMERIC(10, 2) DEFAULT 0.0,
+            fat NUMERIC(10, 2) DEFAULT 0.0,
+            fiber NUMERIC(10, 2) DEFAULT 0.0,
+            energy NUMERIC(10, 2) DEFAULT 0.0
         );
     """,
     "drop_unique_constraint": "ALTER TABLE weekly_plan DROP CONSTRAINT IF EXISTS unique_day_meal;",
     "add_unique_constraint": "ALTER TABLE weekly_plan ADD CONSTRAINT unique_day_meal UNIQUE(day, meal_type);",
     "insert_ingredient": """
-        INSERT INTO ingredients (name, shelf_life, available, last_available)
-        VALUES (%(name)s, %(shelf_life)s, %(available)s, %(last_available)s)
+        INSERT INTO ingredients (name, shelf_life, available, last_available, serving_unit, serving_size, protein, carbs, fat, fiber, energy)
+        VALUES (%(name)s, %(shelf_life)s, %(available)s, %(last_available)s, %(serving_unit)s, %(serving_size)s, %(protein)s, %(carbs)s, %(fat)s, %(fiber)s, %(energy)s)
         ON CONFLICT (name) DO UPDATE SET shelf_life = EXCLUDED.shelf_life;
     """,
     "insert_recipe": """
-        INSERT INTO recipes (id, name, ingredients, instructions, meal_type, is_vegetarian)
-        VALUES (%(id)s, %(name)s, %(ingredients)s, %(instructions)s, %(meal_type)s, %(is_vegetarian)s)
+        INSERT INTO recipes (id, name, ingredients, instructions, meal_type, is_vegetarian, protein, carbs, fat, fiber, energy)
+        VALUES (%(id)s, %(name)s, %(ingredients)s, %(instructions)s, %(meal_type)s, %(is_vegetarian)s , %(protein)s, %(carbs)s, %(fat)s, %(fiber)s, %(energy)s)
         ON CONFLICT (id) DO NOTHING;
     """,
     "insert_weekly_plan": """
@@ -94,7 +107,7 @@ queries: Dict[str, str] = {
         ON CONFLICT (day, meal_type) DO UPDATE SET recipe_ids = EXCLUDED.recipe_ids;
     """,
     "update_sequence": "SELECT setval('recipes_id_seq', (SELECT MAX(id) FROM recipes));",
-    "create_trigger_function": """
+    "create_recipe_ids_trigger_function": """
         CREATE OR REPLACE FUNCTION check_recipe_ids_exist()
         RETURNS trigger AS $$
         DECLARE
@@ -111,12 +124,102 @@ queries: Dict[str, str] = {
         END;
         $$ LANGUAGE plpgsql;
     """,
-    "drop_trigger": "DROP TRIGGER IF EXISTS trg_check_recipe_ids_exist ON weekly_plan;",
-    "create_trigger": """
+    "drop_recipe_ids_trigger": "DROP TRIGGER IF EXISTS trg_check_recipe_ids_exist ON weekly_plan;",
+    "create_recipe_ids_trigger": """
         CREATE CONSTRAINT TRIGGER trg_check_recipe_ids_exist
         AFTER INSERT OR UPDATE ON weekly_plan
         DEFERRABLE INITIALLY DEFERRED
         FOR EACH ROW EXECUTE FUNCTION check_recipe_ids_exist();
+    """,
+    "create_nutrition_trigger_function": """
+        CREATE OR REPLACE FUNCTION calculate_recipe_nutrients()
+        RETURNS TRIGGER AS $$
+        DECLARE
+            ing_record RECORD;
+            nutrient_data RECORD;
+            total_protein FLOAT := 0.0;
+            total_carbs FLOAT := 0.0;
+            total_fat FLOAT := 0.0;
+            total_fiber FLOAT := 0.0;
+            total_energy FLOAT := 0.0;
+        BEGIN
+            -- Loop through each ingredient in the JSONB array of the new/updated recipe
+            FOR ing_record IN SELECT * FROM jsonb_to_recordset(NEW.ingredients) AS x(name text, quantity float, unit text)
+            LOOP
+                -- Find the matching ingredient in the ingredients table
+                SELECT * INTO nutrient_data FROM ingredients WHERE name = ing_record.name;
+
+                -- If a matching ingredient is found, add its nutrients to the totals
+                -- This assumes the recipe quantity corresponds to the base unit of the ingredient table
+                IF FOUND THEN
+                    total_protein := total_protein + (nutrient_data.protein * ing_record.quantity / nutrient_data.serving_size);
+                    total_carbs := total_carbs + (nutrient_data.carbs * ing_record.quantity/ nutrient_data.serving_size);
+                    total_fat := total_fat + (nutrient_data.fat * ing_record.quantity/ nutrient_data.serving_size);
+                    total_fiber := total_fiber + (nutrient_data.fiber * ing_record.quantity/ nutrient_data.serving_size);
+                    total_energy := total_energy + (nutrient_data.energy * ing_record.quantity/ nutrient_data.serving_size);
+                END IF;
+            END LOOP;
+
+            -- Update the recipe row with the calculated totals
+            NEW.protein := total_protein;
+            NEW.carbs := total_carbs;
+            NEW.fat := total_fat;
+            NEW.fiber := total_fiber;
+            NEW.energy := total_energy;
+
+            RETURN NEW;
+        END;
+        $$ LANGUAGE plpgsql;
+        """,
+    "drop_nutrition_trigger": "DROP TRIGGER IF EXISTS trg_update_recipe_nutrients ON recipes;",
+    "create_nutrition_trigger": """
+        CREATE TRIGGER trg_update_recipe_nutrients
+        BEFORE INSERT OR UPDATE ON recipes
+        FOR EACH ROW
+        EXECUTE FUNCTION calculate_recipe_nutrients();
+    """,
+    "create_serving_unit_trigger_function": """
+        CREATE OR REPLACE FUNCTION update_recipe_ingredient_unit()
+        RETURNS TRIGGER AS $$
+        BEGIN
+            -- This function updates all recipes that contain the modified ingredient.
+            -- It reconstructs the JSONB array for each affected recipe.
+            UPDATE recipes
+            SET ingredients = (
+                SELECT jsonb_agg(
+                    -- Use a CASE statement to find the correct ingredient element to update
+                    CASE
+                        -- If the ingredient name matches the one that was updated...
+                        WHEN (elem->>'name') = NEW.name
+                        -- ...then update its 'serving_unit' using jsonb_set.
+                        THEN jsonb_set(elem, '{serving_unit}', to_jsonb(NEW.serving_unit))
+                        -- Otherwise, keep the element as is.
+                        ELSE elem
+                    END
+                )
+                -- This subquery unnests the ingredients array for the current recipe row
+                FROM jsonb_array_elements(recipes.ingredients) AS elem
+            )
+            -- The WHERE clause ensures we only update recipes that actually contain the ingredient.
+            -- The @> operator checks if the left JSONB contains the right JSONB.
+            -- We're looking for any recipe where the 'ingredients' array contains an object with a 'name' key matching the updated ingredient.
+            WHERE recipes.ingredients @> jsonb_build_array(jsonb_build_object('name', NEW.name));
+
+            RETURN NEW;
+        END;
+        $$ LANGUAGE plpgsql;
+    """,
+    "drop_serving_unit_trigger": "DROP TRIGGER IF EXISTS trg_after_ingredient_unit_update ON ingredients;",
+    "create_serving_unit_trigger": """
+        CREATE TRIGGER trg_after_ingredient_unit_update
+        -- Fire AFTER the update operation is completed
+        AFTER UPDATE ON ingredients
+        -- The trigger will execute for each row that is updated
+        FOR EACH ROW
+        -- IMPORTANT: Only fire the trigger if the serving_unit was actually changed
+        WHEN (OLD.serving_unit IS DISTINCT FROM NEW.serving_unit)
+        -- Execute the function we created above
+        EXECUTE FUNCTION update_recipe_ingredient_unit();
     """,
 }
 
@@ -182,9 +285,22 @@ def setup_database() -> None:
                         print(f"-- Executing query for {key}...")
                         cur.execute(query)
 
+
+
+                print("Setting up triggers database setup...")
+
+                cur.execute(queries["create_nutrition_trigger_function"])
+                cur.execute(queries["drop_nutrition_trigger"])
+                cur.execute(queries["create_nutrition_trigger"])
+                cur.execute(queries["create_serving_unit_trigger_function"])
+                cur.execute(queries["drop_serving_unit_trigger"])
+                cur.execute(queries["create_serving_unit_trigger"])
+
                 print("Loading initial data...")
                 load_data_from_csv(cur, "ingredients.csv", queries["insert_ingredient"])
                 load_data_from_csv(cur, "recipes.csv", queries["insert_recipe"])
+                
+                
                 load_data_from_csv(
                     cur,
                     "weekly_plan.csv",
@@ -192,11 +308,10 @@ def setup_database() -> None:
                     transform_weekly_plan_row,
                 )
 
-                print("Finalizing database setup...")
                 cur.execute(queries["update_sequence"])
-                cur.execute(queries["create_trigger_function"])
-                cur.execute(queries["drop_trigger"])
-                cur.execute(queries["create_trigger"])
+                # cur.execute(queries["create_recipe_ids_trigger_function"])
+                # cur.execute(queries["drop_recipe_ids_trigger"])
+                # cur.execute(queries["create_recipe_ids_trigger"])
 
                 conn.commit()
         print("Database setup completed successfully.")

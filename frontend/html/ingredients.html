@@ -1,24 +1,26 @@
 <!DOCTYPE html>
-<html lang="en" class="scroll-smooth">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Meal Planner</title>
+    <title>Ingredients List</title>
     <link rel="icon" type="image/x-icon" href="meal_logo.ico">
-    <meta name="application-name" content="Meal Planner">
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
-    <!-- Chosen Palette: Earthy Neutrals -->
-    <!-- Application Structure Plan: A task-oriented SPA design. It starts with a summary of the core principles (dual-diet strategy, prep efficiency, portion control) for quick understanding. The central feature is an interactive 7-day meal planner grid where users can toggle between vegetarian/omnivore views, demonstrating the 'base + add-on' model dynamically. This is more engaging than a static table. Following the planner, a 'Recipe & Prep Hub' uses tabs to organize detailed meal ideas and batch-cooking steps, preventing information overload. Finally, a functional 'Interactive Grocery List' is generated from the plan, categorized for usability. This structure transforms the report from a document to read into a tool to use, prioritizing user flow from understanding the strategy to executing the plan. -->
-    <!-- Visualization & Content Choices: The report's tables are reimagined as interactive UI components. The main 'Weekly Meal Plan Table' becomes the interactive planner grid (HTML/JS) for direct engagement. The 'Dual Diet Strategy' is shown via the planner's toggle, not a separate table. The 'Batch Prep Table' is presented as styled cards in a 'Weekend Prep' tab for better readability. The 'Ingredient Sourcing Table' evolves into a dynamic, categorized checklist (HTML/JS) which is a functional tool. Portion control is explained with a simple visual guide using HTML and Unicode icons. This approach uses interactive HTML/Tailwind to fulfill the goals of organization and comparison, directly supporting the application's task-oriented structure. -->
-    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <!-- <link rel="stylesheet" href="styles.css"> -->
     <style>
         body {
             font-family: 'Inter', sans-serif;
             background: linear-gradient(135deg, #f5f6fa 0%, #e7eaf3 100%); /* Dull/faded frame background */
             color: #232946;
+            /* --- FIX STARTS HERE --- */
+            min-height: 100vh;      /* Make body at least as tall as the screen */
+            display: flex;          /* Enable flexbox */
+            flex-direction: column; /* Stack children vertically */
+            /* --- FIX ENDS HERE --- */
+        }
+        main {
+            flex-grow: 1; /* Allows this element to grow and push the footer down */
         }
         .nav-link {
             transition: color 0.3s, border-bottom-color 0.3s;
@@ -236,90 +238,25 @@
     </style>
 </head>
 <body class="bg-stone-50 text-stone-800">
-
-    <header class="bg-white/80 backdrop-blur-lg sticky top-0 z-50 shadow-sm" style="display:none;"></header>
-
+    <header class="bg-white/80 backdrop-blur-lg sticky top-0 z-50 shadow-sm">
+        <nav class="flex justify-center space-x-6 py-4">
+            <a href="index.html" class="font-bold text-stone-700">Weekly Planner</a>
+            <a href="recipe-hub.html" class="font-bold text-stone-700">Recipe Hub</a>
+            <a href="ingredients.html" class="font-bold text-teal-700">Ingredients</a>
+        </nav>
+    </header>
     <main class="container mx-auto px-6 py-12">
-        <section class="mb-16">
-            <div class="flex justify-center mb-8">
-                <div id="main-tab-switch" class="flex bg-pastel-blue clay-section p-1 space-x-2">
-                    <button class="main-tab-btn clay-btn px-6 py-2 text-base font-semibold active" data-tab="planner">Weekly Planner</button>
-                    <button class="main-tab-btn clay-btn px-6 py-2 text-base font-semibold" data-tab="hub">Recipe Hub</button>
-                    <button class="main-tab-btn clay-btn px-6 py-2 text-base font-semibold" data-tab="ingredient">Ingredient List</button>
-                </div>
-            </div>
-            <div id="main-tab-content">
-                <section id="planner" class="tab-section">
-                    <div class="text-center mb-10">
-                        <h3 class="text-2xl md:text-3xl font-bold clay-title mb-2">Interactive Weekly Planner</h3>
-                        <p class="max-w-3xl mx-auto text-lg text-stone-600 mt-2">
-                            Plan for the week, showcasing the variety from your preferences.
-                        </p>
-                    </div>
-                    <div id="meal-plan-grid" class="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 clay-section p-6"></div>
-                </section>
-                <section id="hub" class="tab-section hidden">
-                    <div class="text-center mb-10">
-                        <h3 class="text-2xl md:text-3xl font-bold clay-title mb-2">Recipe & Prep Hub</h3>
-                        <p class="max-w-3xl mx-auto text-lg text-stone-600 mt-2">
-                            Select a tab below to explore quick recipes and batch cooking strategies.
-                        </p>
-                    </div>
-                    <div class="bg-white p-4 sm:p-6 rounded-xl shadow-lg border border-stone-200 clay-section">
-                        <div class="border-b border-stone-200 mb-6">
-                            <nav class="flex flex-wrap -mb-px" id="hub-tabs">
-                                <button class="hub-tab whitespace-nowrap py-2 px-2 border-b-2 font-medium text-sm clay-btn">☕ Pre-Breakfast</button>
-                                <button class="hub-tab active-tab whitespace-nowrap py-2 px-2 border-b-2 font-medium text-sm clay-btn">🍳 Breakfast</button>
-                                <button class="hub-tab whitespace-nowrap py-2 px-2 border-b-2 font-medium text-sm clay-btn">🍲 Lunch & Dinner</button>
-                                <button class="hub-tab whitespace-nowrap py-2 px-2 border-b-2 font-medium text-sm clay-btn">🥜 Snacks</button>
-                                <button class="hub-tab whitespace-nowrap py-2 px-2 border-b-2 font-medium text-sm clay-btn">🥗 Sides</button>
-                                <button class="hub-tab whitespace-nowrap py-2 px-2 border-b-2 font-medium text-sm clay-btn">🗓️ Weekend Prep</button>
-                            </nav>
-                        </div>
-                        <div id="hub-content"></div>
-                    </div>
-                </section>
-                <section id="ingredient" class="tab-section hidden">
-                    <div class="text-center mb-10">
-                        <h3 class="text-2xl md:text-3xl font-bold clay-title mb-2">Ingredient List</h3>
-                        <p class="max-w-3xl mx-auto text-lg text-stone-600 mt-2">
-                            An ingredient list dynamically generated from all your recipes.
-                        </p>
-                    </div>
-                    <div id="ingredient-list-container" class="bg-white p-6 rounded-xl shadow-lg border border-stone-200 clay-section"></div>
-                </section>
-            </div>
+        <section>
+            <h3 class="text-2xl md:text-3xl font-bold clay-title mb-2 text-center">Ingredient List</h3>
+            <p class="max-w-3xl mx-auto text-lg text-stone-600 mt-2 text-center mb-10">
+                Ingredients that are required for creating your recipes
+            </p>
+            <div id="ingredient-list-container" class="bg-white p-6 rounded-xl shadow-lg border border-stone-200 clay-section"></div>
         </section>
-
     </main>
-    
     <footer class="bg-stone-800 text-stone-300 py-8 text-center">
-        <p>Your journey to healthy, convenient eating starts now.</p>
-        <p class="text-sm mt-2 opacity-70">Interactive experience designed from the "Varied, Efficient Shared Meal Plan" report.</p>
+        <p>Manage your ingredients efficiently.</p>
     </footer>
-
-    <script src="recipes.js"></script>
-    <script>
-        // Claymorphism main tab switch logic
-        document.addEventListener('DOMContentLoaded', function() {
-            const tabBtns = document.querySelectorAll('.main-tab-btn');
-            const tabSections = document.querySelectorAll('.tab-section');
-            tabBtns.forEach(btn => {
-                btn.addEventListener('click', function() {
-                    tabBtns.forEach(b => b.classList.remove('active'));
-                    this.classList.add('active');
-                    const tab = this.getAttribute('data-tab');
-                    tabSections.forEach(sec => {
-                        if (sec.id === tab) {
-                            sec.classList.remove('hidden');
-                        } else {
-                            sec.classList.add('hidden');
-                        }
-                    });
-                });
-            });
-        });
-    </script>
-
+    <script src="ingredients.js"></script>
 </body>
 </html>
