@@ -42,17 +42,23 @@ document.addEventListener('DOMContentLoaded', () => {
                     instrTrunc = instrTrunc.replace(/\n/g, '<br>');
                     ingrTrunc = ingrTrunc.replace(/\n/g, '<br>');
                     return `
-                        <div class="recipe-card relative flex flex-col h-full">
+                        <div class="recipe-card relative flex flex-col h-full bg-white">
                             <div class="absolute top-2 right-2">
                                 <span title="${recipe.is_vegetarian ? 'Vegetarian' : 'Non-Vegetarian'}" style="display:inline-block;width:14px;height:14px;border-radius:50%;background:${recipe.is_vegetarian ? '#22c55e' : '#ef4444'};border:2px solid #fff;box-shadow:0 0 2px #888;"></span>
                             </div>
-                            <div>
+                            <div class="flex-grow">
                                 <h5 class="font-bold text-sm card-title mb-1">${recipe.name}</h5>
-                                <p class="text-xs text-stone-600 mt-1 text-gray-500 card-instructions" style="max-height:4.5em;overflow:hidden;">${instrTrunc}</p>
-                                <p class="text-xs text-stone-500 mt-1 card-ingredients" style="max-height:3.5em;overflow:hidden;"><span class="font-semibold">Ingredients:</span> ${ingrTrunc}</p>
+                                <div class="relative">
+                                    <p class="text-xs text-stone-600 mt-1 card-instructions" style="max-height:6em;overflow:hidden;">${instrTrunc}</p>
+                                    <div class="fade-out-overlay absolute bottom-0 left-0 w-full h-4 bg-gradient-to-t from-white to-transparent pointer-events-none hidden"></div>
+                                </div>
+                                <div class="relative mt-1">
+                                    <p class="text-xs text-stone-500 card-ingredients" style="max-height:5em;overflow:hidden;"><span class="font-semibold">Ingredients:</span> ${ingrTrunc}</p>
+                                    <div class="fade-out-overlay absolute bottom-0 left-0 w-full h-4 bg-gradient-to-t from-white to-transparent pointer-events-none hidden"></div>
+                                </div>
                                 <p class="text-xs text-stone-500 mt-1 card-nutrition" style="max-height:3.5em;overflow:hidden;">${recipe.energy ? `<span class="font-semibold">Energy:</span> ${recipe.energy} kcal, ` : ''}${recipe.protein ? `<span class="font-semibold">Protein:</span> ${recipe.protein} g, ` : ''}${recipe.carbs ? `<span class="font-semibold">Carbs:</span> ${recipe.carbs} g, ` : ''}${recipe.fat ? `<span class="font-semibold">Fat:</span> ${recipe.fat} g, ` : ''}${recipe.fiber ? `<span class="font-semibold">Fiber:</span> ${recipe.fiber} g` : ''}</p>
                             </div>
-                            <div class="absolute bottom-3 right-3 flex space-x-2">
+                            <div class="pt-4 flex justify-end space-x-2">
                                 <button class="text-xs px-2 py-1 clay-btn" onclick="editRecipe(${recipe.id})">Edit</button>
                                 <button class="text-xs px-2 py-1 clay-btn" style="background:linear-gradient(135deg,#fbcfe8 60%,#c7d2fe 100%);color:#be185d;" onclick="deleteRecipe(${recipe.id})">Delete</button>
                             </div>
@@ -76,6 +82,15 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('veg-filter-dropdown').addEventListener('change', (e) => {
             vegFilter = e.target.value;
             renderRecipes();
+        });
+
+        // Conditionally apply fade-out gradient if text overflows
+        document.querySelectorAll('.card-instructions, .card-ingredients').forEach(p => {
+            const isOverflowing = p.scrollHeight > p.clientHeight;
+            const overlay = p.nextElementSibling;
+            if (isOverflowing && overlay && overlay.classList.contains('fade-out-overlay')) {
+                overlay.classList.remove('hidden');
+            }
         });
     }
     async function fetchRecipes() {
