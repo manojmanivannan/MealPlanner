@@ -15,7 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     function renderRecipes() {
         const filterDropdown = `
-            <div id="veg-filter-dropdown-container" class="flex items-center space-x-2 absolute right-4 top-0 z-10">
+            <div id="veg-filter-dropdown-container" class="flex items-center space-x-2">
                 <select id="veg-filter-dropdown" class="clay-input px-2 py-1 rounded border border-stone-300 text-sm">
                     <option value="both" ${vegFilter === 'both' ? 'selected' : ''}>Both</option>
                     <option value="veg" ${vegFilter === 'veg' ? 'selected' : ''}>Vegetarian</option>
@@ -27,11 +27,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (vegFilter === 'veg') filteredRecipes = filteredRecipes.filter(r => r.is_vegetarian);
         if (vegFilter === 'nonveg') filteredRecipes = filteredRecipes.filter(r => r.is_vegetarian === false);
         hubContent.innerHTML = `
-            <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-4 relative">
-                <button id="add-recipe-btn" class="clay-btn px-4 py-2 mb-2 sm:mb-0">Add Recipe</button>
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+                <button id="add-recipe-btn" class="clay-btn px-4 py-2">Add Recipe</button>
                 ${filterDropdown}
             </div>
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 ${filteredRecipes.map(recipe => {
                     const maxLen = 250;
                     let instr = recipe.instructions || '';
@@ -48,7 +48,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             </div>
                             <div>
                                 <h5 class="font-bold text-sm card-title mb-1">${recipe.name}</h5>
-                                <p class="text-xs text-stone-600 mt-1 card-instructions" style="max-height:4.5em;overflow:hidden;">${instrTrunc}</p>
+                                <p class="text-xs text-stone-600 mt-1 text-gray-500 card-instructions" style="max-height:4.5em;overflow:hidden;">${instrTrunc}</p>
                                 <p class="text-xs text-stone-500 mt-1 card-ingredients" style="max-height:3.5em;overflow:hidden;"><span class="font-semibold">Ingredients:</span> ${ingrTrunc}</p>
                                 <p class="text-xs text-stone-500 mt-1 card-nutrition" style="max-height:3.5em;overflow:hidden;">${recipe.energy ? `<span class="font-semibold">Energy:</span> ${recipe.energy} kcal, ` : ''}${recipe.protein ? `<span class="font-semibold">Protein:</span> ${recipe.protein} g, ` : ''}${recipe.carbs ? `<span class="font-semibold">Carbs:</span> ${recipe.carbs} g, ` : ''}${recipe.fat ? `<span class="font-semibold">Fat:</span> ${recipe.fat} g, ` : ''}${recipe.fiber ? `<span class="font-semibold">Fiber:</span> ${recipe.fiber} g` : ''}</p>
                             </div>
@@ -134,11 +134,14 @@ document.addEventListener('DOMContentLoaded', () => {
                         </div>
                         <div class="mb-4">
                             <label class="block text-sm font-medium text-stone-700 mb-1">Ingredients</label>
+                            <div class="mb-2">
+                                <input type="text" id="ingredient-search" class="mt-1 block w-full rounded-sm border-stone-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 p-1 text-sm" placeholder="Search ingredients...">
+                            </div>
                             <div id="ingredient-select-list" class="space-y-2 max-h-72 overflow-y-auto border rounded p-2 bg-stone-50">
                                 ${ingredientList.map(ing => {
                                     const sel = selectedIngredients.find(si => si.name === ing.name);
                                     return `
-                                    <div class="flex items-center space-x-2">
+                                    <div class="ingredient-item flex items-center space-x-2">
                                         <input type="checkbox" class="ingredient-checkbox" data-id="${ing.id}" ${sel ? 'checked' : ''}>
                                         <span>${ing.name}</span>
                                         <input type="number" min="0" step="any" class="ingredient-qty w-16 px-1 border rounded" placeholder="Qty" value="${sel ? sel.quantity : ''}" ${sel ? '' : 'disabled'}>
@@ -179,8 +182,25 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
         document.body.insertAdjacentHTML('beforeend', modalHTML);
         const overlay = document.getElementById('recipe-modal');
-        overlay.addEventListener('click', () => overlay.remove());
+        // overlay.addEventListener('click', () => overlay.remove());
         overlay.querySelector('div.bg-white').addEventListener('click', e => e.stopPropagation());
+
+        // ADDED: Logic for the ingredient search filter
+        const searchInput = document.getElementById('ingredient-search');
+        const ingredientItems = overlay.querySelectorAll('.ingredient-item');
+
+        searchInput.addEventListener('input', () => {
+            const searchTerm = searchInput.value.toLowerCase();
+            ingredientItems.forEach(item => {
+                const ingredientName = item.querySelector('span').textContent.toLowerCase();
+                if (ingredientName.includes(searchTerm)) {
+                    item.style.display = 'flex';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+        });
+
         overlay.querySelectorAll('.ingredient-checkbox').forEach(cb => {
             cb.addEventListener('change', function() {
                 const parent = cb.parentElement;

@@ -16,6 +16,14 @@
             font-family: 'Inter', sans-serif;
             background: linear-gradient(135deg, #f5f6fa 0%, #e7eaf3 100%); /* Dull/faded frame background */
             color: #232946;
+            /* --- FIX STARTS HERE --- */
+            min-height: 100vh;      /* Make body at least as tall as the screen */
+            display: flex;          /* Enable flexbox */
+            flex-direction: column; /* Stack children vertically */
+            /* --- FIX ENDS HERE --- */
+        }
+        main {
+            flex-grow: 1; /* Allows this element to grow and push the footer down */
         }
         .nav-link {
             transition: color 0.3s, border-bottom-color 0.3s;

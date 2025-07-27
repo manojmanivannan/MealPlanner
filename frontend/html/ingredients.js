@@ -37,6 +37,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <select id="new-ingredient-unit" class="clay-input border border-transparent w-full sm:w-auto" ></select>
                 <button id="add-ingredient-btn" class="clay-btn text-sm w-full sm:w-auto px-6 py-2">Add</button>
                 <div class="flex-1"></div>
+                <button id="toggle-all-details-btn" class="clay-btn text-xs px-3 py-1 mr-4">Collapse All</button>
                 <label class="flex items-center cursor-pointer ml-auto">
                     <span class="mr-2 text-sm clay-label">Sort by shelf life</span>
                     <span class="relative inline-flex items-center w-12 h-6">
@@ -90,9 +91,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
                 const letters = Object.keys(grouped).sort();
                 html += letters.map(letter => `
-                    <div class="mb-2">
-                        <div class="font-bold clay-label text-xs mb-1 pl-1">${letter}</div>
-                        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-1">
+                    <details class="mb-2" open>
+                        <summary class="font-bold clay-label text-xs mb-1 pl-1 cursor-pointer">${letter}</summary>
+                        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-1 pt-2">
                             ${grouped[letter].map(ing => `
                                 <label class="ingredient-card flex items-center justify-between space-x-2 p-2 group border border-transparent relative">
                                     <div class="flex items-center space-x-2 flex-1 min-w-0">
@@ -106,7 +107,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 </label>
                             `).join('')}
                         </div>
-                    </div>
+                    </details>
                 `).join('');
             }
             listSection.innerHTML = html;
@@ -212,7 +213,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     populateUnitSelect('edit-ingredient-unit', ing.serving_unit);
                     updateNutritionLabels(ing.serving_unit); 
                     const overlay = document.getElementById(modalId);
-                    overlay.addEventListener('click', () => overlay.remove());
+                    // overlay.addEventListener('click', () => overlay.remove());
                     overlay.querySelector('div.bg-white').addEventListener('click', e => e.stopPropagation());
                     document.getElementById('cancel-edit-ingredient').addEventListener('click', () => overlay.remove());
                     document.getElementById('edit-ingredient-form').addEventListener('submit', async (ev) => {
@@ -299,6 +300,25 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 });
             });
+            const toggleAllBtn = document.getElementById('toggle-all-details-btn');
+            if (shelfLifeMode) {
+                toggleAllBtn.style.display = 'none';
+            } else {
+                toggleAllBtn.style.display = 'inline-block';
+                toggleAllBtn.addEventListener('click', () => {
+                    const allDetails = listSection.querySelectorAll('details');
+                    if (allDetails.length === 0) return;
+
+                    // Determine action by checking the button's current text
+                    const isCollapsing = toggleAllBtn.textContent.includes('Collapse');
+                    
+                    allDetails.forEach(detail => {
+                        detail.open = !isCollapsing;
+                    });
+                    
+                    toggleAllBtn.textContent = isCollapsing ? 'Expand All' : 'Collapse All';
+                });
+            }
             const addBtn = document.getElementById('add-ingredient-btn');
             const input = document.getElementById('new-ingredient-input');
             const shelfLifeInput = document.getElementById('new-ingredient-shelf-life');
