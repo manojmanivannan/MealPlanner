@@ -148,6 +148,10 @@ document.addEventListener('DOMContentLoaded', () => {
                                         <select id="edit-ingredient-unit" class="mt-1 block w-full rounded-sm border-stone-300 shadow-sm focus:border-teal-500 focus:ring-teal-500" required></select>
                                     </div>
                                     <div class="mb-4">
+                                        <label class="block text-sm font-medium text-stone-700">Serving Size</label>
+                                        <input type="number" id="edit-ingredient-serving-size" class="mt-1 block w-full rounded-sm border-stone-300 shadow-sm focus:border-teal-500 focus:ring-teal-500" value="${ing.serving_size}" min="1" step="1" required>
+                                    </div>
+                                    <div class="mb-4">
                                         <label id="edit-kcal-label" class="block text-sm font-medium text-stone-700">Energy (kcal)</label>
                                         <input type="number" id="edit-ingredient-kcal" class="mt-1 block w-full rounded-sm border-stone-300 shadow-sm focus:border-teal-500 focus:ring-teal-500" value="${ing.energy}" min="0" step="any">
                                     </div>
@@ -156,15 +160,15 @@ document.addEventListener('DOMContentLoaded', () => {
                                         <input type="number" id="edit-ingredient-protein" class="mt-1 block w-full rounded-sm border-stone-300 shadow-sm focus:border-teal-500 focus:ring-teal-500" value="${ing.protein}" min="0" step="any">
                                     </div>
                                     <div class="mb-4">
-                                        <label class="block text-sm font-medium text-stone-700">Fat (g)</label>
+                                        <label id="edit-fat-label" class="block text-sm font-medium text-stone-700">Fat (g)</label>
                                         <input type="number" id="edit-ingredient-fat" class="mt-1 block w-full rounded-sm border-stone-300 shadow-sm focus:border-teal-500 focus:ring-teal-500" value="${ing.fat}" min="0" step="any">
                                     </div>
                                     <div class="mb-4">
-                                        <label class="block text-sm font-medium text-stone-700">Carbs (g)</label>
+                                        <label id="edit-carbs-label" class="block text-sm font-medium text-stone-700">Carbs (g)</label>
                                         <input type="number" id="edit-ingredient-carbs" class="mt-1 block w-full rounded-sm border-stone-300 shadow-sm focus:border-teal-500 focus:ring-teal-500" value="${ing.carbs}" min="0" step="any">
                                     </div>
                                     <div class="mb-4">
-                                        <label class="block text-sm font-medium text-stone-700">Fiber (g)</label>
+                                        <label id="edit-fiber-label" class="block text-sm font-medium text-stone-700">Fiber (g)</label>
                                         <input type="number" id="edit-ingredient-fiber" class="mt-1 block w-full rounded-sm border-stone-300 shadow-sm focus:border-teal-500 focus:ring-teal-500" value="${ing.fiber}" min="0" step="any">
                                     </div>
                                     <div class="flex justify-end space-x-4">
@@ -181,6 +185,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     const updateNutritionLabels = (unit) => {
                         const kcalLabel = document.getElementById('edit-kcal-label');
                         const proteinLabel = document.getElementById('edit-protein-label');
+                        const fatLabel = document.getElementById('edit-fat-label');
+                        const carbsLabel = document.getElementById('edit-carbs-label');
+                        const fiberLabel = document.getElementById('edit-fiber-label');
                         // Add other nutrition labels here if needed
 
                         let perUnitText = '';
@@ -197,6 +204,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         
                         kcalLabel.textContent = `Energy (kcal/${perUnitText})`;
                         proteinLabel.textContent = `Protein (g/${perUnitText})`;
+                        fatLabel.textContent = `Fat (g/${perUnitText})`;
+                        carbsLabel.textContent = `Carbs (g/${perUnitText})`;
+                        fiberLabel.textContent = `Fiber (g/${perUnitText})`;
                         // ... update other labels ...
                     };
                     populateUnitSelect('edit-ingredient-unit', ing.serving_unit);
@@ -210,6 +220,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         const newName = document.getElementById('edit-ingredient-name').value.trim();
                         const newShelfLife = document.getElementById('edit-ingredient-shelf-life').value.trim();
                         const newUnit = document.getElementById('edit-ingredient-unit').value.trim();
+                        const newServingSize = document.getElementById('edit-ingredient-serving-size').value.trim();
                         const energy = document.getElementById('edit-ingredient-kcal').value.trim();
                         const protein = document.getElementById('edit-ingredient-protein').value.trim();
                         const carbs = document.getElementById('edit-ingredient-carbs').value.trim();
@@ -252,6 +263,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 name: newName,
                                 shelf_life: newShelfLife,
                                 serving_unit: newUnit,
+                                serving_size: newServingSize,
                                 energy: energy,
                                 protein: protein,
                                 carbs: carbs,

@@ -118,6 +118,7 @@ class Ingredient(BaseModel):
     last_available: Optional[str] = None  # ISO timestamp
     remaining_shelf_life: Optional[int] = None  # days left
     serving_unit: ServingUnits = ServingUnits.GRAMS  # default to grams
+    serving_size: Optional[int] = 100
     energy: Optional[float] = 0
     protein: Optional[float] = 0
     carbs: Optional[float] = 0
@@ -342,7 +343,7 @@ def get_ingredients_list(sort: Optional[str] = None):
     conn = get_db_connection()
     cur = conn.cursor()
     cur.execute(
-        f"SELECT id, name, available, shelf_life, last_available, serving_unit, energy, protein, carbs, fat, fiber FROM ingredients {SORTING};"
+        f"SELECT id, name, available, shelf_life, last_available, serving_unit, serving_size, energy, protein, carbs, fat, fiber FROM ingredients {SORTING};"
     )
     rows = cur.fetchall()
     cur.close()
@@ -351,7 +352,7 @@ def get_ingredients_list(sort: Optional[str] = None):
     result = []
     now = datetime.datetime.utcnow()
     for row in rows:
-        id, name, available, shelf_life, last_available, serving_unit, energy, protein, carbs, fat, fiber = row
+        id, name, available, shelf_life, last_available, serving_unit, serving_size, energy, protein, carbs, fat, fiber = row
         # Compute remaining shelf life if available and last_available is set
         remaining = shelf_life
         last_available_str = last_available.isoformat() if last_available else None
@@ -375,6 +376,7 @@ def get_ingredients_list(sort: Optional[str] = None):
                 last_available=last_available_str,
                 remaining_shelf_life=remaining,  # days left
                 serving_unit=serving_unit,
+                serving_size=serving_size,
                 energy=energy,
                 protein=protein,
                 carbs=carbs,
@@ -392,6 +394,7 @@ def update_ingredient_availability(
     shelf_life: Optional[int] = None,
     name: Optional[str] = None,
     serving_unit: Optional[ServingUnits] = None,
+    serving_size: Optional[int] = None,
     energy: Optional[float] = None,
     protein: Optional[float] = None,
     carbs: Optional[float] = None,
@@ -420,6 +423,9 @@ def update_ingredient_availability(
     if serving_unit is not None:
         set_clauses.append("serving_unit = %s")
         params.append(serving_unit.strip())
+    if serving_size is not None:
+        set_clauses.append("serving_size = %s")
+        params.append(serving_size)
     if energy is not None:
         set_clauses.append("energy = %s")
         params.append(energy)
@@ -443,7 +449,7 @@ def update_ingredient_availability(
     params.append(ingredient_id)
     try:
         cur.execute(
-            f"UPDATE ingredients SET {set_clause} WHERE id = %s RETURNING id, name, available, shelf_life, last_available, serving_unit, energy, protein, carbs, fat, fiber;",
+            f"UPDATE ingredients SET {set_clause} WHERE id = %s RETURNING id, name, available, shelf_life, last_available, serving_unit, serving_size, energy, protein, carbs, fat, fiber;",
             tuple(params),
         )
     except psycopg2.errors.UniqueViolation:
@@ -466,7 +472,7 @@ def update_ingredient_availability(
         logger.warning(f"Ingredient id {ingredient_id} not found for update.")
         raise HTTPException(status_code=404, detail="Ingredient not found")
     # Compute remaining shelf life for response
-    id, name, available, shelf_life, last_available, serving_unit, energy, protein, carbs, fat, fiber = row
+    id, name, available, shelf_life, last_available, serving_unit, serving_size, energy, protein, carbs, fat, fiber = row
     remaining = shelf_life
     last_available_str = last_available.isoformat() if last_available else None
     if available and last_available and shelf_life is not None:
