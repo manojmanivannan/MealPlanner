@@ -95,7 +95,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <summary class="font-bold clay-label text-xs mb-1 pl-1 cursor-pointer">${letter}</summary>
                         <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-1 pt-2">
                             ${grouped[letter].map(ing => `
-                                <label class="ingredient-card flex items-center justify-between space-x-2 p-2 group border border-transparent relative transition-opacity duration-200 ${!ing.available ? 'opacity-70' : ''}">
+                                <label class="ingredient-card flex items-center justify-between space-x-2 p-2 group border border-transparent relative transition-opacity duration-200 ${!ing.available ? 'opacity-80' : ''}">
                                     <div class="flex items-center space-x-2 flex-1 min-w-0">
                                         <input type="checkbox" data-id="${ing.id}" ${ing.available ? 'checked' : ''} class="clay-checkbox">
                                         <span class="text-xs truncate">${ing.name}</span>
@@ -136,7 +136,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         } else {
                             // In the default view, avoid the "refresh" and just toggle a class.
                             if (card) {
-                                card.classList.toggle('opacity-70', !available);
+                                card.classList.toggle('opacity-80', !available);
                             }
                             checkbox.disabled = false; // Re-enable the checkbox
                         }
@@ -145,7 +145,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         // If the update fails, revert the checkbox and visual state
                         checkbox.checked = !available;
                         if (card) {
-                            card.classList.toggle('opacity-70', !available);
+                            card.classList.toggle('opacity-80', !available);
                         }
                         alert('Update failed. Please try again.');
                         checkbox.disabled = false; // Re-enable on failure too
@@ -302,14 +302,34 @@ document.addEventListener('DOMContentLoaded', () => {
                 btn.addEventListener('click', async (e) => {
                     e.preventDefault();
                     e.stopPropagation();
+
                     const id = btn.getAttribute('data-id');
                     const ing = ingredients.find(i => i.id == id);
                     const ingName = ing ? ing.name : 'this ingredient';
+
                     if (window.confirm(`Delete ingredient '${ingName}'?`)) {
-                        await fetch(`${API_BASE}/ingredients/${id}`, {
-                            method: 'DELETE'
-                        });
-                        renderShoppingList();
+                        try {
+                            // 1. Await the fetch and store the response
+                            const response = await fetch(`${API_BASE}/ingredients/${id}`, {
+                                method: 'DELETE'
+                            });
+
+                            // 2. Check if the response status is OK (e.g., 200-299)
+                            if (response.ok) {
+                                // Success: re-render the list
+                                renderShoppingList();
+                            } else {
+                                // Error: Parse the JSON error body from the backend
+                                const errorData = await response.json();
+                                // Display the detailed error message from the API
+                                const recipes = errorData.detail;
+                                window.alert(`Unable to delete '${ingName}'.\n${recipes}`);
+                            }
+                        } catch (error) {
+                            // 3. Catch network errors
+                            console.error('Failed to delete ingredient:', error);
+                            window.alert('An error occurred. Could not delete the ingredient.');
+                        }
                     }
                 });
             });

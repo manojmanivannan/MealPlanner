@@ -285,7 +285,18 @@ def delete_ingredient(ingredient_id: int, db: Session = Depends(get_db)):
 
     # 1. Find the ingredient by its ID.
     db_ingredient = db.query(Ingredient).filter(Ingredient.id == ingredient_id).first()
-
+    all_recipes = db.query(Recipe).all()
+    
+    recipes_using_ingredient_list = []
+    
+    # find all recipes that are using this ingredient
+    for recipe in all_recipes:
+        for ingredient in recipe.ingredients:
+            if ingredient['name'] == db_ingredient.name:
+                recipes_using_ingredient_list.append(recipe.name)
+    if recipes_using_ingredient_list:
+        raise HTTPException(status_code=405, detail="Recipes:"+", ".join(recipes_using_ingredient_list)+" are using this ingredient")
+    
     # 2. If the ingredient doesn't exist, raise a 404 error.
     if not db_ingredient:
         logger.warning(f"Ingredient with ID {ingredient_id} not found for deletion.")
