@@ -52,7 +52,7 @@ document.addEventListener('DOMContentLoaded', () => {
         populateUnitSelect('new-ingredient-unit');
         const listSection = document.getElementById('ingredients-list-section');
         try {
-            const response = await fetch(`${API_BASE}/ingredients-list`);
+            const response = await fetch(`${API_BASE}/ingredients`);
             let ingredients = await response.json();
             let html = '';
             if (shelfLifeMode) {
@@ -95,7 +95,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <summary class="font-bold clay-label text-xs mb-1 pl-1 cursor-pointer">${letter}</summary>
                         <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-1 pt-2">
                             ${grouped[letter].map(ing => `
-                                <label class="ingredient-card flex items-center justify-between space-x-2 p-2 group border border-transparent relative">
+                                <label class="ingredient-card flex items-center justify-between space-x-2 p-2 group border border-transparent relative transition-opacity duration-200 ${!ing.available ? 'opacity-80' : ''}">
                                     <div class="flex items-center space-x-2 flex-1 min-w-0">
                                         <input type="checkbox" data-id="${ing.id}" ${ing.available ? 'checked' : ''} class="clay-checkbox">
                                         <span class="text-xs truncate">${ing.name}</span>
@@ -111,16 +111,48 @@ document.addEventListener('DOMContentLoaded', () => {
                 `).join('');
             }
             listSection.innerHTML = html;
+
+            // --- MODIFIED EVENT LISTENER ---
             listSection.querySelectorAll('input[type="checkbox"]').forEach(cb => {
                 cb.addEventListener('change', async (e) => {
-                    const id = e.target.getAttribute('data-id');
-                    const available = e.target.checked;
-                    await fetch(`${API_BASE}/ingredients/${id}?available=${available}`, {
-                        method: 'PUT'
-                    });
-                    renderShoppingList();
+                    const checkbox = e.target;
+                    const id = checkbox.getAttribute('data-id');
+                    const available = checkbox.checked;
+                    const card = checkbox.closest('.ingredient-card');
+
+                    checkbox.disabled = true; // Prevent multiple clicks while processing
+
+                    try {
+                        const response = await fetch(`${API_BASE}/ingredients/${id}?available=${available}`, {
+                            method: 'PUT'
+                        });
+
+                        if (!response.ok) throw new Error('Server update failed');
+
+                        if (shelfLifeMode) {
+                            // In shelf-life mode, the list MUST be re-sorted.
+                            // A full re-render is the simplest way to achieve this.
+                            renderShoppingList();
+                        } else {
+                            // In the default view, avoid the "refresh" and just toggle a class.
+                            if (card) {
+                                card.classList.toggle('opacity-80', !available);
+                            }
+                            checkbox.disabled = false; // Re-enable the checkbox
+                        }
+                    } catch (error) {
+                        console.error('Failed to update ingredient:', error);
+                        // If the update fails, revert the checkbox and visual state
+                        checkbox.checked = !available;
+                        if (card) {
+                            card.classList.toggle('opacity-80', !available);
+                        }
+                        alert('Update failed. Please try again.');
+                        checkbox.disabled = false; // Re-enable on failure too
+                    }
                 });
             });
+
             listSection.querySelectorAll('.edit-ingredient-btn').forEach(btn => {
                 btn.addEventListener('click', async (e) => {
                     e.preventDefault();
@@ -181,16 +213,12 @@ document.addEventListener('DOMContentLoaded', () => {
                         </div>
                     `;
                     document.body.insertAdjacentHTML('beforeend', modalHTML);
-                    // --- DYNAMIC LABEL LOGIC ---
-                    // Step 2: Create a function to update the labels based on the selected unit.
                     const updateNutritionLabels = (unit) => {
                         const kcalLabel = document.getElementById('edit-kcal-label');
                         const proteinLabel = document.getElementById('edit-protein-label');
                         const fatLabel = document.getElementById('edit-fat-label');
                         const carbsLabel = document.getElementById('edit-carbs-label');
                         const fiberLabel = document.getElementById('edit-fiber-label');
-                        // Add other nutrition labels here if needed
-
                         let perUnitText = '';
                         switch (unit) {
                             case 'g':
@@ -200,20 +228,17 @@ document.addEventListener('DOMContentLoaded', () => {
                                 perUnitText = '100ml';
                                 break;
                             default:
-                                perUnitText = `${unit}`; // For 'cup', 'tsp', 'unit', etc.
+                                perUnitText = `${unit}`;
                         }
-                        
                         kcalLabel.textContent = `Energy (kcal/${perUnitText})`;
                         proteinLabel.textContent = `Protein (g/${perUnitText})`;
                         fatLabel.textContent = `Fat (g/${perUnitText})`;
                         carbsLabel.textContent = `Carbs (g/${perUnitText})`;
                         fiberLabel.textContent = `Fiber (g/${perUnitText})`;
-                        // ... update other labels ...
                     };
                     populateUnitSelect('edit-ingredient-unit', ing.serving_unit);
-                    updateNutritionLabels(ing.serving_unit); 
+                    updateNutritionLabels(ing.serving_unit);
                     const overlay = document.getElementById(modalId);
-                    // overlay.addEventListener('click', () => overlay.remove());
                     overlay.querySelector('div.bg-white').addEventListener('click', e => e.stopPropagation());
                     document.getElementById('cancel-edit-ingredient').addEventListener('click', () => overlay.remove());
                     document.getElementById('edit-ingredient-form').addEventListener('submit', async (ev) => {
@@ -222,11 +247,11 @@ document.addEventListener('DOMContentLoaded', () => {
                         const newShelfLife = document.getElementById('edit-ingredient-shelf-life').value.trim();
                         const newUnit = document.getElementById('edit-ingredient-unit').value.trim();
                         const newServingSize = document.getElementById('edit-ingredient-serving-size').value.trim();
-                        const energy = document.getElementById('edit-ingredient-kcal').value.trim();
-                        const protein = document.getElementById('edit-ingredient-protein').value.trim();
-                        const carbs = document.getElementById('edit-ingredient-carbs').value.trim();
-                        const fat = document.getElementById('edit-ingredient-fat').value.trim();
-                        const fiber = document.getElementById('edit-ingredient-fiber').value.trim();
+                        let energy = document.getElementById('edit-ingredient-kcal').value.trim();
+                        let protein = document.getElementById('edit-ingredient-protein').value.trim();
+                        let carbs = document.getElementById('edit-ingredient-carbs').value.trim();
+                        let fat = document.getElementById('edit-ingredient-fat').value.trim();
+                        let fiber = document.getElementById('edit-ingredient-fiber').value.trim();
                         if (!newName) {
                             alert('Name is required.');
                             return;
@@ -239,26 +264,12 @@ document.addEventListener('DOMContentLoaded', () => {
                             alert('Unit must be a one of the valid units (g, kg, ml, l, cup, tbsp, tsp).');
                             return;
                         }
-                        // If energy is blank, set to 0
-                        if (!energy) {
-                            energy = 0;
-                        }
-                        // If protein is blank, set to 0
-                        if (!protein) {
-                            protein = 0;
-                        }
-                        // If carbs is blank, set to 0
-                        if (!carbs) {
-                            carbs = 0;
-                        }
-                        // If fat is blank, set to 0
-                        if (!fat) {
-                            fat = 0;
-                        }
-                        // If fiber is blank, set to 0
-                        if (!fiber) {
-                            fiber = 0;
-                        }
+                        if (!energy) energy = 0;
+                        if (!protein) protein = 0;
+                        if (!carbs) carbs = 0;
+                        if (!fat) fat = 0;
+                        if (!fiber) fiber = 0;
+
                         try {
                             const params = new URLSearchParams({
                                 name: newName,
@@ -291,12 +302,34 @@ document.addEventListener('DOMContentLoaded', () => {
                 btn.addEventListener('click', async (e) => {
                     e.preventDefault();
                     e.stopPropagation();
+
                     const id = btn.getAttribute('data-id');
                     const ing = ingredients.find(i => i.id == id);
                     const ingName = ing ? ing.name : 'this ingredient';
+
                     if (window.confirm(`Delete ingredient '${ingName}'?`)) {
-                        await fetch(`${API_BASE}/ingredients/${id}`, { method: 'DELETE' });
-                        renderShoppingList();
+                        try {
+                            // 1. Await the fetch and store the response
+                            const response = await fetch(`${API_BASE}/ingredients/${id}`, {
+                                method: 'DELETE'
+                            });
+
+                            // 2. Check if the response status is OK (e.g., 200-299)
+                            if (response.ok) {
+                                // Success: re-render the list
+                                renderShoppingList();
+                            } else {
+                                // Error: Parse the JSON error body from the backend
+                                const errorData = await response.json();
+                                // Display the detailed error message from the API
+                                const recipes = errorData.detail;
+                                window.alert(`Unable to delete '${ingName}'.\n${recipes}`);
+                            }
+                        } catch (error) {
+                            // 3. Catch network errors
+                            console.error('Failed to delete ingredient:', error);
+                            window.alert('An error occurred. Could not delete the ingredient.');
+                        }
                     }
                 });
             });
@@ -308,14 +341,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 toggleAllBtn.addEventListener('click', () => {
                     const allDetails = listSection.querySelectorAll('details');
                     if (allDetails.length === 0) return;
-
-                    // Determine action by checking the button's current text
                     const isCollapsing = toggleAllBtn.textContent.includes('Collapse');
-                    
                     allDetails.forEach(detail => {
                         detail.open = !isCollapsing;
                     });
-                    
                     toggleAllBtn.textContent = isCollapsing ? 'Expand All' : 'Collapse All';
                 });
             }
@@ -329,7 +358,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 const shelf_life = shelfLifeInput.value.trim();
                 console.log(servingUnit.value);
                 const serving_unit = servingUnit.value.trim();
-
                 if (!name) return;
                 if (shelf_life === '') {
                     alert('Shelf life is required and must be an integer greater than 0 (days).');

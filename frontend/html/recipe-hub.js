@@ -130,7 +130,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const showRecipeModal = async (recipe = null) => {
         let ingredientList = [];
         try {
-            const resp = await fetch(`${API_BASE}/ingredients-list?sort=name`);
+            const resp = await fetch(`${API_BASE}/ingredients?sort=name`);
             ingredientList = await resp.json();
         } catch (e) {
             ingredientList = [];
