@@ -132,9 +132,9 @@ def setup_database() -> None:
 
         with SessionLocal() as session:
             print("Loading initial data...")
-            load_data_from_csv(session, Ingredient, "ingredients.csv", _transform_common_types)
-            load_data_from_csv(session, Recipe, "recipes.csv", transform_recipe_row)
-            load_data_from_csv(session, WeeklyPlan, "weekly_plan.csv", transform_weekly_plan_row)
+            load_data_from_csv(session, Ingredient, "data/ingredients.csv", _transform_common_types)
+            load_data_from_csv(session, Recipe, "data/recipes.csv", transform_recipe_row)
+            load_data_from_csv(session, WeeklyPlan, "data/weekly_plan.csv", transform_weekly_plan_row)
             
             print("-- Updating '*_id_seq' sequence...")
             session.execute(text("SELECT setval('recipes_id_seq', (SELECT MAX(id) FROM recipes));"))
