@@ -67,7 +67,7 @@ def transform_weekly_plan_row(row: Dict[str, Any]) -> Dict[str, Any]:
     processed_row = _transform_common_types(row)
     # Handle meal_type enum
     if processed_row.get('meal_type'):
-        processed_row['meal_type'] = RecipeMealType(processed_row['meal_type'])
+        processed_row['meal_type'] = RecipeMealType(processed_row['meal_type']).value
     # Handle recipe_ids array
     recipe_ids_str = processed_row.get("recipe_ids", "")
     if recipe_ids_str and recipe_ids_str not in ["{}", ""]:

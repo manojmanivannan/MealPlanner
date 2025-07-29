@@ -7,7 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!selectElement) return;
 
         try {
-            const response = await fetch(`${API_BASE}/list-serving-units`);
+            const response = await fetch(`${API_BASE}/utilities/list-serving-units`);
             if (!response.ok) throw new Error('Failed to fetch units');
             
             const units = await response.json();

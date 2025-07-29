@@ -6,11 +6,11 @@ document.addEventListener('DOMContentLoaded', () => {
     let activeCategory = '🍳 Breakfast';
     let vegFilter = 'both';
     const mealTypeMap = {
-        '☕ Pre-Breakfast': ['pre-breakfast'],
+        '☕ Pre-Breakfast': ['pre_breakfast'],
         '🍳 Breakfast': ['breakfast'],
         '🍲 Lunch & Dinner': ['lunch', 'dinner'],
         '🥜 Snacks': ['snack'],
-        '🗓️ Weekend Prep': ['weekend prep'],
+        '🗓️ Weekend Prep': ['weekend_prep'],
         '🥗 Sides': ['sides']
     };
     function renderRecipes() {
@@ -174,12 +174,12 @@ document.addEventListener('DOMContentLoaded', () => {
                         <div class="mb-4">
                             <label for="recipe-meal-type" class="block text-sm font-medium text-stone-700">Meal Type</label>
                             <select id="recipe-meal-type" class="mt-1 block w-full rounded-sm border-stone-300 shadow-sm focus:border-teal-500 focus:ring-teal-500" required>
-                                <option value="pre-breakfast" ${(recipe && recipe.meal_type === 'pre-breakfast') ? 'selected' : ''}>Pre-Breakfast</option>
+                                <option value="pre_breakfast" ${(recipe && recipe.meal_type === 'pre_breakfast') ? 'selected' : ''}>Pre-Breakfast</option>
                                 <option value="breakfast" ${(recipe && recipe.meal_type === 'breakfast') ? 'selected' : ''}>Breakfast</option>
                                 <option value="lunch" ${(recipe && recipe.meal_type === 'lunch') ? 'selected' : ''}>Lunch</option>
                                 <option value="dinner" ${(recipe && recipe.meal_type === 'dinner') ? 'selected' : ''}>Dinner</option>
                                 <option value="snack" ${(recipe && recipe.meal_type === 'snack') ? 'selected' : ''}>Snack</option>
-                                <option value="weekend prep" ${(recipe && recipe.meal_type === 'weekend prep') ? 'selected' : ''}>Weekend Prep</option>
+                                <option value="weekend_prep" ${(recipe && recipe.meal_type === 'weekend_prep') ? 'selected' : ''}>Weekend Prep</option>
                                 <option value="sides" ${(recipe && recipe.meal_type === 'sides') ? 'selected' : ''}>Sides</option>
                             </select>
                         </div>

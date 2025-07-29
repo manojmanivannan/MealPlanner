@@ -11,7 +11,7 @@ TABLES_TO_BACKUP="recipes weekly_plan ingredients"
 for TABLE in $TABLES_TO_BACKUP; do
     echo "Backing up table $TABLE from container $CONTAINER_NAME to $TABLE.csv ..."
     #psql -U postgres -d recipes -c "COPY (SELECT * FROM weekly_plan) TO STDOUT WITH CSV HEADER"
-    docker exec -t $CONTAINER_NAME psql -U $DB_USER -d $DB_NAME -c "COPY (SELECT * FROM $TABLE ORDER BY id) TO STDOUT WITH CSV HEADER" > "./backend/${TABLE}.csv"
+    docker exec -t $CONTAINER_NAME psql -U $DB_USER -d $DB_NAME -c "COPY (SELECT * FROM $TABLE ORDER BY id) TO STDOUT WITH CSV HEADER" > "./backend/data/${TABLE}.csv"
     if [ $? -ne 0 ]; then
         echo "Backup failed for table $TABLE!"
         exit 1
