@@ -1,7 +1,6 @@
 # models.py
 import enum
 from sqlalchemy import (
-    create_engine,
     Column,
     Integer,
     String,
@@ -12,22 +11,21 @@ from sqlalchemy import (
     TIMESTAMP,
     DDL,
     event,
-    ForeignKeyConstraint,
     UniqueConstraint,
 )
-from sqlalchemy.dialects.postgresql import JSONB, ARRAY, insert
+from sqlalchemy.dialects.postgresql import JSONB, ARRAY
 from sqlalchemy.sql import func
 from database import Base
 
 # --- Enums for Meal Types ---
 # Using Python's Enum class makes choices explicit and type-safe
-class RecipeMealType(enum.Enum):
-    pre_breakfast = "pre-breakfast"
+class RecipeMealType(str, enum.Enum):
+    pre_breakfast = "pre_breakfast"
     breakfast = "breakfast"
     lunch = "lunch"
     dinner = "dinner"
     snack = "snack"
-    weekend_prep = "weekend prep"
+    weekend_prep = "weekend_prep"
     sides = "sides"
 
 

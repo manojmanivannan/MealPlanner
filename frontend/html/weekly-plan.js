@@ -1,7 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
     const API_BASE = '/api';
     const daysOfWeek = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
-    const mealSlots = ["pre-breakfast", "breakfast", "lunch", "snack", "dinner"];
+    const mealSlots = ["pre_breakfast", "breakfast", "lunch", "snack", "dinner"];
     const dayBgClass = [
         'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'
     ];
@@ -31,7 +31,7 @@ document.addEventListener('DOMContentLoaded', () => {
     async function saveWeeklyPlanSlot(day, meal, recipeIds) {
         try {
             await fetch(`${API_BASE}/weekly-plan`, {
-                method: 'POST',
+                method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ day, meal_type: meal, recipe_ids: recipeIds })
             });
@@ -146,12 +146,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     window.selectRecipeForSlot = (day, meal) => {
         let filtered = [];
-        if (meal === 'pre-breakfast') {
-            filtered = recipes.filter(r => r.meal_type === 'pre-breakfast');
+        if (meal === 'pre_breakfast') {
+            filtered = recipes.filter(r => r.meal_type === 'pre_breakfast');
         } else if (meal === 'snack') {
             filtered = recipes.filter(r => r.meal_type === 'snack');
         } else {
-            filtered = recipes.filter(r => !['pre-breakfast', 'snack'].includes(r.meal_type));
+            filtered = recipes.filter(r => !['pre_breakfast', 'snack'].includes(r.meal_type));
         }
         let selectedIds = weeklyPlan[day]?.[meal] || [];
         if (!Array.isArray(selectedIds)) selectedIds = selectedIds ? [selectedIds] : [];
