@@ -2,6 +2,9 @@
 
 ![planner](https://github.com/manojmanivannan/mealplanner/blob/master/samples/planner.png?raw=true)
 
+![recipe_hub](https://github.com/manojmanivannan/mealplanner/blob/master/samples/recipe_hub.png?raw=true)
+
+![ingredients](https://github.com/manojmanivannan/mealplanner/blob/master/samples/ingredients.png?raw=true)
 A simple, intuitive web application for planning your weekly meals, managing recipes, and tracking ingredients.
 
 ## How to Run
