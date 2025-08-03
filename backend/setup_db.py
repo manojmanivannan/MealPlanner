@@ -29,7 +29,7 @@ def _transform_common_types(row: Dict[str, Any]) -> Dict[str, Any]:
         if value == '':
             processed_row[key] = None
             continue
-        if key in ['protein', 'carbs', 'fat', 'fiber', 'energy', 'shelf_life', 'serving_size', 'id']:
+        if key in ['protein', 'carbs', 'fat', 'fiber', 'energy', 'shelf_life', 'serving_size', 'id', 'serves']:
             if value is not None:
                 try:
                     processed_row[key] = float(value) if '.' in value else int(value)

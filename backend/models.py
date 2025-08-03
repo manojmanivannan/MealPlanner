@@ -73,6 +73,7 @@ class Recipe(Base):
 
     id = Column(Integer, primary_key=True)
     name = Column(String(255), nullable=False)
+    serves = Column(Integer, default=2)
     ingredients = Column(JSONB, nullable=False)
     instructions = Column(Text, nullable=False)
     meal_type = Column(Enum(RecipeMealType, name="recipe_meal_type_enum"), nullable=False)

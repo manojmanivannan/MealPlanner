@@ -16,6 +16,7 @@ class RecipeSchema(BaseModel):
     
     id: int
     name: str
+    serves: int
     ingredients: List[IngredientItemSchema]
     instructions: str
     meal_type: RecipeMealType
@@ -28,6 +29,7 @@ class RecipeSchema(BaseModel):
 
 class RecipeCreateUpdateSchema(BaseModel):
     name: str
+    serves: int
     ingredients: List[IngredientItemSchema]
     instructions: str
     meal_type: RecipeMealType
