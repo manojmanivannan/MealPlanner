@@ -60,11 +60,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     const recipe = recipes.find(r => r.id === rid);
                     if (recipe) {
                         // Add this recipe's nutrition to the meal's total
-                        mealNutrition.protein += recipe.protein || 0;
-                        mealNutrition.carbs += recipe.carbs || 0;
-                        mealNutrition.fat += recipe.fat || 0;
-                        mealNutrition.fiber += recipe.fiber || 0;
-                        mealNutrition.energy += recipe.energy || 0;
+                        mealNutrition.protein += (recipe.protein/recipe.serves) || 0;
+                        mealNutrition.carbs += (recipe.carbs/recipe.serves) || 0;
+                        mealNutrition.fat += (recipe.fat/recipe.serves) || 0;
+                        mealNutrition.fiber += (recipe.fiber/recipe.serves) || 0;
+                        mealNutrition.energy += (recipe.energy/recipe.serves) || 0;
                     }
                     return recipe;
                 }).filter(Boolean); // Filter out any nulls if a recipe wasn't found
@@ -92,7 +92,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 return `
                     <div class="mb-2">
                         <div class="flex items-center justify-between">
-                            <span class="font-medium text-xs text-stone-500 capitalize">${meal}</span>
+                            <span class="font-medium text-xs text-stone-500 capitalize">${meal.replace('_', '-')}</span>
                             <button class="text-xs px-2 py-1 rounded font-semibold transition ${recipeIds.length ? 'bg-orange-100 text-orange-700 hover:bg-orange-200' : 'bg-green-100 text-green-700 hover:bg-green-200'}" type="button" onclick="window.selectRecipeForSlot('${day}','${meal}')">${recipeIds.length ? 'Change' : 'Add'}</button>
                         </div>
                         <div class="ml-2 recipe-names-container">
@@ -215,9 +215,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div class="bg-white p-6 rounded-lg shadow-lg w-full max-w-lg relative" onclick="event.stopPropagation()">
                     <button class="absolute top-2 right-2 text-2xl text-stone-400 hover:text-stone-700" onclick="document.getElementById('recipe-detail-modal').remove()">&times;</button>
                     <h2 class="text-2xl font-bold mb-2 text-teal-800">${recipe.name}</h2>
+                    <div class="mb-2 text-xs text-stone-500"><span class="font-semibold">Serves:</span> ${recipe.serves}</div>
                     <div class="mb-2"><span class="font-semibold">Ingredients:</span><br>${ingr}</div>
                     <div class="mb-2"><span class="font-semibold">Instructions:</span><br>${instr}</div>
-                    <div class="mt-2 text-xs text-stone-500">Meal type: ${recipe.meal_type}</div>
+                    <div class="mt-2 text-xs text-stone-500"><span class="font-semibold">Meal type:</span> ${recipe.meal_type.replace('_', '-')}</div>
                     <div class="mt-4 pt-3 border-t">
                         <h3 class="font-semibold mb-1">Nutrition:</h3>
                         <p class="text-sm text-stone-700">

@@ -148,6 +148,10 @@ document.addEventListener('DOMContentLoaded', () => {
                             <input type="text" id="recipe-name" class="mt-1 block w-full rounded-sm border-stone-300 shadow-sm focus:border-teal-500 focus:ring-teal-500" value="${recipe ? recipe.name : ''}" required>
                         </div>
                         <div class="mb-4">
+                            <label for="recipe-serves" class="block text-sm font-medium text-stone-700">Serves</label>
+                            <input type="number" id="recipe-serves" class="mt-1 block w-full rounded-sm border-stone-300 shadow-sm focus:border-teal-500 focus:ring-teal-500" value="${recipe ? recipe.serves : '2'}" step="1" required>
+                        </div>
+                        <div class="mb-4">
                             <label class="block text-sm font-medium text-stone-700 mb-1">Ingredients</label>
                             <div class="mb-2">
                                 <input type="text" id="ingredient-search" class="mt-1 block w-full rounded-sm border-stone-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 p-1 text-sm" placeholder="Search ingredients...">
@@ -230,6 +234,7 @@ document.addEventListener('DOMContentLoaded', () => {
         e.preventDefault();
         const id = document.getElementById('recipe-id').value;
         const name = document.getElementById('recipe-name').value;
+        const serves = document.getElementById('recipe-serves').value;
         const instructions = document.getElementById('recipe-instructions').value;
         const meal_type = document.getElementById('recipe-meal-type').value;
         const is_vegetarian = document.getElementById('recipe-veg').checked;
@@ -242,7 +247,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const serving_unit = parent.querySelector('.ingredient-unit').textContent;
             ingredients.push({ name: ingredientName, quantity: parseFloat(qty) || 0, serving_unit: serving_unit });
         });
-        const recipeData = { name, ingredients, instructions, meal_type, is_vegetarian };
+        const recipeData = { name, serves, ingredients, instructions, meal_type, is_vegetarian };
         try {
             if (id) {
                 const response = await fetch(`${API_BASE}/recipes/${id}`, {
