@@ -3,6 +3,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const hubContent = document.getElementById('hub-content');
     const hubTabsContainer = document.getElementById('hub-tabs');
     
+    // --- NEW: State and constants from the planner ---
+    const daysOfWeek = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+    const mealSlots = ["pre_breakfast", "breakfast", "lunch", "snack", "dinner"];
+    let weeklyPlan = {};
+    
     let recipes = [];
     let activeCategory = '🍳 Breakfast';
     let vegFilter = 'both';
@@ -17,6 +22,37 @@ document.addEventListener('DOMContentLoaded', () => {
         '🥗 Sides': ['sides']
     };
 
+    // --- NEW: Fetches the weekly plan data ---
+    async function fetchWeeklyPlan() {
+        try {
+            const response = await fetch(`${API_BASE}/weekly-plan`);
+            weeklyPlan = await response.json();
+        } catch (error) {
+            console.error('Error fetching weekly plan:', error);
+            // Initialize with an empty structure on error
+            weeklyPlan = daysOfWeek.reduce((acc, day) => ({ ...acc, [day]: {} }), {});
+        }
+    }
+
+    // --- NEW: Saves an updated meal slot to the server ---
+    async function saveWeeklyPlanSlot(day, meal, recipeIds) {
+        try {
+            await fetch(`${API_BASE}/weekly-plan`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ day, meal_type: meal, recipe_ids: recipeIds })
+            });
+            // Ensure nested structure exists before assignment
+            if (!weeklyPlan[day]) {
+                weeklyPlan[day] = {};
+            }
+            weeklyPlan[day][meal] = recipeIds; // Update local state
+            alert('Recipe assigned successfully!');
+        } catch (error) {
+            console.error('Error saving weekly plan slot:', error);
+            alert('Failed to assign recipe. Please try again.');
+        }
+    }
     // --- CHANGE 1: A new function to ONLY handle search filtering ---
     function applySearchFilter() {
         const lowerCaseSearchTerm = searchTerm.toLowerCase();
@@ -96,9 +132,12 @@ document.addEventListener('DOMContentLoaded', () => {
                                     </div>
                                     <p class="text-xs text-stone-500 mt-1 card-nutrition" style="max-height:3.5em;overflow:hidden;">${recipe.energy ? `<span class="font-semibold">Energy:</span> ${recipe.energy} kcal, ` : ''}${recipe.protein ? `<span class="font-semibold">Protein:</span> ${recipe.protein} g, ` : ''}${recipe.carbs ? `<span class="font-semibold">Carbs:</span> ${recipe.carbs} g, ` : ''}${recipe.fat ? `<span class="font-semibold">Fat:</span> ${recipe.fat} g, ` : ''}${recipe.fiber ? `<span class="font-semibold">Fiber:</span> ${recipe.fiber} g` : ''}</p>
                                 </div>
-                                <div class="pt-4 flex justify-end space-x-2">
-                                    <button class="text-xs px-2 py-1 clay-btn" onclick="editRecipe(${recipe.id})">Edit</button>
-                                    <button class="text-xs px-2 py-1 clay-btn" style="background:linear-gradient(135deg,#fbcfe8 60%,#c7d2fe 100%);color:#be185d;" onclick="deleteRecipe(${recipe.id})">Delete</button>
+                                <div class="pt-4 flex justify-between space-x-2">
+                                    <button class="text-xs px-2 py-1 clay-btn" style="background:linear-gradient(135deg, #f7dbc4ff 60%, #c7d2fe 100%);color: #be6818;" onclick="window.showAssignModal(${recipe.id})">Assign</button>
+                                    <div class="flex space-x-2">
+                                        <button class="text-xs px-2 py-1 clay-btn" onclick="editRecipe(${recipe.id})">Edit</button>
+                                        <button class="text-xs px-2 py-1 clay-btn" style="background:linear-gradient(135deg, #fbcfe8 60%, #c7d2fe 100%);color: #be185d;" onclick="deleteRecipe(${recipe.id})">Delete</button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -153,6 +192,75 @@ document.addEventListener('DOMContentLoaded', () => {
             renderRecipes();
         }
     });
+
+    // --- NEW: Modal to assign a recipe to the weekly plan ---
+    window.showAssignModal = (recipeId) => {
+        const recipe = recipes.find(r => r.id === recipeId);
+        if (!recipe) {
+            alert('Recipe not found!');
+            return;
+        }
+
+        // Suggest a meal slot based on the recipe's type
+        let suggestedSlot = recipe.meal_type;
+        if (recipe.meal_type === 'lunch' || recipe.meal_type === 'dinner') {
+             // For simplicity, default lunch/dinner types to lunch
+            suggestedSlot = 'lunch';
+        }
+
+        const modalHTML = `
+            <div id="assign-recipe-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                <div class="bg-white p-6 rounded-lg shadow-lg w-full max-w-sm">
+                    <h2 class="text-xl font-bold mb-1">Assign Recipe</h2>
+                    <p class="text-sm text-stone-600 mb-4">Assign "<strong>${recipe.name}</strong>" to a meal slot.</p>
+                    <form id="assign-recipe-form">
+                        <div class="mb-4">
+                            <label for="assign-day" class="block text-sm font-medium text-stone-700 mb-1">Day of the Week</label>
+                            <select id="assign-day" class="w-full clay-input p-2">
+                                ${daysOfWeek.map(day => `<option value="${day}">${day}</option>`).join('')}
+                            </select>
+                        </div>
+                        <div class="mb-6">
+                            <label for="assign-meal" class="block text-sm font-medium text-stone-700 mb-1">Meal Slot</label>
+                            <select id="assign-meal" class="w-full clay-input p-2">
+                                ${mealSlots.map(slot => `<option value="${slot}" ${slot === suggestedSlot ? 'selected' : ''}>${slot.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}</option>`).join('')}
+                            </select>
+                        </div>
+                        <div class="flex justify-end space-x-2">
+                            <button type="button" id="cancel-assign-btn" class="bg-stone-200 text-stone-800 px-4 py-2 rounded-lg hover:bg-stone-300">Cancel</button>
+                            <button type="submit" class="bg-teal-600 text-white px-4 py-2 rounded-lg hover:bg-teal-700">Save to Plan</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        `;
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+
+        const form = document.getElementById('assign-recipe-form');
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const day = document.getElementById('assign-day').value;
+            const meal = document.getElementById('assign-meal').value;
+            
+            let existingIds = weeklyPlan[day]?.[meal] || [];
+            if (!Array.isArray(existingIds)) {
+                existingIds = [existingIds];
+            }
+
+            if (existingIds.includes(recipeId)) {
+                alert('This recipe is already assigned to that meal slot.');
+                return;
+            }
+
+            const newRecipeIds = [...existingIds, recipeId];
+            saveWeeklyPlanSlot(day, meal, newRecipeIds);
+            document.getElementById('assign-recipe-modal').remove();
+        });
+
+        document.getElementById('cancel-assign-btn').addEventListener('click', () => {
+            document.getElementById('assign-recipe-modal').remove();
+        });
+    };
 
     // The rest of your functions (editRecipe, deleteRecipe, showRecipeModal, etc.) remain unchanged.
     window.editRecipe = (id) => {
