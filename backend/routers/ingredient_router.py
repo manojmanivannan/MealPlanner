@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 from fastapi import Depends, HTTPException, Response, status, Query
 from sqlalchemy.orm import Session
+from sqlalchemy.orm.attributes import flag_modified
 from typing import List
 from models import Recipe, Ingredient, ServingUnits
 from schemas import IngredientSchema
@@ -70,6 +71,40 @@ def update_ingredient(
     if not db_ingredient:
         raise HTTPException(status_code=404, detail="Ingredient not found")
 
+    # Store old values needed for the search
+    old_name = db_ingredient.name
+    
+    # Get the new values from the request payload
+    update_data = {
+        'name': name, 
+        'serving_unit': serving_unit.value
+        # ... other fields
+    }
+
+    # 2. Check if name or unit, which are stored in recipes, have changed
+    should_sync_recipes = update_data.get('name') or update_data.get('serving_unit')
+
+    if should_sync_recipes:
+        # Find all recipes containing the old ingredient name
+        # Note: This query might need to be adapted based on your exact JSON structure
+        recipes_to_update = db.query(Recipe).filter(
+            Recipe.ingredients.contains([{'id': db_ingredient.id}])
+        ).all()
+
+        for recipe in recipes_to_update:
+            # Create a new list for ingredients to avoid mutation issues
+            new_ingredients_list = []
+            for ingredient_in_recipe in recipe.ingredients:
+                                
+                ingredient_in_recipe['name'] = update_data["name"]
+                ingredient_in_recipe['serving_unit'] = update_data['serving_unit']
+                new_ingredients_list.append(ingredient_in_recipe)
+            
+            # Re-assign the list to the recipe object
+            recipe.ingredients = new_ingredients_list
+            # Flag the JSON column as modified to ensure it's saved
+            flag_modified(recipe, "ingredients")
+
     # 3. Update attributes only for the parameters that were provided
     if name is not None:
         db_ingredient.name = name
@@ -95,6 +130,7 @@ def update_ingredient(
     if fiber is not None:
         db_ingredient.fiber = fiber
     
+
     try:
         # 4. Commit the changes to the database
         db.commit()

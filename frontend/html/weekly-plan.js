@@ -83,9 +83,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 // HTML for the meal's nutrition breakdown
                 const mealNutritionHTML = recipeIds.length > 0 ? `
                     <div class="ml-2 mt-1 text-stone-500">
-                    <p class="text-[9px] text-gray-450">
-                        E: ${mealNutrition.energy.toFixed(0)}kcal | Pr: ${mealNutrition.protein.toFixed(1)}g | Ca: ${mealNutrition.carbs.toFixed(1)}g | Fa: ${mealNutrition.fat.toFixed(1)}g | Fb: ${mealNutrition.fiber.toFixed(0)}g
-                    </p>
+                        <p class="text-[9px] text-gray-450">
+                            E: ${mealNutrition.energy.toFixed(0)}kcal | Pr: ${mealNutrition.protein.toFixed(1)}g | Ca: ${mealNutrition.carbs.toFixed(1)}g | Fa: ${mealNutrition.fat.toFixed(1)}g | Fb: ${mealNutrition.fiber.toFixed(0)}g
+                        </p>
                     </div>
                 ` : '';
 
@@ -155,15 +155,21 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         let selectedIds = weeklyPlan[day]?.[meal] || [];
         if (!Array.isArray(selectedIds)) selectedIds = selectedIds ? [selectedIds] : [];
+        
         const modalHTML = `
             <div id="select-recipe-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
                 <div class="bg-white p-6 rounded-lg shadow-lg w-full max-w-md" onclick="event.stopPropagation()">
                     <h2 class="text-xl font-bold mb-4">Select ${meal.charAt(0).toUpperCase() + meal.slice(1)} for ${day}</h2>
+                    
+                    <div class="mb-4">
+                        <input type="search" id="recipe-search-input" placeholder="Search recipes..." class="w-full px-3 py-2 border border-stone-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500">
+                    </div>
+
                     <form id="multi-recipe-form">
-                        <div class="mb-4 max-h-60 overflow-y-auto">
+                        <div id="recipe-list-container" class="mb-4 max-h-60 overflow-y-auto">
                             ${filtered.length ? filtered.map(r => `
-                                <div class="mb-2 flex items-center justify-between border-b pb-1">
-                                    <label class="flex items-center space-x-2">
+                                <div class="recipe-item mb-2 flex items-center justify-between border-b pb-1">
+                                    <label class="flex items-center space-x-2 w-full cursor-pointer">
                                         <input type="checkbox" name="recipeIds" value="${r.id}" ${selectedIds.includes(r.id) ? 'checked' : ''}>
                                         <span>${r.name}</span>
                                     </label>
@@ -179,9 +185,28 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
         `;
         document.body.insertAdjacentHTML('beforeend', modalHTML);
+
+        // --- Search Functionality Logic ---
+        const searchInput = document.getElementById('recipe-search-input');
+        const recipeItems = document.querySelectorAll('#recipe-list-container .recipe-item');
+
+        searchInput.addEventListener('input', (e) => {
+            const searchTerm = e.target.value.toLowerCase();
+            recipeItems.forEach(item => {
+                const recipeName = item.querySelector('label span').textContent.toLowerCase();
+                if (recipeName.includes(searchTerm)) {
+                    item.style.display = 'flex';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+        });
+        // --- End of Search Logic ---
+
         const overlay = document.getElementById('select-recipe-modal');
         overlay.addEventListener('click', () => overlay.remove());
         overlay.querySelector('div.bg-white').addEventListener('click', e => e.stopPropagation());
+        
         document.getElementById('multi-recipe-form').addEventListener('submit', function(e) {
             e.preventDefault();
             const checked = Array.from(this.elements['recipeIds']).filter(cb => cb.checked).map(cb => parseInt(cb.value));
