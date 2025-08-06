@@ -2,9 +2,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const API_BASE = '/api';
     const hubContent = document.getElementById('hub-content');
     const hubTabsContainer = document.getElementById('hub-tabs');
+    
     let recipes = [];
     let activeCategory = '🍳 Breakfast';
     let vegFilter = 'both';
+    let searchTerm = ''; 
+
     const mealTypeMap = {
         '☕ Pre-Breakfast': ['pre_breakfast'],
         '🍳 Breakfast': ['breakfast'],
@@ -13,103 +16,145 @@ document.addEventListener('DOMContentLoaded', () => {
         '🗓️ Weekend Prep': ['weekend_prep'],
         '🥗 Sides': ['sides']
     };
+
+    // --- CHANGE 1: A new function to ONLY handle search filtering ---
+    function applySearchFilter() {
+        const lowerCaseSearchTerm = searchTerm.toLowerCase();
+        const recipeCards = document.querySelectorAll('.recipe-card-container'); // Target the new wrapper
+        let visibleCount = 0;
+
+        recipeCards.forEach(card => {
+            const recipeName = card.dataset.recipeName.toLowerCase();
+            if (recipeName.includes(lowerCaseSearchTerm)) {
+                card.style.display = 'block';
+                visibleCount++;
+            } else {
+                card.style.display = 'none';
+            }
+        });
+
+        // Show a message if no recipes match the search
+        const noResultsMessage = document.getElementById('no-results-message');
+        if (visibleCount === 0) {
+            noResultsMessage.style.display = 'block';
+        } else {
+            noResultsMessage.style.display = 'none';
+        }
+    }
+
     function renderRecipes() {
-        const filterDropdown = `
-            <div id="veg-filter-dropdown-container" class="flex items-center space-x-2">
-                <select id="veg-filter-dropdown" class="clay-input px-2 py-1 rounded border border-stone-300 text-sm">
-                    <option value="both" ${vegFilter === 'both' ? 'selected' : ''}>Both</option>
-                    <option value="veg" ${vegFilter === 'veg' ? 'selected' : ''}>Vegetarian</option>
-                    <option value="nonveg" ${vegFilter === 'nonveg' ? 'selected' : ''}>Non-Vegetarian</option>
-                </select>
-            </div>
-        `;
+        // This function now only renders based on category and veg filters.
+        // The search filter is applied separately and doesn't cause a re-render.
         let filteredRecipes = recipes.filter(r => mealTypeMap[activeCategory]?.includes(r.meal_type));
-        if (vegFilter === 'veg') filteredRecipes = filteredRecipes.filter(r => r.is_vegetarian);
-        if (vegFilter === 'nonveg') filteredRecipes = filteredRecipes.filter(r => r.is_vegetarian === false);
+        
+        if (vegFilter === 'veg') {
+            filteredRecipes = filteredRecipes.filter(r => r.is_vegetarian);
+        } else if (vegFilter === 'nonveg') {
+            filteredRecipes = filteredRecipes.filter(r => !r.is_vegetarian);
+        }
+
         hubContent.innerHTML = `
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
-                <button id="add-recipe-btn" class="clay-btn px-4 py-2">Add Recipe</button>
-                ${filterDropdown}
+                <div class="flex items-center gap-4 flex-wrap">
+                    <button id="add-recipe-btn" class="clay-btn px-4 py-2">Add Recipe</button>
+                    <input type="search" id="recipe-search-input" placeholder="🔍 Find a recipe..." class="clay-input px-3 py-2" value="${searchTerm}" autocomplete="off">
+                </div>
+                <div id="veg-filter-dropdown-container" class="flex items-center space-x-2">
+                    <select id="veg-filter-dropdown" class="clay-input px-2 py-1 rounded border border-stone-300 text-sm">
+                        <option value="both" ${vegFilter === 'both' ? 'selected' : ''}>All Diets</option>
+                        <option value="veg" ${vegFilter === 'veg' ? 'selected' : ''}>Vegetarian</option>
+                        <option value="nonveg" ${vegFilter === 'nonveg' ? 'selected' : ''}>Non-Vegetarian</option>
+                    </select>
+                </div>
             </div>
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            <div id="recipe-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 ${filteredRecipes.map(recipe => {
                     const maxLen = 250;
                     let instr = recipe.instructions || '';
-                    // let ingr = recipe.ingredients || '';
                     let ingr = Array.isArray(recipe.ingredients) ? recipe.ingredients.map(i => `${i.quantity} ${i.serving_unit} ${i.name}`).join('; ') : '';
                     let instrTrunc = instr.length > maxLen ? instr.slice(0, maxLen) + '…' : instr;
                     let ingrTrunc = ingr.length > maxLen ? ingr.slice(0, maxLen) + '…' : ingr;
                     instrTrunc = instrTrunc.replace(/\n/g, '<br>');
                     ingrTrunc = ingrTrunc.replace(/\n/g, '<br>');
+                    
+                    // Added a wrapper div with a data attribute for the recipe name
                     return `
-                        <div class="recipe-card relative flex flex-col h-full bg-white">
-                            <div class="absolute top-2 right-2">
+                        <div class="recipe-card-container" data-recipe-name="${recipe.name}">
+                            <div class="recipe-card relative flex flex-col h-full bg-white">
+                                <div class="absolute top-2 right-2">
                                 <span title="${recipe.is_vegetarian ? 'Vegetarian' : 'Non-Vegetarian'}" style="display:inline-block;width:14px;height:14px;border-radius:50%;background:${recipe.is_vegetarian ? '#22c55e' : '#ef4444'};border:2px solid #fff;box-shadow:0 0 2px #888;"></span>
-                            </div>
-                            <div class="flex-grow">
-                                <h5 class="font-bold text-sm card-title mb-1">${recipe.name}</h5>
-                                <div class="relative">
-                                    <p class="text-xs text-stone-600 mt-1 card-instructions" style="max-height:6em;overflow:hidden;">${instrTrunc}</p>
-                                    <div class="fade-out-overlay absolute bottom-0 left-0 w-full h-4 bg-gradient-to-t from-white to-transparent pointer-events-none hidden"></div>
                                 </div>
-                                <div class="relative mt-1">
-                                    <p class="text-xs text-stone-500 card-ingredients" style="max-height:5em;overflow:hidden;"><span class="font-semibold">Ingredients:</span> ${ingrTrunc}</p>
-                                    <div class="fade-out-overlay absolute bottom-0 left-0 w-full h-4 bg-gradient-to-t from-white to-transparent pointer-events-none hidden"></div>
+                                <div class="flex-grow">
+                                    <h5 class="font-bold text-sm card-title mb-1">${recipe.name}</h5>
+                                    <div class="relative">
+                                        <p class="text-xs text-stone-600 mt-1 card-instructions" style="max-height:6em;overflow:hidden;">${instrTrunc}</p>
+                                        <div class="fade-out-overlay absolute bottom-0 left-0 w-full h-4 bg-gradient-to-t from-white to-transparent pointer-events-none hidden"></div>
+                                    </div>
+                                    <div class="relative mt-1">
+                                        <p class="text-xs text-stone-500 card-ingredients" style="max-height:5em;overflow:hidden;"><span class="font-semibold">Ingredients:</span> ${ingrTrunc}</p>
+                                        <div class="fade-out-overlay absolute bottom-0 left-0 w-full h-4 bg-gradient-to-t from-white to-transparent pointer-events-none hidden"></div>
+                                    </div>
+                                    <p class="text-xs text-stone-500 mt-1 card-nutrition" style="max-height:3.5em;overflow:hidden;">${recipe.energy ? `<span class="font-semibold">Energy:</span> ${recipe.energy} kcal, ` : ''}${recipe.protein ? `<span class="font-semibold">Protein:</span> ${recipe.protein} g, ` : ''}${recipe.carbs ? `<span class="font-semibold">Carbs:</span> ${recipe.carbs} g, ` : ''}${recipe.fat ? `<span class="font-semibold">Fat:</span> ${recipe.fat} g, ` : ''}${recipe.fiber ? `<span class="font-semibold">Fiber:</span> ${recipe.fiber} g` : ''}</p>
                                 </div>
-                                <p class="text-xs text-stone-500 mt-1 card-nutrition" style="max-height:3.5em;overflow:hidden;">${recipe.energy ? `<span class="font-semibold">Energy:</span> ${recipe.energy} kcal, ` : ''}${recipe.protein ? `<span class="font-semibold">Protein:</span> ${recipe.protein} g, ` : ''}${recipe.carbs ? `<span class="font-semibold">Carbs:</span> ${recipe.carbs} g, ` : ''}${recipe.fat ? `<span class="font-semibold">Fat:</span> ${recipe.fat} g, ` : ''}${recipe.fiber ? `<span class="font-semibold">Fiber:</span> ${recipe.fiber} g` : ''}</p>
-                            </div>
-                            <div class="pt-4 flex justify-end space-x-2">
-                                <button class="text-xs px-2 py-1 clay-btn" onclick="editRecipe(${recipe.id})">Edit</button>
-                                <button class="text-xs px-2 py-1 clay-btn" style="background:linear-gradient(135deg,#fbcfe8 60%,#c7d2fe 100%);color:#be185d;" onclick="deleteRecipe(${recipe.id})">Delete</button>
+                                <div class="pt-4 flex justify-end space-x-2">
+                                    <button class="text-xs px-2 py-1 clay-btn" onclick="editRecipe(${recipe.id})">Edit</button>
+                                    <button class="text-xs px-2 py-1 clay-btn" style="background:linear-gradient(135deg,#fbcfe8 60%,#c7d2fe 100%);color:#be185d;" onclick="deleteRecipe(${recipe.id})">Delete</button>
+                                </div>
                             </div>
                         </div>
                     `;
                 }).join('')}
             </div>
+            <div id="no-results-message" class="col-span-full text-center text-stone-500 py-8" style="display: none;">No recipes found matching your search.</div>
         `;
-        document.getElementById('add-recipe-btn').addEventListener('click', () => {
-            showRecipeModal();
-            const dropdownContainer = document.getElementById('veg-filter-dropdown-container');
-            if (dropdownContainer) dropdownContainer.style.display = 'none';
-            const observer = new MutationObserver(() => {
-                if (!document.getElementById('recipe-modal')) {
-                    dropdownContainer.style.display = '';
-                    observer.disconnect();
-                }
-            });
-            observer.observe(document.body, { childList: true });
-        });
+        
+        // --- Event Listeners ---
+        document.getElementById('add-recipe-btn').addEventListener('click', () => showRecipeModal());
+        
+        // --- CHANGE 2: Other filters now call renderRecipes, which is correct ---
         document.getElementById('veg-filter-dropdown').addEventListener('change', (e) => {
             vegFilter = e.target.value;
             renderRecipes();
         });
+        
+        // --- CHANGE 3: Search input now calls the new lightweight filter function ---
+        document.getElementById('recipe-search-input').addEventListener('input', (e) => {
+            searchTerm = e.target.value;
+            applySearchFilter(); // Does not re-render!
+        });
 
-        // Conditionally apply fade-out gradient if text overflows
+        // After rendering, apply the current search term filter
+        applySearchFilter();
+
         document.querySelectorAll('.card-instructions, .card-ingredients').forEach(p => {
-            const isOverflowing = p.scrollHeight > p.clientHeight;
-            const overlay = p.nextElementSibling;
-            if (isOverflowing && overlay && overlay.classList.contains('fade-out-overlay')) {
-                overlay.classList.remove('hidden');
+            if (p.scrollHeight > p.clientHeight) {
+                p.nextElementSibling?.classList.remove('hidden');
             }
         });
     }
+
     async function fetchRecipes() {
         try {
             const response = await fetch(`${API_BASE}/recipes`);
             recipes = await response.json();
-            renderRecipes();
+            renderRecipes(); // Initial render
         } catch (error) {
             console.error('Error fetching recipes:', error);
         }
     }
+    
+    // --- CHANGE 4: The tab click now also calls renderRecipes ---
     hubTabsContainer.addEventListener('click', (e) => {
         if (e.target.classList.contains('hub-tab')) {
             hubTabsContainer.querySelectorAll('.hub-tab').forEach(tab => tab.classList.remove('active-tab', 'text-orange-900'));
             e.target.classList.add('active-tab', 'text-orange-900');
             activeCategory = e.target.textContent;
+            searchTerm = ''; // Reset search term when changing category
             renderRecipes();
         }
     });
+
+    // The rest of your functions (editRecipe, deleteRecipe, showRecipeModal, etc.) remain unchanged.
     window.editRecipe = (id) => {
         const recipe = recipes.find(r => r.id === id);
         if (recipe) {
@@ -163,7 +208,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                     <div class="ingredient-item flex items-center space-x-2">
                                         <input type="checkbox" class="ingredient-checkbox" data-id="${ing.id}" ${sel ? 'checked' : ''}>
                                         <span>${ing.name}</span>
-                                        <input type="number" min="0" step="any" class="ingredient-qty w-16 px-1 border rounded" placeholder="Qty" value="${sel ? sel.quantity : ''}" ${sel ? '' : 'disabled'}>
+                                        <input type="number" min="0" step="any" class="ingredient-qty w-16 px-1 border rounded" placeholder="Qty" required="true" value="${sel ? sel.quantity : ''}" ${sel ? '' : 'disabled'}>
             
                                         <span class="ingredient-unit w-16 px-1 border rounded bg-gray-100 text-gray-600" style="padding:2px 6px;">${sel ? sel.serving_unit : ing.serving_unit}</span>
                                     </div>
@@ -201,10 +246,8 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
         document.body.insertAdjacentHTML('beforeend', modalHTML);
         const overlay = document.getElementById('recipe-modal');
-        // overlay.addEventListener('click', () => overlay.remove());
         overlay.querySelector('div.bg-white').addEventListener('click', e => e.stopPropagation());
 
-        // ADDED: Logic for the ingredient search filter
         const searchInput = document.getElementById('ingredient-search');
         const ingredientItems = overlay.querySelectorAll('.ingredient-item');
 
