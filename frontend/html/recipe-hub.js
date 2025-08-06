@@ -115,7 +115,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     
                     // Added a wrapper div with a data attribute for the recipe name
                     return `
-                        <div class="recipe-card-container" data-recipe-name="${recipe.name}">
+                        <div class="recipe-card-container border border-stone-200 rounded-xl shadow-sm" data-recipe-name="${recipe.name}">
                             <div class="recipe-card relative flex flex-col h-full bg-white">
                                 <div class="absolute top-2 right-2">
                                 <span title="${recipe.is_vegetarian ? 'Vegetarian' : 'Non-Vegetarian'}" style="display:inline-block;width:14px;height:14px;border-radius:50%;background:${recipe.is_vegetarian ? '#22c55e' : '#ef4444'};border:2px solid #fff;box-shadow:0 0 2px #888;"></span>
