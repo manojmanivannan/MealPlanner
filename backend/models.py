@@ -63,6 +63,13 @@ class Ingredient(Base):
     fat = Column(Numeric(10, 2), default=0.0)
     fiber = Column(Numeric(10, 2), default=0.0)
     energy = Column(Numeric(10, 2), default=0.0)
+    # Micronutrients (per serving size)
+    iron_mg = Column(Numeric(10, 2), default=0.0)
+    magnesium_mg = Column(Numeric(10, 2), default=0.0)
+    calcium_mg = Column(Numeric(10, 2), default=0.0)
+    potassium_mg = Column(Numeric(10, 2), default=0.0)
+    sodium_mg = Column(Numeric(10, 2), default=0.0)
+    vitamin_c_mg = Column(Numeric(10, 2), default=0.0)
 
     def __repr__(self):
         return f"<Ingredient(name='{self.name}')>"
@@ -83,6 +90,14 @@ class Recipe(Base):
     fat = Column(Numeric(10, 2), default=0.0)
     fiber = Column(Numeric(10, 2), default=0.0)
     energy = Column(Numeric(10, 2), default=0.0)
+    # Micronutrients (per serving size)
+    iron_mg = Column(Numeric(10, 2), default=0.0)
+    magnesium_mg = Column(Numeric(10, 2), default=0.0)
+    calcium_mg = Column(Numeric(10, 2), default=0.0)
+    potassium_mg = Column(Numeric(10, 2), default=0.0)
+    sodium_mg = Column(Numeric(10, 2), default=0.0)
+    vitamin_c_mg = Column(Numeric(10, 2), default=0.0)
+
 
     def __repr__(self):
         return f"<Recipe(name='{self.name}')>"
@@ -115,9 +130,17 @@ calculate_nutrition_func = DDL("""
     DECLARE
         ing_record RECORD;
         nutrient_data RECORD;
-        total_protein FLOAT := 0.0; total_carbs FLOAT := 0.0;
-        total_fat FLOAT := 0.0; total_fiber FLOAT := 0.0;
+        total_protein FLOAT := 0.0; 
+        total_carbs FLOAT := 0.0;
+        total_fat FLOAT := 0.0; 
+        total_fiber FLOAT := 0.0;
         total_energy FLOAT := 0.0;
+        total_iron_mg FLOAT := 0.0;
+        total_magnesium_mg FLOAT := 0.0;
+        total_calcium_mg FLOAT := 0.0;
+        total_potassium_mg FLOAT := 0.0;
+        total_sodium_mg FLOAT := 0.0;
+        total_vitamin_c_mg FLOAT := 0.0;
     BEGIN
         FOR ing_record IN SELECT * FROM jsonb_to_recordset(NEW.ingredients) AS x(name text, quantity float, unit text)
         LOOP
@@ -128,11 +151,26 @@ calculate_nutrition_func = DDL("""
                 total_fat := total_fat + (nutrient_data.fat * ing_record.quantity/ nutrient_data.serving_size);
                 total_fiber := total_fiber + (nutrient_data.fiber * ing_record.quantity/ nutrient_data.serving_size);
                 total_energy := total_energy + (nutrient_data.energy * ing_record.quantity/ nutrient_data.serving_size);
+                total_iron_mg := total_iron_mg + (nutrient_data.iron_mg * ing_record.quantity/ nutrient_data.serving_size);
+                total_magnesium_mg := total_magnesium_mg + (nutrient_data.magnesium_mg * ing_record.quantity/ nutrient_data.serving_size);
+                total_calcium_mg := total_calcium_mg + (nutrient_data.calcium_mg * ing_record.quantity/ nutrient_data.serving_size);
+                total_potassium_mg := total_potassium_mg + (nutrient_data.potassium_mg * ing_record.quantity/ nutrient_data.serving_size);
+                total_sodium_mg := total_sodium_mg + (nutrient_data.sodium_mg * ing_record.quantity/ nutrient_data.serving_size);
+                total_vitamin_c_mg := total_vitamin_c_mg + (nutrient_data.vitamin_c_mg * ing_record.quantity/ nutrient_data.serving_size);
+            ELSE
             END IF;
         END LOOP;
-        NEW.protein := total_protein; NEW.carbs := total_carbs;
-        NEW.fat := total_fat; NEW.fiber := total_fiber;
+        NEW.protein := total_protein; 
+        NEW.carbs := total_carbs;
+        NEW.fat := total_fat; 
+        NEW.fiber := total_fiber;
         NEW.energy := total_energy;
+        NEW.iron_mg := total_iron_mg;
+        NEW.magnesium_mg := total_magnesium_mg;
+        NEW.calcium_mg := total_calcium_mg;
+        NEW.potassium_mg := total_potassium_mg;
+        NEW.sodium_mg := total_sodium_mg;
+        NEW.vitamin_c_mg := total_vitamin_c_mg;
         RETURN NEW;
     END;
     $$ LANGUAGE plpgsql;

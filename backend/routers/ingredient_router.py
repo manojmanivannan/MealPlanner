@@ -58,52 +58,63 @@ def update_ingredient(
     protein: Optional[float] = None,
     carbs: Optional[float] = None,
     fat: Optional[float] = None,
-    fiber: Optional[float] = None
+    fiber: Optional[float] = None,
+    iron_mg: Optional[float] = None,
+    magnesium_mg: Optional[float] = None,
+    calcium_mg: Optional[float] = None,
+    potassium_mg: Optional[float] = None,
+    sodium_mg: Optional[float] = None,
+    vitamin_c_mg: Optional[float] = None
     ):
     """
     Updates one or more fields of a specific ingredient.
     """
-    logger.info(f"Updating ingredient with ID: {ingredient_id}")
+    
     # 1. Fetch the existing ingredient from the database
     db_ingredient = db.query(Ingredient).filter(Ingredient.id == ingredient_id).first()
+    
 
     # 2. If it doesn't exist, return a 404 error
     if not db_ingredient:
         raise HTTPException(status_code=404, detail="Ingredient not found")
 
-    # Store old values needed for the search
-    old_name = db_ingredient.name
+    logger.info(f"Updating ingredient ID: {ingredient_id}: {db_ingredient.name}")
     
-    # Get the new values from the request payload
-    update_data = {
-        'name': name, 
-        'serving_unit': serving_unit.value
-        # ... other fields
-    }
+    # if we updating the availability status ignore updating recipes
+    logger.debug(f"Available {available}, Ingredient {db_ingredient.available}")
+    if available != None or available is not db_ingredient.available:
+        # Get the new values from the request payload
+        update_data = {}
+        if name is not None:
+            update_data['name'] = name
+        if serving_unit is not None:
+            update_data['serving_unit'] = getattr(serving_unit, 'value', serving_unit)
 
-    # 2. Check if name or unit, which are stored in recipes, have changed
-    should_sync_recipes = update_data.get('name') or update_data.get('serving_unit')
+        # 2. Check if name or unit, which are stored in recipes, have changed
+        should_sync_recipes = ('name' in update_data) or ('serving_unit' in update_data)
 
-    if should_sync_recipes:
-        # Find all recipes containing the old ingredient name
-        # Note: This query might need to be adapted based on your exact JSON structure
-        recipes_to_update = db.query(Recipe).filter(
-            Recipe.ingredients.contains([{'id': db_ingredient.id}])
-        ).all()
+        if should_sync_recipes:
+            # Find all recipes containing the old ingredient name
+            # Note: This query might need to be adapted based on your exact JSON structure
+            recipes_to_update = db.query(Recipe).filter(
+                Recipe.ingredients.contains([{'id': db_ingredient.id}])
+            ).all()
+            logger.info(f"Recipes to update: {[r.name for r in recipes_to_update]}")
+            for recipe in recipes_to_update:
+                # Create a new list for ingredients to avoid mutation issues
+                new_ingredients_list = []
+                for ingredient_in_recipe in recipe.ingredients:
+                    if name.lower() == ingredient_in_recipe['name'].lower():
+                        ingredient_in_recipe['name'] = update_data["name"]
+                        ingredient_in_recipe['serving_unit'] = update_data['serving_unit']
+                    new_ingredients_list.append(ingredient_in_recipe)
+                
+                # Re-assign the list to the recipe object
+                recipe.ingredients = new_ingredients_list
 
-        for recipe in recipes_to_update:
-            # Create a new list for ingredients to avoid mutation issues
-            new_ingredients_list = []
-            for ingredient_in_recipe in recipe.ingredients:
-                                
-                ingredient_in_recipe['name'] = update_data["name"]
-                ingredient_in_recipe['serving_unit'] = update_data['serving_unit']
-                new_ingredients_list.append(ingredient_in_recipe)
-            
-            # Re-assign the list to the recipe object
-            recipe.ingredients = new_ingredients_list
-            # Flag the JSON column as modified to ensure it's saved
-            flag_modified(recipe, "ingredients")
+                # Flag the JSON column as modified to ensure it's saved
+                logger.info(f"Flaging update for recipe: {recipe.name}")
+                flag_modified(recipe, "ingredients")
 
     # 3. Update attributes only for the parameters that were provided
     if name is not None:
@@ -116,7 +127,7 @@ def update_ingredient(
     if shelf_life is not None:
         db_ingredient.shelf_life = shelf_life
     if serving_unit is not None:
-        db_ingredient.serving_unit = serving_unit
+        db_ingredient.serving_unit = getattr(serving_unit, 'value', serving_unit)
     if serving_size is not None:
         db_ingredient.serving_size = serving_size
     if energy is not None:
@@ -129,6 +140,18 @@ def update_ingredient(
         db_ingredient.fat = fat
     if fiber is not None:
         db_ingredient.fiber = fiber
+    if iron_mg is not None:
+        db_ingredient.iron_mg = iron_mg
+    if magnesium_mg is not None:
+        db_ingredient.magnesium_mg = magnesium_mg
+    if calcium_mg is not None:
+        db_ingredient.calcium_mg = calcium_mg
+    if potassium_mg is not None:
+        db_ingredient.potassium_mg = potassium_mg
+    if sodium_mg is not None:
+        db_ingredient.sodium_mg = sodium_mg
+    if vitamin_c_mg is not None:
+        db_ingredient.vitamin_c_mg = vitamin_c_mg
     
 
     try:

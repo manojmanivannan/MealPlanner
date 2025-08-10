@@ -55,6 +55,12 @@ class IngredientSchema(BaseModel):
     carbs: float
     fat: float
     fiber: float
+    iron_mg: float
+    magnesium_mg: float
+    calcium_mg: float
+    potassium_mg: float
+    sodium_mg: float
+    vitamin_c_mg: float
     remaining_shelf_life: Optional[int] = None
 
 class IngredientUpdateSchema(BaseModel):
@@ -68,6 +74,12 @@ class IngredientUpdateSchema(BaseModel):
     carbs: Optional[float] = None
     fat: Optional[float] = None
     fiber: Optional[float] = None
+    iron_mg: Optional[float] = None
+    magnesium_mg: Optional[float] = None
+    calcium_mg: Optional[float] = None
+    potassium_mg: Optional[float] = None
+    sodium_mg: Optional[float] = None
+    vitamin_c_mg: Optional[float] = None
 
 class HealthCheckSchema(BaseModel):
     status: str = "OK"

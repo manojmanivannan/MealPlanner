@@ -20,8 +20,8 @@ id,day,meal_type,recipe_ids
 19,Wednesday,snack,{75}
 20,Wednesday,dinner,{16}
 21,Thursday,pre_breakfast,{64}
-22,Thursday,breakfast,{69}
-23,Thursday,lunch,{89}
+22,Thursday,breakfast,{1}
+23,Thursday,lunch,{2}
 24,Thursday,snack,{30}
 25,Thursday,dinner,{88}
 26,Friday,pre_breakfast,{}
