@@ -323,6 +323,18 @@ document.addEventListener('DOMContentLoaded', () => {
                                     `;
                                 }).join('')}
                             </div>
+                             <div id="add-ingredient-panel" class="mt-2 p-2 border rounded bg-amber-50 hidden">
+                                 <div class="text-xs text-stone-700 mb-2">No matches found. Add "<span id="add-ing-name-preview"></span>"?</div>
+                                 <div class="flex flex-wrap items-center gap-2">
+                                     <input type="text" id="new-ing-name" class="clay-input px-2 py-1 text-sm" placeholder="Name">
+                                     <input type="number" id="new-ing-shelf-life" class="clay-input px-2 py-1 text-sm w-40" min="0" step="1" placeholder="Shelf life (days)">
+                                     <select id="new-ing-unit" class="clay-input px-2 py-1 text-sm">
+                                         <!-- populated dynamically -->
+                                     </select>
+                                     <button type="button" id="create-ingredient-btn" class="clay-btn px-3 py-1 text-sm">Create</button>
+                                 </div>
+                                 <div id="add-ingredient-error" class="text-red-600 text-xs mt-1 hidden"></div>
+                             </div>
                         </div>
                         <div class="mb-4">
                             <label for="recipe-instructions" class="block text-sm font-medium text-stone-700">Instructions</label>
@@ -357,19 +369,66 @@ document.addEventListener('DOMContentLoaded', () => {
         overlay.querySelector('div.bg-white').addEventListener('click', e => e.stopPropagation());
 
         const searchInput = document.getElementById('ingredient-search');
-        const ingredientItems = overlay.querySelectorAll('.ingredient-item');
+        const ingredientListContainer = overlay.querySelector('#ingredient-select-list');
+        let ingredientItems = overlay.querySelectorAll('.ingredient-item');
 
-        searchInput.addEventListener('input', () => {
-            const searchTerm = searchInput.value.toLowerCase();
+        // Populate serving units for the inline add panel
+        (async () => {
+            try {
+                const resp = await fetch(`${API_BASE}/utilities/list-serving-units`);
+                const units = await resp.json();
+                const unitSelect = document.getElementById('new-ing-unit');
+                unitSelect.innerHTML = units.map(u => `<option value="${u}">${u}</option>`).join('');
+                // Prefer 'g' if available
+                const defaultUnit = units.includes('g') ? 'g' : units[0];
+                unitSelect.value = defaultUnit;
+            } catch (e) {
+                const fallback = ['g','ml','cup','tbsp','tsp','nos'];
+                const unitSelect = document.getElementById('new-ing-unit');
+                unitSelect.innerHTML = fallback.map(u => `<option value="${u}">${u}</option>`).join('');
+                unitSelect.value = 'g';
+            }
+        })();
+
+        const addPanel = document.getElementById('add-ingredient-panel');
+        const namePreview = document.getElementById('add-ing-name-preview');
+        const newNameInput = document.getElementById('new-ing-name');
+        const newShelfLifeInput = document.getElementById('new-ing-shelf-life');
+        const newUnitSelect = document.getElementById('new-ing-unit');
+        const addError = document.getElementById('add-ingredient-error');
+
+        function refreshAddPanelVisibility() {
+            const term = searchInput.value.trim().toLowerCase();
+            let visibleCount = 0;
             ingredientItems.forEach(item => {
                 const ingredientName = item.querySelector('span').textContent.toLowerCase();
-                if (ingredientName.includes(searchTerm)) {
-                    item.style.display = 'flex';
-                } else {
-                    item.style.display = 'none';
-                }
+                const isVisible = !term || ingredientName.includes(term);
+                item.style.display = isVisible ? 'flex' : 'none';
+                if (isVisible) visibleCount++;
             });
-        });
+            if (term && visibleCount === 0) {
+                addPanel.classList.remove('hidden');
+                namePreview.textContent = searchInput.value.trim();
+                newNameInput.value = searchInput.value.trim();
+                addError.classList.add('hidden');
+                addError.textContent = '';
+            } else {
+                addPanel.classList.add('hidden');
+            }
+        }
+
+        searchInput.addEventListener('input', refreshAddPanelVisibility);
+        // Initialize once on open
+        refreshAddPanelVisibility();
+
+        function attachIngredientRowHandlers(row) {
+            const cb = row.querySelector('.ingredient-checkbox');
+            cb.addEventListener('change', function() {
+                const parent = cb.parentElement;
+                parent.querySelector('.ingredient-qty').disabled = !cb.checked;
+                parent.querySelector('.ingredient-unit').disabled = !cb.checked;
+            });
+        }
 
         overlay.querySelectorAll('.ingredient-checkbox').forEach(cb => {
             cb.addEventListener('change', function() {
@@ -378,6 +437,50 @@ document.addEventListener('DOMContentLoaded', () => {
                 parent.querySelector('.ingredient-unit').disabled = !cb.checked;
             });
         });
+
+        async function createIngredientInline() {
+            const name = newNameInput.value.trim();
+            const shelfLife = newShelfLifeInput.value.trim() || '0';
+            const unit = newUnitSelect.value;
+            if (!name) {
+                addError.textContent = 'Name is required.';
+                addError.classList.remove('hidden');
+                return;
+            }
+            try {
+                addError.classList.add('hidden');
+                addError.textContent = '';
+                const params = new URLSearchParams({ name, shelf_life: shelfLife, serving_unit: unit });
+                const resp = await fetch(`${API_BASE}/ingredients?${params.toString()}`, { method: 'POST' });
+                if (!resp.ok) {
+                    const msg = await resp.json().catch(() => ({}));
+                    throw new Error(msg.detail || 'Failed to create ingredient');
+                }
+                const ing = await resp.json();
+                // Build a new row and insert at top
+                const row = document.createElement('div');
+                row.className = 'ingredient-item flex items-center space-x-2';
+                row.innerHTML = `
+                    <input type="checkbox" class="ingredient-checkbox" data-id="${ing.id}" checked>
+                    <span>${ing.name}</span>
+                    <input type="number" min="0" step="any" class="ingredient-qty w-16 px-1 border rounded" placeholder="Qty" value="${(ing.serving_unit === 'g' || ing.serving_unit === 'ml') ? 100 : 1}">
+                    <span class="ingredient-unit w-16 px-1 border rounded bg-gray-100 text-gray-600" style="padding:2px 6px;">${ing.serving_unit}</span>
+                `;
+                ingredientListContainer.prepend(row);
+                attachIngredientRowHandlers(row);
+                ingredientItems = overlay.querySelectorAll('.ingredient-item');
+                // Clear search to show all, then hide add panel
+                searchInput.value = '';
+                refreshAddPanelVisibility();
+            } catch (e) {
+                addError.textContent = e.message || 'Failed to create ingredient';
+                addError.classList.remove('hidden');
+            }
+        }
+
+        document.getElementById('create-ingredient-btn').addEventListener('click', createIngredientInline);
+
+        // (existing handlers preserved above)
         document.getElementById('recipe-form').addEventListener('submit', saveRecipe);
         document.getElementById('cancel-btn').addEventListener('click', () => document.getElementById('recipe-modal').remove());
     };
