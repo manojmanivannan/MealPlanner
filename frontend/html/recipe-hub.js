@@ -120,21 +120,24 @@ document.addEventListener('DOMContentLoaded', () => {
                                 <div class="absolute top-2 right-2">
                                 <span title="${recipe.is_vegetarian ? 'Vegetarian' : 'Non-Vegetarian'}" style="display:inline-block;width:14px;height:14px;border-radius:50%;background:${recipe.is_vegetarian ? '#22c55e' : '#ef4444'};border:2px solid #fff;box-shadow:0 0 2px #888;"></span>
                                 </div>
-                                <div class="flex-grow">
+                                <div class="flex-grow flex flex-col">
                                     <h5 class="font-bold text-sm card-title mb-1">${recipe.name}</h5>
                                     <div class="relative">
-                                        <p class="text-xs text-stone-600 mt-1 card-instructions" style="max-height:6em;overflow:hidden;">${instrTrunc}</p>
+                                        
                                         <div class="fade-out-overlay absolute bottom-0 left-0 w-full h-4 bg-gradient-to-t from-white to-transparent pointer-events-none hidden"></div>
                                     </div>
                                     <div class="relative mt-1">
                                         <p class="text-xs text-stone-500 card-ingredients" style="max-height:5em;overflow:hidden;"><span class="font-semibold">Ingredients:</span> ${ingrTrunc}</p>
                                         <div class="fade-out-overlay absolute bottom-0 left-0 w-full h-4 bg-gradient-to-t from-white to-transparent pointer-events-none hidden"></div>
                                     </div>
-                                    <p class="text-xs text-stone-500 mt-1 card-nutrition" style="max-height:3.5em;overflow:hidden;">${recipe.energy ? `<span class="font-semibold">Energy:</span> ${recipe.energy} kcal, ` : ''}${recipe.protein ? `<span class="font-semibold">Protein:</span> ${recipe.protein} g, ` : ''}${recipe.carbs ? `<span class="font-semibold">Carbs:</span> ${recipe.carbs} g, ` : ''}${recipe.fat ? `<span class="font-semibold">Fat:</span> ${recipe.fat} g, ` : ''}${recipe.fiber ? `<span class="font-semibold">Fiber:</span> ${recipe.fiber} g` : ''}</p>
+                                    <div class="relative mt-auto pt-2">
+                                        <p class="text-xs text-stone-500 mt-1 card-nutrition" style="max-height:3.5em;overflow:hidden;">${recipe.energy ? `<span class="font-semibold">Energy:</span> ${recipe.energy} kcal, ` : ''}${recipe.protein ? `<span class="font-semibold">Protein:</span> ${recipe.protein} g, ` : ''}${recipe.carbs ? `<span class="font-semibold">Carbs:</span> ${recipe.carbs} g, ` : ''}${recipe.fat ? `<span class="font-semibold">Fat:</span> ${recipe.fat} g, ` : ''}${recipe.fiber ? `<span class="font-semibold">Fiber:</span> ${recipe.fiber} g` : ''}</p>
+                                    </div>
                                 </div>
                                 <div class="pt-4 flex justify-between space-x-2">
                                     <button class="text-xs px-2 py-1 clay-btn" style="background:linear-gradient(135deg, #f7dbc4ff 60%, #c7d2fe 100%);color: #be6818;" onclick="window.showAssignModal(${recipe.id})">Assign</button>
-                                    <div class="flex space-x-2">
+                                    <div class="flex justify-between space-x-2">
+                                        <button class="text-xs px-2 py-1 clay-btn" onclick="window.showRecipeDetails(${recipe.id})">Show</button>
                                         <button class="text-xs px-2 py-1 clay-btn" onclick="editRecipe(${recipe.id})">Edit</button>
                                         <button class="text-xs px-2 py-1 clay-btn" style="background:linear-gradient(135deg, #fbcfe8 60%, #c7d2fe 100%);color: #be185d;" onclick="deleteRecipe(${recipe.id})">Delete</button>
                                     </div>
@@ -260,6 +263,45 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('cancel-assign-btn').addEventListener('click', () => {
             document.getElementById('assign-recipe-modal').remove();
         });
+    };
+
+    // Modal: Show full recipe details
+    window.showRecipeDetails = (recipeId) => {
+        const recipe = recipes.find(r => r.id === recipeId);
+        if (!recipe) {
+            alert('Recipe not found!');
+            return;
+        }
+        const ingredientsList = Array.isArray(recipe.ingredients)
+            ? recipe.ingredients.map(i => `<li class="mb-1">${i.quantity} ${i.serving_unit} ${i.name}</li>`).join('')
+            : '';
+        const instructionsHtml = (recipe.instructions || '').replace(/\n/g, '<br>');
+
+        const modalHTML = `
+            <div id="show-recipe-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                <div class="bg-white p-6 rounded-lg shadow-lg w-full max-w-lg max-h-[90vh] overflow-y-auto" role="dialog" aria-modal="true">
+                    <div class="flex items-start justify-between mb-2">
+                        <h2 class="text-xl font-bold">${recipe.name}</h2>
+                        <button id="close-show-recipe-btn" class="text-stone-500 hover:text-stone-700">✕</button>
+                    </div>
+                    <p class="text-sm text-stone-600 mb-4">Serves: <strong>${recipe.serves}</strong></p>
+                    <div class="mb-4">
+                        <h3 class="font-semibold mb-1">Ingredients</h3>
+                        <ul class="list-disc list-inside text-sm text-stone-700">${ingredientsList}</ul>
+                    </div>
+                    <div class="mb-2">
+                        <h3 class="font-semibold mb-1">Instructions</h3>
+                        <div class="text-sm text-stone-700 leading-relaxed">${instructionsHtml}</div>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+        const overlay = document.getElementById('show-recipe-modal');
+        const dialog = overlay.querySelector('div.bg-white');
+        dialog.addEventListener('click', e => e.stopPropagation());
+        overlay.addEventListener('click', () => overlay.remove());
+        document.getElementById('close-show-recipe-btn').addEventListener('click', () => overlay.remove());
     };
 
     // The rest of your functions (editRecipe, deleteRecipe, showRecipeModal, etc.) remain unchanged.
