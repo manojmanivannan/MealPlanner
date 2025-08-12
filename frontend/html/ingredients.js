@@ -176,33 +176,62 @@ document.addEventListener('DOMContentLoaded', () => {
                                         <label class="block text-sm font-medium text-stone-700">Shelf Life (days)</label>
                                         <input type="number" id="edit-ingredient-shelf-life" class="mt-1 block w-full rounded-sm border-stone-300 shadow-sm focus:border-teal-500 focus:ring-teal-500" value="${ing.shelf_life}" min="1" required>
                                     </div>
-                                    <div class="mb-4">
-                                        <label class="block text-sm font-medium text-stone-700">Serving Unit</label>
-                                        <select id="edit-ingredient-unit" class="mt-1 block w-full rounded-sm border-stone-300 shadow-sm focus:border-teal-500 focus:ring-teal-500" required></select>
-                                    </div>
-                                    <div class="mb-4">
-                                        <label class="block text-sm font-medium text-stone-700">Serving Size</label>
-                                        <input type="number" id="edit-ingredient-serving-size" class="mt-1 block w-full rounded-sm border-stone-300 shadow-sm focus:border-teal-500 focus:ring-teal-500" value="${ing.serving_size}" min="1" step="1" required>
+                                    <div class="grid grid-cols-2 gap-2">
+                                        <div class="mb-2">
+                                            <label class="block text-sm font-medium text-stone-700">Serving Size</label>
+                                            <input type="number" id="edit-ingredient-serving-size" class="mt-1 block w-full rounded-sm border-stone-300 shadow-sm focus:border-teal-500 focus:ring-teal-500" value="${ing.serving_size}" min="1" step="1" required>
+                                        </div>
+                                        <div class="mb-2">
+                                            <label class="block text-sm font-medium text-stone-700">Serving Unit</label>
+                                            <select id="edit-ingredient-unit" class="mt-1 block w-full rounded-sm border-stone-300 shadow-sm focus:border-teal-500 focus:ring-teal-500" required></select>
+                                        </div>
                                     </div>
                                     <div class="mb-4">
                                         <label id="edit-kcal-label" class="block text-sm font-medium text-stone-700">Energy (kcal)</label>
                                         <input type="number" id="edit-ingredient-kcal" class="mt-1 block w-full rounded-sm border-stone-300 shadow-sm focus:border-teal-500 focus:ring-teal-500" value="${ing.energy}" min="0" step="any">
                                     </div>
-                                    <div class="mb-4">
-                                        <label id="edit-protein-label" class="block text-sm font-medium text-stone-700">Protein (g)</label>
-                                        <input type="number" id="edit-ingredient-protein" class="mt-1 block w-full rounded-sm border-stone-300 shadow-sm focus:border-teal-500 focus:ring-teal-500" value="${ing.protein}" min="0" step="any">
-                                    </div>
-                                    <div class="mb-4">
-                                        <label id="edit-fat-label" class="block text-sm font-medium text-stone-700">Fat (g)</label>
-                                        <input type="number" id="edit-ingredient-fat" class="mt-1 block w-full rounded-sm border-stone-300 shadow-sm focus:border-teal-500 focus:ring-teal-500" value="${ing.fat}" min="0" step="any">
-                                    </div>
-                                    <div class="mb-4">
-                                        <label id="edit-carbs-label" class="block text-sm font-medium text-stone-700">Carbs (g)</label>
-                                        <input type="number" id="edit-ingredient-carbs" class="mt-1 block w-full rounded-sm border-stone-300 shadow-sm focus:border-teal-500 focus:ring-teal-500" value="${ing.carbs}" min="0" step="any">
-                                    </div>
-                                    <div class="mb-4">
-                                        <label id="edit-fiber-label" class="block text-sm font-medium text-stone-700">Fiber (g)</label>
-                                        <input type="number" id="edit-ingredient-fiber" class="mt-1 block w-full rounded-sm border-stone-300 shadow-sm focus:border-teal-500 focus:ring-teal-500" value="${ing.fiber}" min="0" step="any">
+                                    <div class="grid grid-cols-2 gap-2">
+                                        <div class="mb-2">
+                                            <label id="edit-protein-label" class="block text-sm font-medium text-stone-700">Protein (g)</label>
+                                            <input type="number" id="edit-ingredient-protein" class="mt-1 block w-full rounded-sm border-stone-300 shadow-sm focus:border-teal-500 focus:ring-teal-500" value="${ing.protein}" min="0" step="any">
+                                        </div>
+                                        <div class="mb-2">
+                                            <label id="edit-fat-label" class="block text-sm font-medium text-stone-700">Fat (g)</label>
+                                            <input type="number" id="edit-ingredient-fat" class="mt-1 block w-full rounded-sm border-stone-300 shadow-sm focus:border-teal-500 focus:ring-teal-500" value="${ing.fat}" min="0" step="any">
+                                        </div>
+                                        <div class="mb-4">
+                                            <label id="edit-carbs-label" class="block text-sm font-medium text-stone-700">Carbs (g)</label>
+                                            <input type="number" id="edit-ingredient-carbs" class="mt-1 block w-full rounded-sm border-stone-300 shadow-sm focus:border-teal-500 focus:ring-teal-500" value="${ing.carbs}" min="0" step="any">
+                                        </div>
+                                        <div class="mb-4">
+                                            <label id="edit-fiber-label" class="block text-sm font-medium text-stone-700">Fiber (g)</label>
+                                            <input type="number" id="edit-ingredient-fiber" class="mt-1 block w-full rounded-sm border-stone-300 shadow-sm focus:border-teal-500 focus:ring-teal-500" value="${ing.fiber}" min="0" step="any">
+                                        </div>
+                                    
+                                        <div class="mb-2">
+                                            <label class="block text-sm font-medium text-stone-700">Iron (mg)</label>
+                                            <input type="number" id="edit-ingredient-iron" class="mt-1 block w-full rounded-sm border-stone-300 shadow-sm focus:border-teal-500 focus:ring-teal-500" value="${ing.iron_mg || 0}" min="0" step="any">
+                                        </div>
+                                        <div class="mb-2">
+                                            <label class="block text-sm font-medium text-stone-700">Magnesium (mg)</label>
+                                            <input type="number" id="edit-ingredient-magnesium" class="mt-1 block w-full rounded-sm border-stone-300 shadow-sm focus:border-teal-500 focus:ring-teal-500" value="${ing.magnesium_mg || 0}" min="0" step="any">
+                                        </div>
+                                        <div class="mb-2">
+                                            <label class="block text-sm font-medium text-stone-700">Calcium (mg)</label>
+                                            <input type="number" id="edit-ingredient-calcium" class="mt-1 block w-full rounded-sm border-stone-300 shadow-sm focus:border-teal-500 focus:ring-teal-500" value="${ing.calcium_mg || 0}" min="0" step="any">
+                                        </div>
+                                        <div class="mb-2">
+                                            <label class="block text-sm font-medium text-stone-700">Potassium (mg)</label>
+                                            <input type="number" id="edit-ingredient-potassium" class="mt-1 block w-full rounded-sm border-stone-300 shadow-sm focus:border-teal-500 focus:ring-teal-500" value="${ing.potassium_mg || 0}" min="0" step="any">
+                                        </div>
+                                        <div class="mb-2">
+                                            <label class="block text-sm font-medium text-stone-700">Sodium (mg)</label>
+                                            <input type="number" id="edit-ingredient-sodium" class="mt-1 block w-full rounded-sm border-stone-300 shadow-sm focus:border-teal-500 focus:ring-teal-500" value="${ing.sodium_mg || 0}" min="0" step="any">
+                                        </div>
+                                        <div class="mb-2">
+                                            <label class="block text-sm font-medium text-stone-700">Vitamin C (mg)</label>
+                                            <input type="number" id="edit-ingredient-vitaminc" class="mt-1 block w-full rounded-sm border-stone-300 shadow-sm focus:border-teal-500 focus:ring-teal-500" value="${ing.vitamin_c_mg || 0}" min="0" step="any">
+                                        </div>
                                     </div>
                                     <div class="flex justify-end space-x-4">
                                         <button type="button" id="cancel-edit-ingredient" class="bg-stone-200 text-stone-800 px-4 py-2 rounded-lg hover:bg-stone-300">Cancel</button>
@@ -252,6 +281,12 @@ document.addEventListener('DOMContentLoaded', () => {
                         let carbs = document.getElementById('edit-ingredient-carbs').value.trim();
                         let fat = document.getElementById('edit-ingredient-fat').value.trim();
                         let fiber = document.getElementById('edit-ingredient-fiber').value.trim();
+                        let iron = document.getElementById('edit-ingredient-iron').value.trim();
+                        let magnesium = document.getElementById('edit-ingredient-magnesium').value.trim();
+                        let calcium = document.getElementById('edit-ingredient-calcium').value.trim();
+                        let potassium = document.getElementById('edit-ingredient-potassium').value.trim();
+                        let sodium = document.getElementById('edit-ingredient-sodium').value.trim();
+                        let vitaminC = document.getElementById('edit-ingredient-vitaminc').value.trim();
                         if (!newName) {
                             alert('Name is required.');
                             return;
@@ -269,6 +304,12 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (!carbs) carbs = 0;
                         if (!fat) fat = 0;
                         if (!fiber) fiber = 0;
+                        if (!iron) iron = 0;
+                        if (!magnesium) magnesium = 0;
+                        if (!calcium) calcium = 0;
+                        if (!potassium) potassium = 0;
+                        if (!sodium) sodium = 0;
+                        if (!vitaminC) vitaminC = 0;
 
                         try {
                             const params = new URLSearchParams({
@@ -280,7 +321,13 @@ document.addEventListener('DOMContentLoaded', () => {
                                 protein: protein,
                                 carbs: carbs,
                                 fat: fat,
-                                fiber: fiber
+                                fiber: fiber,
+                                iron_mg: iron,
+                                magnesium_mg: magnesium,
+                                calcium_mg: calcium,
+                                potassium_mg: potassium,
+                                sodium_mg: sodium,
+                                vitamin_c_mg: vitaminC
                             });
                             const resp = await fetch(`${API_BASE}/ingredients/${id}?${params.toString()}`, {
                                 method: 'PUT'

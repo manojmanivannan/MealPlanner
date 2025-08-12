@@ -10,6 +10,7 @@ from sqlalchemy.sql import text
 
 from database import engine, Base, SessionLocal
 from models import Ingredient, Recipe, WeeklyPlan, RecipeMealType
+from sqlalchemy import text as sa_text
 
 # --- Custom Exception ---
 class DataLoadError(Exception):
@@ -29,7 +30,10 @@ def _transform_common_types(row: Dict[str, Any]) -> Dict[str, Any]:
         if value == '':
             processed_row[key] = None
             continue
-        if key in ['protein', 'carbs', 'fat', 'fiber', 'energy', 'shelf_life', 'serving_size', 'id', 'serves']:
+        if key in [
+            'protein', 'carbs', 'fat', 'fiber', 'energy',
+            'iron_mg', 'magnesium_mg', 'calcium_mg', 'potassium_mg', 'sodium_mg', 'vitamin_c_mg',
+            'shelf_life', 'serving_size', 'id', 'serves']:
             if value is not None:
                 try:
                     processed_row[key] = float(value) if '.' in value else int(value)
@@ -129,6 +133,35 @@ def setup_database() -> None:
         print("Executing schema setup...")
         Base.metadata.create_all(bind=engine)
         print("Schema and triggers created successfully.")
+
+        # Ensure new micronutrient columns exist for existing databases
+        print("Ensuring micronutrient columns exist on 'ingredients' table...")
+        with engine.connect() as conn:
+            conn.execute(sa_text("""
+                ALTER TABLE IF EXISTS ingredients 
+                ADD COLUMN IF NOT EXISTS iron_mg numeric(10,2) DEFAULT 0.0;
+            """))
+            conn.execute(sa_text("""
+                ALTER TABLE IF EXISTS ingredients 
+                ADD COLUMN IF NOT EXISTS magnesium_mg numeric(10,2) DEFAULT 0.0;
+            """))
+            conn.execute(sa_text("""
+                ALTER TABLE IF EXISTS ingredients 
+                ADD COLUMN IF NOT EXISTS calcium_mg numeric(10,2) DEFAULT 0.0;
+            """))
+            conn.execute(sa_text("""
+                ALTER TABLE IF EXISTS ingredients 
+                ADD COLUMN IF NOT EXISTS potassium_mg numeric(10,2) DEFAULT 0.0;
+            """))
+            conn.execute(sa_text("""
+                ALTER TABLE IF EXISTS ingredients 
+                ADD COLUMN IF NOT EXISTS sodium_mg numeric(10,2) DEFAULT 0.0;
+            """))
+            conn.execute(sa_text("""
+                ALTER TABLE IF EXISTS ingredients 
+                ADD COLUMN IF NOT EXISTS vitamin_c_mg numeric(10,2) DEFAULT 0.0;
+            """))
+            conn.commit()
 
         with SessionLocal() as session:
             print("Loading initial data...")
