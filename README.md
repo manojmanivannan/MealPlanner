@@ -86,3 +86,20 @@ This project uses Docker for easy setup and deployment. You can run it locally o
     *   [Docker](https://www.docker.com/): For containerization.
     *   [Nginx](https://www.nginx.com/): As a reverse proxy.
     *   [Tailscale](https://tailscale.com/): For secure networking.
+
+## Backend tests (dedicated Dockerized PostgreSQL)
+
+The backend uses PostgreSQL-specific features (JSONB, ARRAY, triggers). The test suite spins up a dedicated ephemeral PostgreSQL container using Testcontainers—no local DB setup needed.
+
+1. Install dev dependencies (Docker must be running):
+   ```bash
+   python3 -m venv .venv && source .venv/bin/activate
+   pip install -r requirements-dev.txt
+   ```
+
+2. Run tests:
+   ```bash
+   pytest -q
+   ```
+
+The suite starts a `postgres:15-alpine` container per test session, creates all tables and triggers, overrides the app's DB dependency, and seeds a user to obtain an auth token.
