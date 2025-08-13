@@ -5,7 +5,7 @@ from fastapi import Depends, HTTPException, Response, status, Query
 
 from sqlalchemy.orm import Session
 from typing import List, Dict
-from models import WeeklyPlan, ServingUnits, Recipe, DaysOfWeek
+from models import WeeklyPlan, ServingUnits, Recipe, DaysOfWeek, User
 from sqlalchemy import func
 
 
@@ -24,15 +24,17 @@ def get_serving_units():
 
 
 ## Nutrition
+from routers.auth_router import get_current_user
+
 @util_router.get("/nutrition/{day}", tags=["Utilities"], response_model=Dict[str, float])
-def get_nutrition_for_day(day: DaysOfWeek, db: Session = Depends(get_db)):
+def get_nutrition_for_day(day: DaysOfWeek, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     result = db.query(
         func.sum(Recipe.protein).label("total_protein"),
         func.sum(Recipe.carbs).label("total_carbs"),
         func.sum(Recipe.fat).label("total_fat"),
         func.sum(Recipe.fiber).label("total_fiber"),
         func.sum(Recipe.energy).label("total_energy")
-    ).join(WeeklyPlan, Recipe.id == func.any(WeeklyPlan.recipe_ids)).filter(WeeklyPlan.day == day).first()
+    ).join(WeeklyPlan, Recipe.id == func.any(WeeklyPlan.recipe_ids)).filter(WeeklyPlan.day == day, WeeklyPlan.user_id == current_user.id).first()
 
     if not result or result.total_energy is None:
         return {"protein": 0, "carbs": 0, "fat": 0, "fiber": 0, "energy": 0}

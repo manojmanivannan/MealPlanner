@@ -4,7 +4,7 @@ WORKDIR /app
 
 
 RUN apt-get update && apt-get install -y wget
-RUN pip install fastapi uvicorn psycopg2-binary sqlalchemy pydantic
+RUN pip install fastapi uvicorn psycopg2-binary sqlalchemy pydantic pydantic[email] passlib[bcrypt] bcrypt==4.0.1 PyJWT python-multipart
 
 COPY . .
 
