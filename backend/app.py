@@ -23,6 +23,7 @@ from routers.recipe_router import rec_router
 from routers.ingredient_router import ing_router
 from routers.plan_router import pl_router
 from routers.utilities_router import util_router
+from routers.auth_router import auth_router
 
 
 
@@ -30,6 +31,7 @@ app.include_router(rec_router)
 app.include_router(ing_router)
 app.include_router(pl_router)
 app.include_router(util_router)
+app.include_router(auth_router)
 
 
 # --- API Endpoints ---

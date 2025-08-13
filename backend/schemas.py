@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, EmailStr
 from models import RecipeMealType, ServingUnits, DaysOfWeek
 from typing import List, Optional
 import datetime
@@ -6,6 +6,19 @@ import datetime
 
 # --- Pydantic Schemas ---
 # These classes define the shape of the API request/response data.
+class UserCreateSchema(BaseModel):
+    email: EmailStr
+    password: str
+
+class UserSchema(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    email: EmailStr
+
+class TokenSchema(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+
 class IngredientItemSchema(BaseModel):
     name: str
     quantity: float
@@ -44,6 +57,7 @@ class IngredientSchema(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     
     id: int
+    # user_id not exposed to client
     name: str
     available: bool
     shelf_life: Optional[int]

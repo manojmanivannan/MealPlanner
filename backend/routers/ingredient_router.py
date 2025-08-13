@@ -3,7 +3,7 @@ from fastapi import Depends, HTTPException, Response, status, Query
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import flag_modified
 from typing import List
-from models import Recipe, Ingredient, ServingUnits
+from models import Recipe, Ingredient, ServingUnits, User
 from schemas import IngredientSchema
 import datetime
 from typing import Optional
@@ -11,6 +11,7 @@ from sqlalchemy.exc import IntegrityError
 
 
 from database import get_db
+from routers.auth_router import get_current_user
 import logging
 logger = logging.getLogger("uvicorn")
 logger.setLevel(logging.DEBUG)
@@ -20,8 +21,9 @@ ing_router = APIRouter(prefix="/ingredients", tags=["Ingredients"])
 
 ## Ingredients
 @ing_router.get("", response_model=List[IngredientSchema])
-def get_ingredients_list(sort: Optional[str] = None, db: Session = Depends(get_db)):
-    query = db.query(Ingredient)
+def get_ingredients_list(sort: Optional[str] = None, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    # Show user's ingredients and global stock (user_id is NULL)
+    query = db.query(Ingredient).filter((Ingredient.user_id == current_user.id) | (Ingredient.user_id == None))
     
     # Safe sorting
     if sort and hasattr(Ingredient, sort):
@@ -49,6 +51,7 @@ def get_ingredients_list(sort: Optional[str] = None, db: Session = Depends(get_d
 def update_ingredient(
     ingredient_id: int,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
     name: Optional[str] = None,
     available: Optional[bool] = None,
     shelf_life: Optional[int] = None,
@@ -71,7 +74,7 @@ def update_ingredient(
     """
     
     # 1. Fetch the existing ingredient from the database
-    db_ingredient = db.query(Ingredient).filter(Ingredient.id == ingredient_id).first()
+    db_ingredient = db.query(Ingredient).filter(Ingredient.id == ingredient_id, Ingredient.user_id == current_user.id).first()
     
 
     # 2. If it doesn't exist, return a 404 error
@@ -97,8 +100,8 @@ def update_ingredient(
             # Find all recipes containing the old ingredient name
             # Note: This query might need to be adapted based on your exact JSON structure
             recipes_to_update = db.query(Recipe).filter(
-                Recipe.ingredients.contains([{'id': db_ingredient.id}])
-            ).all()
+                    ((Recipe.user_id == current_user.id) | (Recipe.user_id == None))
+                ).all()
             logger.info(f"Recipes to update: {[r.name for r in recipes_to_update]}")
             for recipe in recipes_to_update:
                 # Create a new list for ingredients to avoid mutation issues
@@ -169,11 +172,12 @@ def update_ingredient(
 def add_ingredient(name: str = Query(...),
                    shelf_life: str = Query(),
                    serving_unit: str = Query(),
-                   db: Session = Depends(get_db)):
+                   db: Session = Depends(get_db),
+                   current_user: User = Depends(get_current_user)):
     logger.info(f"Adding new ingredient: {name}")
 
     # Check if ingredient already exists to provide a clear error
-    existing_ingredient = db.query(Ingredient).filter(Ingredient.name == name).first()
+    existing_ingredient = db.query(Ingredient).filter(Ingredient.user_id == current_user.id, Ingredient.name == name).first()
     if existing_ingredient:
         raise HTTPException(
             status_code=409, # 409 Conflict is a good status code for this
@@ -182,6 +186,7 @@ def add_ingredient(name: str = Query(...),
 
     # Manually create the ORM model from the query parameters
     new_ingredient = Ingredient(
+        user_id=current_user.id,
         name=name,
         shelf_life=shelf_life,
         serving_unit=serving_unit,
@@ -194,12 +199,12 @@ def add_ingredient(name: str = Query(...),
     return new_ingredient
 
 @ing_router.delete("/{ingredient_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_ingredient(ingredient_id: int, db: Session = Depends(get_db)):
+def delete_ingredient(ingredient_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     logger.info(f"Deleting ingredient with ID: {ingredient_id}")
 
     # 1. Find the ingredient by its ID.
-    db_ingredient = db.query(Ingredient).filter(Ingredient.id == ingredient_id).first()
-    all_recipes = db.query(Recipe).all()
+    db_ingredient = db.query(Ingredient).filter(Ingredient.id == ingredient_id, Ingredient.user_id == current_user.id).first()
+    all_recipes = db.query(Recipe).filter((Recipe.user_id == current_user.id) | (Recipe.user_id == None)).all()
     
     recipes_using_ingredient_list = []
     
