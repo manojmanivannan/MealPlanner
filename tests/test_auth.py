@@ -1,5 +1,6 @@
 from fastapi.testclient import TestClient
-
+from models import User, Recipe, Ingredient
+from sqlalchemy.orm import Session
 
 def test_signup_and_me(test_client: TestClient, auth_headers):
     # auth_headers fixture already signs up and logs in
@@ -20,5 +21,37 @@ def test_login_wrong_password(test_client: TestClient):
         headers={"Content-Type": "application/x-www-form-urlencoded"},
     )
     assert resp.status_code == 400
+
+def test_signup_duplicates_demo_user_data(test_client: TestClient, db_session: Session):
+    # 1. Create a demo user and some data
+    demo_user_data = {"email": "demo@demo.com", "password": "demopass"}
+    test_client.post("/auth/signup", json=demo_user_data)
+    demo_user = db_session.query(User).filter(User.email == demo_user_data['email']).first()
+
+    # Add ingredients and recipes for the demo user
+    db_session.add(Ingredient(user_id=demo_user.id, name="Demo Ingredient", serving_unit="g", serving_size=100, available=True))
+    db_session.add(Recipe(user_id=demo_user.id, name="Demo Recipe", serves=2, ingredients=[{"name": "Demo Ingredient", "quantity": 1, "serving_unit": "g"}], instructions="...", meal_type="lunch"))
+    db_session.commit()
+
+    # 2. Sign up a new user
+    new_user_data = {"email": "newuser@example.com", "password": "newpass"}
+    signup_resp = test_client.post("/auth/signup", json=new_user_data)
+    assert signup_resp.status_code == 201
+    new_user_id = signup_resp.json()["id"]
+
+    # 3. Verify the data was duplicated
+    demo_ingredients = db_session.query(Ingredient).filter(Ingredient.user_id == demo_user.id).all()
+    new_user_ingredients = db_session.query(Ingredient).filter(Ingredient.user_id == new_user_id).all()
+    assert len(new_user_ingredients) == len(demo_ingredients)
+    assert {ing.name for ing in new_user_ingredients} == {ing.name for ing in demo_ingredients}
+    assert all(ing.available == False for ing in new_user_ingredients)
+
+    demo_recipes = db_session.query(Recipe).filter(Recipe.user_id == demo_user.id).all()
+    new_user_recipes = db_session.query(Recipe).filter(Recipe.user_id == new_user_id).all()
+    assert len(new_user_recipes) == len(demo_recipes)
+    assert {rec.name for rec in new_user_recipes} == {rec.name for rec in demo_recipes}
+
+
+
 
 

@@ -9,7 +9,7 @@ from passlib.context import CryptContext
 from sqlalchemy.orm import Session
 
 from database import get_db
-from models import User
+from models import User, Recipe, Ingredient
 from schemas import UserCreateSchema, UserSchema, TokenSchema
 
 
@@ -81,6 +81,59 @@ def signup(user_in: UserCreateSchema, db: Session = Depends(get_db)):
     db.add(user)
     db.commit()
     db.refresh(user)
+
+    # Duplicate recipes and ingredients from demo user
+    demo_user = db.query(User).filter(User.email == "demo@demo.com").first()
+    if demo_user:
+        # Duplicate ingredients
+        for ingredient in db.query(Ingredient).filter(Ingredient.user_id == demo_user.id).all():
+            new_ingredient = Ingredient(
+                user_id=user.id,
+                name=ingredient.name,
+                shelf_life=ingredient.shelf_life,
+                available=False,
+                last_available=ingredient.last_available,
+                serving_unit=ingredient.serving_unit,
+                serving_size=ingredient.serving_size,
+                protein=ingredient.protein,
+                carbs=ingredient.carbs,
+                fat=ingredient.fat,
+                fiber=ingredient.fiber,
+                energy=ingredient.energy,
+                iron_mg=ingredient.iron_mg,
+                magnesium_mg=ingredient.magnesium_mg,
+                calcium_mg=ingredient.calcium_mg,
+                potassium_mg=ingredient.potassium_mg,
+                sodium_mg=ingredient.sodium_mg,
+                vitamin_c_mg=ingredient.vitamin_c_mg,
+            )
+            db.add(new_ingredient)
+
+        # Duplicate recipes
+        for recipe in db.query(Recipe).filter(Recipe.user_id == demo_user.id).all():
+            new_recipe = Recipe(
+                user_id=user.id,
+                name=recipe.name,
+                serves=recipe.serves,
+                ingredients=recipe.ingredients,
+                instructions=recipe.instructions,
+                meal_type=recipe.meal_type,
+                is_vegetarian=recipe.is_vegetarian,
+                protein=recipe.protein,
+                carbs=recipe.carbs,
+                fat=recipe.fat,
+                fiber=recipe.fiber,
+                energy=recipe.energy,
+                iron_mg=recipe.iron_mg,
+                magnesium_mg=recipe.magnesium_mg,
+                calcium_mg=recipe.calcium_mg,
+                potassium_mg=recipe.potassium_mg,
+                sodium_mg=recipe.sodium_mg,
+                vitamin_c_mg=recipe.vitamin_c_mg,
+            )
+            db.add(new_recipe)
+        db.commit()
+
     return user
 
 
