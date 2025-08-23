@@ -55,3 +55,29 @@ jobs:
           # (Optional) Title of the test results section in the workflow summary
           title: Test results
 
+  build-and-push-images:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      - name: Build and push backend image
+        env:
+          REGISTRY: ghcr.io
+          IMAGE_NAME_BACKEND: mealplanner-backend
+        run: |
+          docker build -t $REGISTRY/${{ github.repository }}/$IMAGE_NAME_BACKEND:latest -f backend/Dockerfile backend/
+          docker push $REGISTRY/${{ github.repository }}/$IMAGE_NAME_BACKEND:latest
+
+      - name: Build and push frontend image
+        env:
+          REGISTRY: ghcr.io
+          IMAGE_NAME_FRONTEND: mealplanner-frontend
+        run: |
+          docker build -t $REGISTRY/${{ github.repository }}/$IMAGE_NAME_FRONTEND:latest -f frontend/Dockerfile .
+          docker push $REGISTRY/${{ github.repository }}/$IMAGE_NAME_FRONTEND:latest
+
