@@ -4,4 +4,4 @@ FROM nginx:latest
 COPY nginx.conf /etc/nginx/nginx.conf
 
 # Copy source files into application directory
-COPY ./html /usr/share/nginx/html
+COPY ./frontend/html /usr/share/nginx/html
