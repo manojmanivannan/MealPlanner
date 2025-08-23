@@ -70,14 +70,14 @@ jobs:
           REGISTRY: ghcr.io
           IMAGE_NAME_BACKEND: mealplanner-backend
         run: |
-          docker build -t $REGISTRY/${{ github.repository }}/$IMAGE_NAME_BACKEND:latest -f backend/Dockerfile backend/
-          docker push $REGISTRY/${{ github.repository }}/$IMAGE_NAME_BACKEND:latest
+          docker build -t $REGISTRY/${{ github.repository | lower }}/$IMAGE_NAME_BACKEND:latest -f backend/Dockerfile backend/
+          docker push $REGISTRY/${{ github.repository | lower }}/$IMAGE_NAME_BACKEND:latest
 
       - name: Build and push frontend image
         env:
           REGISTRY: ghcr.io
           IMAGE_NAME_FRONTEND: mealplanner-frontend
         run: |
-          docker build -t $REGISTRY/${{ github.repository }}/$IMAGE_NAME_FRONTEND:latest -f frontend/Dockerfile .
-          docker push $REGISTRY/${{ github.repository }}/$IMAGE_NAME_FRONTEND:latest
+          docker build -t $REGISTRY/${{ github.repository | lower }}/$IMAGE_NAME_FRONTEND:latest -f frontend/Dockerfile .
+          docker push $REGISTRY/${{ github.repository | lower }}/$IMAGE_NAME_FRONTEND:latest
 
