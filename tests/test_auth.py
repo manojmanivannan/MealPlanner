@@ -50,8 +50,30 @@ def test_signup_duplicates_demo_user_data(test_client: TestClient, db_session: S
     new_user_recipes = db_session.query(Recipe).filter(Recipe.user_id == new_user_id).all()
     assert len(new_user_recipes) == len(demo_recipes)
     assert {rec.name for rec in new_user_recipes} == {rec.name for rec in demo_recipes}
+def test_login_non_existent_user(test_client: TestClient):
+    resp = test_client.post(
+        "/auth/login",
+        data={"username": "nouser@example.com", "password": "bad"},
+        headers={"Content-Type": "application/x-www-form-urlencoded"},
+    )
+    assert resp.status_code == 400
 
+def test_signup_existing_email(test_client: TestClient):
+    # Create a user
+    test_client.post("/auth/signup", json={"email": "user3@example.com", "password": "goodpass"})
+    # Try to sign up again with the same email
+    resp = test_client.post("/auth/signup", json={"email": "user3@example.com", "password": "anotherpass"})
+    assert resp.status_code == 409
 
+def test_signup_invalid_email(test_client: TestClient):
+    resp = test_client.post("/auth/signup", json={"email": "not-an-email", "password": "goodpass"})
+    assert resp.status_code == 422  # Unprocessable Entity for validation errors
 
+def test_access_protected_route_without_token(test_client: TestClient):
+    resp = test_client.get("/auth/me")
+    assert resp.status_code == 401  # Unauthorized
 
+def test_access_protected_route_with_invalid_token(test_client: TestClient):
+    resp = test_client.get("/auth/me", headers={"Authorization": "Bearer invalidtoken"})
+    assert resp.status_code == 401  # Unauthorized
 

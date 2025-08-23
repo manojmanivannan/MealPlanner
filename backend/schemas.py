@@ -97,3 +97,7 @@ class IngredientUpdateSchema(BaseModel):
 
 class HealthCheckSchema(BaseModel):
     status: str = "OK"
+
+class ShoppingListItemSchema(BaseModel):
+    quantity: float
+    serving_unit: str

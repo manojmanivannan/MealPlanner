@@ -48,6 +48,11 @@ def set_weekly_plan_slot(slot: PlanSlotSchema, db: Session = Depends(get_db), cu
         index_elements=['user_id', 'day', 'meal_type'],
         set_=dict(recipe_ids=stmt.excluded.recipe_ids)
     )
-    db.execute(stmt)
-    db.commit()
+    try:
+        db.execute(stmt)
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=f"Invalid recipe ID provided. {e}")
+
     return {"message": f"Plan for {slot.day.value} {slot.meal_type.value} updated"}

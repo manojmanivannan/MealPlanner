@@ -32,8 +32,7 @@ TEST_DATABASE_URL = os.environ.get("TEST_DATABASE_URL")
 
 # Import after env vars are set
 from app import app  # type: ignore  # noqa: E402
-from database import get_db  # type: ignore  # noqa: E402
-from models import Base  # type: ignore  # noqa: E402
+from database import get_db, Base  # type: ignore  # noqa: E402
 
 
 @pytest.fixture(scope="session")
@@ -47,7 +46,7 @@ def pg_container() -> Iterator[str]:
 
 
 @pytest.fixture(scope="session")
-def engine(pg_container: str):
+def db_setup(pg_container: str):
     engine = create_engine(pg_container)
     # Create all tables once for the test session (includes triggers via SQLAlchemy DDL events)
     Base.metadata.create_all(bind=engine)
@@ -55,6 +54,11 @@ def engine(pg_container: str):
         yield engine
     finally:
         engine.dispose()
+
+
+@pytest.fixture(scope="session")
+def engine(db_setup):
+    return db_setup
 
 
 @pytest.fixture(scope="session")

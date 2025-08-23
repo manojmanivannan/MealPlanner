@@ -46,3 +46,47 @@ def test_recipe_crud(test_client: TestClient, auth_headers):
     assert del_resp.status_code == 204
 
 
+def test_create_recipe_with_non_existent_ingredient(test_client: TestClient, auth_headers):
+    recipe_payload = {
+        "name": "Carrot Soup",
+        "serves": 1,
+        "ingredients": [
+            {"name": "NonExistentIngredient", "quantity": 1, "serving_unit": "g"},
+        ],
+        "instructions": "Boil it",
+        "meal_type": "dinner",
+    }
+    resp = test_client.post("/recipes", json=recipe_payload, headers=auth_headers)
+    assert resp.status_code == 422
+
+def test_update_non_existent_recipe(test_client: TestClient, auth_headers):
+    recipe_payload = {
+        "name": "Tomato Salad",
+        "serves": 2,
+        "ingredients": [],
+        "instructions": "Mix and serve",
+        "meal_type": "lunch",
+    }
+    resp = test_client.put("/recipes/9999", json=recipe_payload, headers=auth_headers)
+    assert resp.status_code == 422
+
+def test_delete_non_existent_recipe(test_client: TestClient, auth_headers):
+    resp = test_client.delete("/recipes/9999", headers=auth_headers)
+    assert resp.status_code == 404
+
+def test_create_recipe_missing_fields(test_client: TestClient, auth_headers):
+    # Missing 'name'
+    recipe_payload = {
+        "serves": 2,
+        "ingredients": [],
+        "instructions": "Mix and serve",
+        "meal_type": "lunch",
+    }
+    resp = test_client.post("/recipes", json=recipe_payload, headers=auth_headers)
+    assert resp.status_code == 422
+
+def test_recipe_unauthorized(test_client: TestClient):
+    resp = test_client.get("/recipes")
+    assert resp.status_code == 401
+
+
