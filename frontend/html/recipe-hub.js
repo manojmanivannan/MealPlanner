@@ -341,7 +341,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const showRecipeModal = async (recipe = null) => {
         let ingredientList = [];
         try {
-            const resp = await fetch(`${API_BASE}/ingredients?sort=name`);
+            const resp = await fetch(`${API_BASE}/ingredients?sort=name`, { headers: authHeaders() });
             ingredientList = await resp.json();
         } catch (e) {
             ingredientList = [];

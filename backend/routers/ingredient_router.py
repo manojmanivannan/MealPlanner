@@ -92,6 +92,8 @@ def update_ingredient(
             update_data['name'] = name
         if serving_unit is not None:
             update_data['serving_unit'] = getattr(serving_unit, 'value', serving_unit)
+        if serving_size is not None:
+            update_data['serving_size'] = serving_size
 
         # 2. Check if name or unit, which are stored in recipes, have changed
         should_sync_recipes = ('name' in update_data) or ('serving_unit' in update_data)
@@ -110,6 +112,9 @@ def update_ingredient(
                     if name.lower() == ingredient_in_recipe['name'].lower():
                         ingredient_in_recipe['name'] = update_data["name"]
                         ingredient_in_recipe['serving_unit'] = update_data['serving_unit']
+                        logger.info(f"{db_ingredient.serving_unit} ==> {update_data['serving_unit']}")
+                        multiply_factor = 0.01 if (db_ingredient.serving_unit in ['g','ml']  and update_data['serving_unit'] in ['nos','tbsp','tsp','cup']) else 100
+                        ingredient_in_recipe['quantity'] = ingredient_in_recipe['quantity']*multiply_factor
                     new_ingredients_list.append(ingredient_in_recipe)
                 
                 # Re-assign the list to the recipe object

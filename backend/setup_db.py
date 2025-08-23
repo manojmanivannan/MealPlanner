@@ -42,6 +42,10 @@ def _transform_common_types(row: Dict[str, Any]) -> Dict[str, Any]:
                     pass # Keep as is if conversion fails
         elif key in ['is_vegetarian', 'available']:
             processed_row[key] = value.lower() in ['true', '1', 't']
+
+    if DEFAULT_USER_ID is not None:
+        processed_row['user_id'] = DEFAULT_USER_ID
+        
     return processed_row
 
 
@@ -67,7 +71,7 @@ def transform_recipe_row(row: Dict[str, Any]) -> Dict[str, Any]:
     return processed_row
 
 
-DEFAULT_USER_ID: Optional[int] = None
+DEFAULT_USER_ID: Optional[int] = 1
 
 
 def transform_weekly_plan_row(row: Dict[str, Any]) -> Dict[str, Any]:
@@ -83,8 +87,7 @@ def transform_weekly_plan_row(row: Dict[str, Any]) -> Dict[str, Any]:
     else:
         processed_row["recipe_ids"] = []
     # Attach default user id for seed data
-    if DEFAULT_USER_ID is not None:
-        processed_row['user_id'] = DEFAULT_USER_ID
+
     return processed_row
 
 
@@ -150,60 +153,61 @@ def setup_database() -> None:
         print("Schema and triggers created successfully.")
 
         # Ensure new micronutrient columns exist for existing databases
-        print("Ensuring micronutrient columns exist on 'ingredients' table...")
+        
         with engine.connect() as conn:
-            conn.execute(sa_text("""
-                ALTER TABLE IF EXISTS ingredients 
-                ADD COLUMN IF NOT EXISTS iron_mg numeric(10,2) DEFAULT 0.0;
-            """))
-            conn.execute(sa_text("""
-                ALTER TABLE IF EXISTS ingredients 
-                ADD COLUMN IF NOT EXISTS magnesium_mg numeric(10,2) DEFAULT 0.0;
-            """))
-            conn.execute(sa_text("""
-                ALTER TABLE IF EXISTS ingredients 
-                ADD COLUMN IF NOT EXISTS calcium_mg numeric(10,2) DEFAULT 0.0;
-            """))
-            conn.execute(sa_text("""
-                ALTER TABLE IF EXISTS ingredients 
-                ADD COLUMN IF NOT EXISTS potassium_mg numeric(10,2) DEFAULT 0.0;
-            """))
-            conn.execute(sa_text("""
-                ALTER TABLE IF EXISTS ingredients 
-                ADD COLUMN IF NOT EXISTS sodium_mg numeric(10,2) DEFAULT 0.0;
-            """))
-            conn.execute(sa_text("""
-                ALTER TABLE IF EXISTS ingredients 
-                ADD COLUMN IF NOT EXISTS vitamin_c_mg numeric(10,2) DEFAULT 0.0;
-            """))
+            # print("Ensuring micronutrient columns exist on 'ingredients' table...")
+            # conn.execute(sa_text("""
+            #     ALTER TABLE IF EXISTS ingredients 
+            #     ADD COLUMN IF NOT EXISTS iron_mg numeric(10,2) DEFAULT 0.0;
+            # """))
+            # conn.execute(sa_text("""
+            #     ALTER TABLE IF EXISTS ingredients 
+            #     ADD COLUMN IF NOT EXISTS magnesium_mg numeric(10,2) DEFAULT 0.0;
+            # """))
+            # conn.execute(sa_text("""
+            #     ALTER TABLE IF EXISTS ingredients 
+            #     ADD COLUMN IF NOT EXISTS calcium_mg numeric(10,2) DEFAULT 0.0;
+            # """))
+            # conn.execute(sa_text("""
+            #     ALTER TABLE IF EXISTS ingredients 
+            #     ADD COLUMN IF NOT EXISTS potassium_mg numeric(10,2) DEFAULT 0.0;
+            # """))
+            # conn.execute(sa_text("""
+            #     ALTER TABLE IF EXISTS ingredients 
+            #     ADD COLUMN IF NOT EXISTS sodium_mg numeric(10,2) DEFAULT 0.0;
+            # """))
+            # conn.execute(sa_text("""
+            #     ALTER TABLE IF EXISTS ingredients 
+            #     ADD COLUMN IF NOT EXISTS vitamin_c_mg numeric(10,2) DEFAULT 0.0;
+            # """))
             # User and multi-tenant adjustments
-            print("Ensuring 'users' table and user_id columns exist...")
-            conn.execute(sa_text("""
-                CREATE TABLE IF NOT EXISTS users (
-                    id SERIAL PRIMARY KEY,
-                    email VARCHAR(255) UNIQUE NOT NULL,
-                    password_hash VARCHAR(255) NOT NULL,
-                    created_at TIMESTAMP DEFAULT now()
-                );
-            """))
-            # Add user_id to recipes if missing
-            conn.execute(sa_text("""
-                ALTER TABLE IF EXISTS recipes 
-                ADD COLUMN IF NOT EXISTS user_id INTEGER NULL REFERENCES users(id);
-            """))
-            conn.execute(sa_text("""
-                CREATE INDEX IF NOT EXISTS ix_recipes_user_id ON recipes(user_id);
-            """))
-            # Add user_id to weekly_plan and update unique constraint
-            conn.execute(sa_text("""
-                ALTER TABLE IF EXISTS weekly_plan 
-                ADD COLUMN IF NOT EXISTS user_id INTEGER NULL REFERENCES users(id);
-            """))
-            # Add user_id to ingredients and make name unique per user, but allow a single global copy (user_id NULL)
-            conn.execute(sa_text("""
-                ALTER TABLE IF EXISTS ingredients
-                ADD COLUMN IF NOT EXISTS user_id INTEGER NULL REFERENCES users(id);
-            """))
+            # print("Ensuring 'users' table and user_id columns exist...")
+            # conn.execute(sa_text("""
+            #     CREATE TABLE IF NOT EXISTS users (
+            #         id SERIAL PRIMARY KEY,
+            #         email VARCHAR(255) UNIQUE NOT NULL,
+            #         password_hash VARCHAR(255) NOT NULL,
+            #         created_at TIMESTAMP DEFAULT now()
+            #     );
+            # """))
+            # # Add user_id to recipes if missing
+            # conn.execute(sa_text("""
+            #     ALTER TABLE IF EXISTS recipes 
+            #     ADD COLUMN IF NOT EXISTS user_id INTEGER NULL REFERENCES users(id);
+            # """))
+            # conn.execute(sa_text("""
+            #     CREATE INDEX IF NOT EXISTS ix_recipes_user_id ON recipes(user_id);
+            # """))
+            # # Add user_id to weekly_plan and update unique constraint
+            # conn.execute(sa_text("""
+            #     ALTER TABLE IF EXISTS weekly_plan 
+            #     ADD COLUMN IF NOT EXISTS user_id INTEGER NULL REFERENCES users(id);
+            # """))
+            # # Add user_id to ingredients and make name unique per user, but allow a single global copy (user_id NULL)
+            # conn.execute(sa_text("""
+            #     ALTER TABLE IF EXISTS ingredients
+            #     ADD COLUMN IF NOT EXISTS user_id INTEGER NULL REFERENCES users(id);
+            # """))
             conn.execute(sa_text("""
                 CREATE INDEX IF NOT EXISTS ix_ingredients_user_id ON ingredients(user_id);
             """))
@@ -261,9 +265,9 @@ def setup_database() -> None:
             # Ensure at least one default user exists for seed data
             # Insert default demo user with a bcrypt hash if none exists
             pwd = CryptContext(schemes=["bcrypt"], deprecated="auto").hash("demo123")
-            conn.execute(sa_text("""
+            conn.execute(sa_text(f"""
                 INSERT INTO users (email, password_hash)
-                SELECT 'demo@mealplanner.local', :pwd
+                SELECT 'demo@demo.com', :pwd
                 WHERE NOT EXISTS (SELECT 1 FROM users);
             """), {"pwd": pwd})
             # Backfill weekly_plan user_id if null
