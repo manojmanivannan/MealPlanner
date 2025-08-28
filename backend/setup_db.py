@@ -3,12 +3,14 @@ import csv
 import sys
 import json  # <-- ADD THIS IMPORT
 from typing import Any, Dict, Optional, Callable
+import os
 
 from sqlalchemy.orm import Session
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.sql import text
+from sqlalchemy import create_engine
 
-from database import engine, Base, SessionLocal
+from database import Base, SessionLocal
 from models import Ingredient, Recipe, WeeklyPlan, RecipeMealType, User
 from sqlalchemy import text as sa_text
 from passlib.context import CryptContext
@@ -144,6 +146,16 @@ def load_data_from_csv(
 
 
 # --- Main Logic ---
+
+# Use env vars for DB connection (Cloud SQL/Secret Manager compatible)
+DB_USER = os.getenv("DB_USER", os.getenv("POSTGRES_USER", "mealplanner"))
+DB_PASSWORD = os.getenv("DB_PASSWORD", os.getenv("POSTGRES_PASSWORD", "password"))
+DB_NAME = os.getenv("DB_NAME", os.getenv("POSTGRES_DB", "mealplanner"))
+DB_HOST = os.getenv("DB_HOST", "localhost")
+DATABASE_URL = f"postgresql+psycopg2://{DB_USER}:{DB_PASSWORD}@{DB_HOST}/{DB_NAME}"
+
+engine = create_engine(DATABASE_URL)
+
 
 def setup_database() -> None:
     """Sets up the database by creating tables and loading initial data."""

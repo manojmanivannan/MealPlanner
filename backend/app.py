@@ -1,5 +1,5 @@
-
 import logging
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -8,6 +8,11 @@ logger = logging.getLogger("uvicorn")
 logger.setLevel(logging.DEBUG)
 
 app = FastAPI()
+
+# Load secret key from environment variable
+SECRET_KEY = os.getenv("SECRET_KEY")
+if not SECRET_KEY:
+    raise SystemExit("Error: SECRET_KEY environment variable not set.")
 
 app.add_middleware(
     CORSMiddleware,
