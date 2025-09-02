@@ -76,6 +76,7 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    restart: unless-stopped
     healthcheck:
       test: wget --no-verbose -O /dev/null --tries=1 http://localhost:5000/health || exit 1
       interval: 10s
@@ -102,6 +103,7 @@ services:
       timeout: 5s
       retries: 5
       start_period: 10s
+    restart: unless-stopped
 
 # volumes:
   # db-data:  # (no longer needed, using host directory)
