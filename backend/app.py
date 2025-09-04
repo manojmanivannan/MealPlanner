@@ -14,11 +14,24 @@ SECRET_KEY = os.getenv("SECRET_KEY")
 if not SECRET_KEY:
     raise SystemExit("Error: SECRET_KEY environment variable not set.")
 
+# CORS configuration for Cloud Run
+allowed_origins = [
+    "http://localhost:8080",
+    "http://localhost:3000",
+    "https://*.run.app",  # Allow Cloud Run URLs
+]
+
+# In production, allow specific Cloud Run frontend URL
+import os
+frontend_url = os.getenv("FRONTEND_URL")
+if frontend_url:
+    allowed_origins.append(frontend_url)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
 
@@ -43,5 +56,10 @@ app.include_router(auth_router)
 
 @app.get("/health", tags=["healthcheck"], response_model=HealthCheckSchema)
 def get_health() -> HealthCheckSchema:
+    return HealthCheckSchema(status="OK")
+
+@app.get("/healthz", tags=["healthcheck"], response_model=HealthCheckSchema)
+def get_healthz() -> HealthCheckSchema:
+    """Kubernetes-style health check endpoint"""
     return HealthCheckSchema(status="OK")
 

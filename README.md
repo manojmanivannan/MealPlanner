@@ -144,7 +144,7 @@ cd MealPlanner
 - Edit `terraform/variables.tf` or use a `terraform.tfvars` file:
 ```hcl
 project_id    = "your-gcp-project-id"
-region        = "us-central1"
+region        = "us-east1"
 db_user       = "mealplanner"
 db_password   = "your-db-password"
 db_name       = "mealplanner"

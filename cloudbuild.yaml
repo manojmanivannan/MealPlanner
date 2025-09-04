@@ -14,6 +14,6 @@ steps:
   #   args: ['-c', 'cd backend && pip install -r requirements-dev.txt && pytest']
   # Deploy to Cloud Run
   - name: 'gcr.io/cloud-builders/gcloud'
-    args: ['run', 'deploy', 'mealplanner-backend', '--image', 'gcr.io/$PROJECT_ID/mealplanner-backend', '--region', 'us-central1', '--platform', 'managed', '--allow-unauthenticated']
+    args: ['run', 'deploy', 'mealplanner-backend', '--image', 'gcr.io/$PROJECT_ID/mealplanner-backend', '--region', 'us-east1', '--platform', 'managed', '--allow-unauthenticated']
   - name: 'gcr.io/cloud-builders/gcloud'
-    args: ['run', 'deploy', 'mealplanner-frontend', '--image', 'gcr.io/$PROJECT_ID/mealplanner-frontend', '--region', 'us-central1', '--platform', 'managed', '--allow-unauthenticated']
+    args: ['run', 'deploy', 'mealplanner-frontend', '--image', 'gcr.io/$PROJECT_ID/mealplanner-frontend', '--region', 'us-east1', '--platform', 'managed', '--allow-unauthenticated']

@@ -2,19 +2,34 @@ FROM python:3.9-slim
 
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y wget
-# Install dependencies from requirements-dev.txt if present, else fallback
-COPY requirements-dev.txt ./
-RUN pip install --no-cache-dir -r requirements-dev.txt || pip install fastapi uvicorn psycopg2-binary sqlalchemy pydantic pydantic[email] passlib[bcrypt] bcrypt==4.0.1 PyJWT python-multipart
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    wget \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
 
+# Install Python dependencies
+COPY requirements-dev.txt ./
+RUN pip install --no-cache-dir -r requirements-dev.txt
+
+# Copy application code
 COPY . .
 
-# Use environment variables for DB and secret key
-ENV DB_USER=mealplanner
-ENV DB_PASSWORD=password
-ENV DB_NAME=mealplanner
-ENV DB_HOST=localhost
-ENV SECRET_KEY=your_secret_key
+# Create non-root user
+RUN useradd --create-home --shell /bin/bash app \
+    && chown -R app:app /app
+USER app
 
-# Production: no --reload, run setup_db then start app
-CMD python setup_db.py && uvicorn app:app --host 0.0.0.0 --port 5000
+# Environment variables will be set by Cloud Run
+ENV PYTHONPATH=/app
+ENV PORT=8080
+
+# Expose port for Cloud Run
+EXPOSE 8080
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8080/health || exit 1
+
+# Production: run setup_db then start app
+CMD python setup_db.py && uvicorn app:app --host 0.0.0.0 --port $PORT
