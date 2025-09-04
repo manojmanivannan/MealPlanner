@@ -7,7 +7,7 @@ RUN apk add --no-cache curl
 COPY nginx.conf /etc/nginx/nginx.conf
 
 # Copy static files
-COPY html/ /usr/share/nginx/html/
+COPY frontend/html/ /usr/share/nginx/html/
 
 # Create nginx user and set permissions
 RUN chown -R nginx:nginx /usr/share/nginx/html && \
