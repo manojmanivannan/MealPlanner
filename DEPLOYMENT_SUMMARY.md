@@ -61,7 +61,7 @@ Follow the [GitHub Secrets Setup Guide](docs/github-secrets-setup.md):
 
 **Repository Variables:**
 - `PROJECT_ID`: `n8n-meal-planner-research`
-- `REGION`: `us-east1`
+- `REGION`: `us-east1` (cheapest GCP region)
 - `ARTIFACT_REPO`: `mealplanner-docker`
 
 ### 3. Initial Deployment

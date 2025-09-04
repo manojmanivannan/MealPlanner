@@ -1,5 +1,6 @@
 import logging
 import os
+import sys
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -10,9 +11,19 @@ logger.setLevel(logging.DEBUG)
 app = FastAPI()
 
 # Load secret key from environment variable
-SECRET_KEY = os.getenv("SECRET_KEY")
+# Try multiple environment variable names for flexibility
+SECRET_KEY = (
+    os.getenv("SECRET_KEY") or 
+    os.getenv("MEALPLANNER_SECRET") or 
+    os.getenv("JWT_SECRET")
+)
+
+# In testing, use a default secret key
 if not SECRET_KEY:
-    raise SystemExit("Error: SECRET_KEY environment variable not set.")
+    if os.getenv("ENVIRONMENT") == "test" or "pytest" in sys.modules:
+        SECRET_KEY = "test-secret-key-for-development-only"
+    else:
+        raise SystemExit("Error: SECRET_KEY environment variable not set.")
 
 # CORS configuration for Cloud Run
 allowed_origins = [

@@ -38,6 +38,12 @@ jobs:
           pip install -r requirements-dev.txt
 
       - name: Run tests
+        env:
+          ENVIRONMENT: test
+          SECRET_KEY: test-secret-key-for-github-actions
+          POSTGRES_USER: testuser
+          POSTGRES_PASSWORD: testpass
+          POSTGRES_DB: mealplanner_test
         run: |
           pytest --junitxml=test-results.xml -s -v tests
 
