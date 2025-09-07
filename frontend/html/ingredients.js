@@ -1,5 +1,17 @@
 document.addEventListener('DOMContentLoaded', () => {
     const API_BASE = '/api';
+    function authHeaders() {
+        const token = localStorage.getItem('token');
+        return token ? { 'Authorization': 'Bearer ' + token } : {};
+    }
+    function handleAuthError(resp) {
+        if (resp && resp.status === 401) {
+            localStorage.removeItem('token');
+            window.location.href = 'welcome.html';
+            return true;
+        }
+        return false;
+    }
     let shelfLifeMode = false;
     // NEW: Helper function to fetch units and populate a <select> element
     const populateUnitSelect = async (selectId, selectedValue = null) => {
@@ -52,7 +64,8 @@ document.addEventListener('DOMContentLoaded', () => {
         populateUnitSelect('new-ingredient-unit');
         const listSection = document.getElementById('ingredients-list-section');
         try {
-            const response = await fetch(`${API_BASE}/ingredients`);
+            const response = await fetch(`${API_BASE}/ingredients`, { headers: authHeaders() });
+            if (handleAuthError(response)) return;
             let ingredients = await response.json();
             let html = '';
             if (shelfLifeMode) {
@@ -124,7 +137,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     try {
                         const response = await fetch(`${API_BASE}/ingredients/${id}?available=${available}`, {
-                            method: 'PUT'
+                            method: 'PUT',
+                            headers: authHeaders()
                         });
 
                         if (!response.ok) throw new Error('Server update failed');
@@ -330,7 +344,8 @@ document.addEventListener('DOMContentLoaded', () => {
                                 vitamin_c_mg: vitaminC
                             });
                             const resp = await fetch(`${API_BASE}/ingredients/${id}?${params.toString()}`, {
-                                method: 'PUT'
+                                method: 'PUT',
+                                headers: authHeaders()
                             });
                             if (!resp.ok) {
                                 const err = await resp.json();
@@ -358,7 +373,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         try {
                             // 1. Await the fetch and store the response
                             const response = await fetch(`${API_BASE}/ingredients/${id}`, {
-                                method: 'DELETE'
+                                method: 'DELETE',
+                                headers: authHeaders()
                             });
 
                             // 2. Check if the response status is OK (e.g., 200-299)
@@ -421,7 +437,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 try {
                     let url = `${API_BASE}/ingredients?name=${encodeURIComponent(name)}&shelf_life=${encodeURIComponent(shelf_life)}&serving_unit=${encodeURIComponent(serving_unit)}`;
                     const resp = await fetch(url, {
-                        method: 'POST'
+                        method: 'POST',
+                        headers: authHeaders()
                     });
                     if (resp.ok) {
                         input.value = '';

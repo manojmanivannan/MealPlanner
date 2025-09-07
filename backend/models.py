@@ -12,6 +12,9 @@ from sqlalchemy import (
     DDL,
     event,
     UniqueConstraint,
+    ForeignKey,
+    Index,
+    text as sa_text,
 )
 from sqlalchemy.dialects.postgresql import JSONB, ARRAY
 from sqlalchemy.sql import func
@@ -48,11 +51,23 @@ class DaysOfWeek(str, enum.Enum):
     
 # --- ORM Models ---
 
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True)
+    email = Column(String(255), unique=True, nullable=False)
+    password_hash = Column(String(255), nullable=False)
+    created_at = Column(TIMESTAMP, server_default=func.now())
+
+    def __repr__(self):
+        return f"<User(email='{self.email}')>"
+
 class Ingredient(Base):
     __tablename__ = "ingredients"
 
     id = Column(Integer, primary_key=True)
-    name = Column(String(255), unique=True, nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=True)
+    name = Column(String(255), nullable=False)
     shelf_life = Column(Integer, default=None)
     available = Column(Boolean, default=False)
     last_available = Column(TIMESTAMP, default=func.now())
@@ -71,8 +86,13 @@ class Ingredient(Base):
     sodium_mg = Column(Numeric(10, 2), default=0.0)
     vitamin_c_mg = Column(Numeric(10, 2), default=0.0)
 
+    __table_args__ = (
+        UniqueConstraint('user_id', 'name', name='uniq_user_ingredient_name'),
+        Index('uniq_global_ingredient_name', 'name', unique=True, postgresql_where=sa_text('user_id IS NULL')),
+    )
+
     def __repr__(self):
-        return f"<Ingredient(name='{self.name}')>"
+        return f"<Ingredient(user_id='{self.user_id}', name='{self.name}')>"
 
 
 class Recipe(Base):
@@ -85,6 +105,7 @@ class Recipe(Base):
     instructions = Column(Text, nullable=False)
     meal_type = Column(Enum(RecipeMealType, name="recipe_meal_type_enum"), nullable=False)
     is_vegetarian = Column(Boolean, default=True)
+    user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=True)  # null => global recipe
     protein = Column(Numeric(10, 2), default=0.0)
     carbs = Column(Numeric(10, 2), default=0.0)
     fat = Column(Numeric(10, 2), default=0.0)
@@ -107,13 +128,14 @@ class WeeklyPlan(Base):
     __tablename__ = "weekly_plan"
 
     id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=False)
     day = Column(String(16), nullable=False)
     meal_type = Column(Enum(RecipeMealType, name="plan_meal_type_enum"), nullable=False)
     recipe_ids = Column(ARRAY(Integer))
 
     # Define the unique constraint directly in the model
     __table_args__ = (
-        UniqueConstraint('day', 'meal_type', name='unique_day_meal'),
+        UniqueConstraint('user_id', 'day', 'meal_type', name='unique_user_day_meal'),
     )
 
     def __repr__(self):
@@ -144,7 +166,13 @@ calculate_nutrition_func = DDL("""
     BEGIN
         FOR ing_record IN SELECT * FROM jsonb_to_recordset(NEW.ingredients) AS x(name text, quantity float, unit text)
         LOOP
-            SELECT * INTO nutrient_data FROM ingredients WHERE name = ing_record.name;
+            -- If recipe is user-specific, prefer that user's ingredient values; else fall back to any matching name
+            IF NEW.user_id IS NOT NULL THEN
+                SELECT * INTO nutrient_data FROM ingredients WHERE name = ing_record.name AND user_id = NEW.user_id LIMIT 1;
+            END IF;
+            IF NOT FOUND THEN
+                SELECT * INTO nutrient_data FROM ingredients WHERE name = ing_record.name LIMIT 1;
+            END IF;
             IF FOUND THEN
                 total_protein := total_protein + (nutrient_data.protein * ing_record.quantity / nutrient_data.serving_size);
                 total_carbs := total_carbs + (nutrient_data.carbs * ing_record.quantity/ nutrient_data.serving_size);

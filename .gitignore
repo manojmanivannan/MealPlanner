@@ -1,3 +1,4 @@
 .env
 tailscale-nginx
 postgres-data
+__pycache__

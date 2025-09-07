@@ -1,5 +1,17 @@
 document.addEventListener('DOMContentLoaded', () => {
     const API_BASE = '/api';
+    function authHeaders() {
+        const token = localStorage.getItem('token');
+        return token ? { 'Authorization': 'Bearer ' + token } : {};
+    }
+    function handleAuthError(resp) {
+        if (resp && resp.status === 401) {
+            localStorage.removeItem('token');
+            window.location.href = 'welcome.html';
+            return true;
+        }
+        return false;
+    }
     const hubContent = document.getElementById('hub-content');
     const hubTabsContainer = document.getElementById('hub-tabs');
     
@@ -25,7 +37,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- NEW: Fetches the weekly plan data ---
     async function fetchWeeklyPlan() {
         try {
-            const response = await fetch(`${API_BASE}/weekly-plan`);
+            const response = await fetch(`${API_BASE}/weekly-plan`, { headers: authHeaders() });
+            if (handleAuthError(response)) return;
             weeklyPlan = await response.json();
         } catch (error) {
             console.error('Error fetching weekly plan:', error);
@@ -37,11 +50,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- NEW: Saves an updated meal slot to the server ---
     async function saveWeeklyPlanSlot(day, meal, recipeIds) {
         try {
-            await fetch(`${API_BASE}/weekly-plan`, {
+            const resp = await fetch(`${API_BASE}/weekly-plan`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json', ...authHeaders() },
                 body: JSON.stringify({ day, meal_type: meal, recipe_ids: recipeIds })
             });
+            if (handleAuthError(resp)) return;
             // Ensure nested structure exists before assignment
             if (!weeklyPlan[day]) {
                 weeklyPlan[day] = {};
@@ -177,7 +191,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function fetchRecipes() {
         try {
-            const response = await fetch(`${API_BASE}/recipes`);
+            const response = await fetch(`${API_BASE}/recipes`, { headers: authHeaders() });
+            if (handleAuthError(response)) return;
             recipes = await response.json();
             renderRecipes(); // Initial render
         } catch (error) {
@@ -314,7 +329,8 @@ document.addEventListener('DOMContentLoaded', () => {
     window.deleteRecipe = async (id) => {
         if (confirm('Are you sure you want to delete this recipe?')) {
             try {
-                await fetch(`${API_BASE}/recipes/${id}`, { method: 'DELETE' });
+                const resp = await fetch(`${API_BASE}/recipes/${id}`, { method: 'DELETE', headers: authHeaders() });
+                if (handleAuthError(resp)) return;
                 recipes = recipes.filter(r => r.id !== id);
                 renderRecipes();
             } catch (error) {
@@ -325,7 +341,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const showRecipeModal = async (recipe = null) => {
         let ingredientList = [];
         try {
-            const resp = await fetch(`${API_BASE}/ingredients?sort=name`);
+            const resp = await fetch(`${API_BASE}/ingredients?sort=name`, { headers: authHeaders() });
             ingredientList = await resp.json();
         } catch (e) {
             ingredientList = [];
@@ -548,7 +564,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (id) {
                 const response = await fetch(`${API_BASE}/recipes/${id}`, {
                     method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', ...authHeaders() },
                     body: JSON.stringify(recipeData)
                 });
                 const updatedRecipe = await response.json();
@@ -557,7 +573,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 const response = await fetch(`${API_BASE}/recipes`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', ...authHeaders() },
                     body: JSON.stringify(recipeData)
                 });
                 const newRecipe = await response.json();
