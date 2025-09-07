@@ -90,7 +90,7 @@
                 const data = await resp.json();
                 if (!data || !data.access_token) throw new Error('Missing token');
                 localStorage.setItem('token', data.access_token);
-                window.location.replace('index.html');
+                setTimeout(() => { window.location.replace('index.html'); }, 100);
             } catch (e) {
                 err.textContent = e.message || 'Login failed';
             }
@@ -114,7 +114,7 @@
                 const data = await login.json();
                 if (!data || !data.access_token) throw new Error('Missing token');
                 localStorage.setItem('token', data.access_token);
-                window.location.replace('index.html');
+                setTimeout(() => { window.location.replace('index.html'); }, 100);
             } catch (e) {
                 err.textContent = e.message || 'Signup failed';
             }
