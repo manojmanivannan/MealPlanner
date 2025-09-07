@@ -8,9 +8,24 @@ document.addEventListener('DOMContentLoaded', () => {
     let recipes = [];
     let weeklyPlan = {};
 
+    function authHeaders() {
+        const token = localStorage.getItem('token');
+        return token ? { 'Authorization': 'Bearer ' + token } : {};
+    }
+
+    function handleAuthError(resp) {
+        if (resp && resp.status === 401) {
+            localStorage.removeItem('token');
+            window.location.href = 'welcome.html';
+            return true;
+        }
+        return false;
+    }
+
     async function fetchRecipes() {
         try {
-            const response = await fetch(`${API_BASE}/recipes`);
+            const response = await fetch(`${API_BASE}/recipes`, { headers: authHeaders() });
+            if (handleAuthError(response)) return;
             recipes = await response.json();
             fetchWeeklyPlan();
         } catch (error) {
@@ -20,7 +35,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function fetchWeeklyPlan() {
         try {
-            const response = await fetch(`${API_BASE}/weekly-plan`);
+            const response = await fetch(`${API_BASE}/weekly-plan`, { headers: authHeaders() });
+            if (handleAuthError(response)) return;
             weeklyPlan = await response.json();
             renderPlanner();
         } catch (error) {
@@ -30,11 +46,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function saveWeeklyPlanSlot(day, meal, recipeIds) {
         try {
-            await fetch(`${API_BASE}/weekly-plan`, {
+            const resp = await fetch(`${API_BASE}/weekly-plan`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json', ...authHeaders() },
                 body: JSON.stringify({ day, meal_type: meal, recipe_ids: recipeIds })
             });
+            if (handleAuthError(resp)) return;
             weeklyPlan[day][meal] = recipeIds;
             // No need to fetch, just re-render with the new state
             renderPlanner(); 

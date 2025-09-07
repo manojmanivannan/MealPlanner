@@ -5,12 +5,10 @@ services:
       - local
     # image: nginx:latest
     build:
-      context: ./frontend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: frontend/Dockerfile
     ports:
       - "8080:80"
-    volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf
       # - ./html:/usr/share/nginx/html
     depends_on:
       backend:
@@ -48,11 +46,9 @@ services:
       - prod
     # image: nginx:latest
     build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf
-      # - ./frontend/html:/usr/share/nginx/html
+      context: .
+      dockerfile: frontend/Dockerfile
+    # - ./frontend/html:/usr/share/nginx/html
     depends_on:
       backend:
         condition: service_healthy
@@ -67,15 +63,16 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=recipes
+      - POSTGRES_USER=$POSTGRES_USER
+      - POSTGRES_PASSWORD=$POSTGRES_PASSWORD
+      - POSTGRES_DB=$POSTGRES_DB
       - LOG_LEVEL=debug
     ports:
       - "5000:5000"
     depends_on:
       db:
         condition: service_healthy
+    restart: unless-stopped
     healthcheck:
       test: wget --no-verbose -O /dev/null --tries=1 http://localhost:5000/health || exit 1
       interval: 10s
@@ -90,12 +87,13 @@ services:
   db:
     image: postgres:latest
     environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=recipes
+      - POSTGRES_USER=$POSTGRES_USER
+      - POSTGRES_PASSWORD=$POSTGRES_PASSWORD
+      - POSTGRES_DB=$POSTGRES_DB
       - PGUSER=postgres
     volumes:
       - ./postgres-data:/var/lib/postgresql/data
+    restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "pg_isready", "-d", "recipes", "-U", "postgres"]
       interval: 10s
