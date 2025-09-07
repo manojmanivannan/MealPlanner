@@ -265,6 +265,9 @@
             <p class="max-w-3xl mx-auto text-lg text-stone-600 mt-2 text-center mb-10">
                 Plan for the week & Marco nutrients for one person.
             </p>
+            <div class="text-center mb-4">
+                <button id="export-pdf-btn" class="clay-btn">Export as PDF</button>
+            </div>
             <div id="meal-plan-grid" class="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 clay-section p-6"></div>
         </section>
     </main>
@@ -290,5 +293,37 @@
         })();
     </script>
     <script src="weekly-plan.js"></script>
+    <script>
+        document.getElementById('export-pdf-btn').addEventListener('click', () => {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                alert('You must be logged in to export the plan.');
+                return;
+            }
+            fetch('/api/weekly-plan/pdf', {
+                headers: { 'Authorization': 'Bearer ' + token }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to generate PDF');
+                }
+                return response.blob();
+            })
+            .then(blob => {
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'weekly_meal_plan.pdf';
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                window.URL.revokeObjectURL(url);
+            })
+            .catch(error => {
+                console.error('Error exporting PDF:', error);
+                alert('Could not export PDF. Please try again.');
+            });
+        });
+    </script>
 </body>
 </html>
