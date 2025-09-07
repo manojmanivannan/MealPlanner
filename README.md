@@ -140,3 +140,111 @@ The backend uses PostgreSQL-specific features (JSONB, ARRAY, triggers). The test
    ```
 
 The suite starts a `postgres:15-alpine` container per test session, creates all tables and triggers, overrides the app's DB dependency, and seeds a user to obtain an auth token.
+
+---
+
+## Deploying MealPlanner on Google Cloud Platform (GCP)
+
+This guide walks you through deploying the MealPlanner stack on GCP, including backend (Cloud Run + Cloud SQL), frontend (static bucket), secrets, IAM, and domain setup.
+
+### 1. Create a Google Cloud Account
+- Go to https://cloud.google.com and sign up or log in.
+- Set up billing for your project.
+
+### 2. Create a GCP Project
+- In the Cloud Console, click the project dropdown and select "New Project".
+- Name your project (e.g., `mealplanner-prod`).
+- Note your Project ID (used in Terraform).
+
+### 3. Enable Required APIs
+- In the Cloud Console, go to "APIs & Services > Library".
+- Enable:
+  - Cloud Run
+  - Cloud SQL Admin
+  - Secret Manager
+  - Artifact Registry
+  - Cloud Storage
+
+### 4. Install Prerequisites Locally
+- Install [Terraform](https://www.terraform.io/downloads.html)
+- Install [gcloud CLI](https://cloud.google.com/sdk/docs/install)
+- Install Docker
+
+### 5. Clone the Repository
+```bash
+git clone https://github.com/manojmanivannan/MealPlanner.git
+cd MealPlanner
+```
+
+### 6. Configure Terraform Variables
+- Copy `.env.example` to `.env` and fill in your secrets.
+- Edit `terraform/variables.tf` or use a `terraform.tfvars` file:
+```hcl
+project_id    = "your-gcp-project-id"
+region        = "us-east1"
+db_user       = "mealplanner"
+db_password   = "your-db-password"
+db_name       = "mealplanner"
+secret_key    = "your-secret-key"
+```
+
+### 7. Initialize and Apply Terraform
+```bash
+cd terraform
+terraform init
+terraform plan
+terraform apply
+```
+- This will provision:
+  - Cloud Run backend (with Cloud SQL connector, secrets)
+  - Cloud SQL for PostgreSQL (with backups)
+  - Secret Manager (DB password, DATABASE_URL)
+  - Public static site bucket for frontend
+  - Service account + IAM bindings
+  - Required APIs
+- Outputs will show Cloud Run URL, frontend bucket URL, service account, Cloud SQL connection name.
+
+### 8. Build and Push Docker Images
+- Authenticate Docker with GCP:
+```bash
+gcloud auth configure-docker
+```
+- Build and push images using Cloud Build (recommended):
+```bash
+gcloud builds submit --tag gcr.io/$PROJECT_ID/mealplanner-backend ./backend
+
+gcloud builds submit --tag gcr.io/$PROJECT_ID/mealplanner-frontend ./frontend
+```
+
+### 9. Deploy Backend and Frontend
+- Terraform will deploy Cloud Run services automatically.
+- For frontend, upload static files to the bucket:
+```bash
+gsutil rsync -R ./frontend/html gs://$PROJECT_ID-frontend-static
+```
+- Access your frontend at the bucket website URL (see Terraform output).
+
+### 10. Set Up a Custom Domain (Optional)
+- Buy a domain from Google Domains or any registrar.
+- In Cloud Console, go to Cloud Run > your service > "Manage custom domains".
+- Follow instructions to map your domain to Cloud Run and/or static bucket.
+- Update DNS records as instructed.
+
+### 11. Secure Your Deployment
+- Use HTTPS (Cloud Run and Cloud Storage support HTTPS by default).
+- Store secrets in Secret Manager (already provisioned).
+- Restrict IAM permissions to least privilege.
+
+### 12. Monitor and Maintain
+- Use GCP Console for logs, monitoring, and scaling.
+- Set up backups for Cloud SQL (enabled by Terraform).
+- Update your app by pushing new Docker images and re-deploying Cloud Run.
+
+---
+
+## Troubleshooting & Tips
+- If you see permission errors, check IAM roles and service account bindings.
+- For database connection issues, verify Cloud SQL connector and secrets.
+- Use `terraform destroy` to tear down resources when done.
+
+For more help, see the official GCP docs or open an issue in this repo.

@@ -23,8 +23,10 @@ os.environ.setdefault("POSTGRES_PASSWORD", "testpass")
 os.environ.setdefault("POSTGRES_DB", "mealplanner_test")
 # Host won't be used thanks to dependency override, but set to avoid surprises
 os.environ.setdefault("POSTGRES_HOST", "localhost")
-os.environ.setdefault("MEALPLANNER_SECRET", "testsecret")
+os.environ.setdefault("SECRET_KEY", "testsecret")
+os.environ.setdefault("MEALPLANNER_SECRET", "testsecret")  # Backward compatibility
 os.environ.setdefault("MEALPLANNER_TOKEN_MINUTES", "60")
+os.environ.setdefault("ENVIRONMENT", "test")
 
 
 TEST_DATABASE_URL = os.environ.get("TEST_DATABASE_URL")

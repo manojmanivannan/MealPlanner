@@ -1,0 +1,19 @@
+# GCP Cloud Build pipeline for MealPlanner
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'gcr.io/$PROJECT_ID/mealplanner-backend', './backend']
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'gcr.io/$PROJECT_ID/mealplanner-frontend', './frontend']
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/mealplanner-backend']
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/mealplanner-frontend']
+  # Add test steps if needed
+  # - name: 'python'
+  #   entrypoint: 'bash'
+  #   args: ['-c', 'cd backend && pip install -r requirements-dev.txt && pytest']
+  # Deploy to Cloud Run
+  - name: 'gcr.io/cloud-builders/gcloud'
+    args: ['run', 'deploy', 'mealplanner-backend', '--image', 'gcr.io/$PROJECT_ID/mealplanner-backend', '--region', 'us-east1', '--platform', 'managed', '--allow-unauthenticated']
+  - name: 'gcr.io/cloud-builders/gcloud'
+    args: ['run', 'deploy', 'mealplanner-frontend', '--image', 'gcr.io/$PROJECT_ID/mealplanner-frontend', '--region', 'us-east1', '--platform', 'managed', '--allow-unauthenticated']
