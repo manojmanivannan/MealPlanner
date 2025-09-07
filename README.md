@@ -60,17 +60,54 @@ This project uses Docker for easy setup and deployment. You can run it locally o
 
 ```
 .
-├── backend/            # FastAPI backend
-│   ├── app.py          # Main application file
-│   ├── Dockerfile      # Dockerfile for the backend
-│   └── ...
-├── docker-compose.yml  # Docker Compose configuration
-├── html/               # Frontend files
-│   ├── index.html      # Main HTML file
-│   ├── recipes.js      # JavaScript for the frontend
-│   └── ...
-├── nginx.conf          # Nginx configuration
-└── README.md           # This file
+├── backend
+│   ├── app.py
+│   ├── data
+│   │   ├── ingredients.csv
+│   │   ├── recipes.csv
+│   │   └── weekly_plan.csv
+│   ├── database.py
+│   ├── Dockerfile
+│   ├── models.py
+│   ├── routers
+│   │   ├── auth_router.py
+│   │   ├── ingredient_router.py
+│   │   ├── plan_router.py
+│   │   ├── recipe_router.py
+│   │   └── utilities_router.py
+│   ├── schemas.py
+│   └── setup_db.py
+├── backup_db.sh
+├── config
+│   └── meal.json
+├── docker-compose.yml
+├── frontend
+│   ├── Dockerfile
+│   └── html
+│       ├── index.html
+│       ├── ingredients.html
+│       ├── ingredients.js
+│       ├── meal_logo.ico
+│       ├── recipe-hub.html
+│       ├── recipe-hub.js
+│       ├── styles.css
+│       ├── weekly-plan.js
+│       └── welcome.html
+├── nginx.conf
+├── README.md
+├── requirements-dev.txt
+├── restore_db.sh
+├── samples
+│   ├── ingredients.png
+│   ├── planner.png
+│   └── recipe_hub.png
+└── tests
+    ├── conftest.py
+    ├── test_auth.py
+    ├── test_health.py
+    ├── test_ingredients.py
+    ├── test_recipes.py
+    └── test_weekly_plan_and_utilities.py
 ```
 
 ## Technologies Used
