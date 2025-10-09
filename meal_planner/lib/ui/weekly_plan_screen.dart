@@ -124,7 +124,7 @@ class WeeklyPlanScreen extends ConsumerWidget {
                                   Padding(
                                     padding: const EdgeInsets.symmetric(vertical: 4.0),
                                     child: Text(
-                                        '• ${item.usage.quantity} ${item.usage.servingUnit ?? ''} ${item.ingredient?.name ?? 'Unknown'}'),
+                                        '• ${item.usage.quantity} ${item.ingredient?.servingUnit ?? ''} ${item.ingredient?.name ?? 'Unknown'}'),
                                   ),
                               const SizedBox(height: 16),
                               Text('Instructions', style: Theme.of(context).textTheme.titleLarge),
@@ -266,6 +266,42 @@ class _DayColumn extends StatelessWidget {
   final void Function(String mealType) onChangeMeal;
   final void Function(Recipe recipe) onShowRecipe;
 
+  Future<void> _showRecipeSelectionDialog(
+      BuildContext context, List<Recipe> recipes, void Function(Recipe recipe) onShowRecipe) async {
+    await showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Select a recipe'),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: ListView.separated(
+              shrinkWrap: true,
+              itemCount: recipes.length,
+              separatorBuilder: (context, index) => const Divider(),
+              itemBuilder: (context, index) {
+                final recipe = recipes[index];
+                return ListTile(
+                  title: Text(recipe.name),
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    onShowRecipe(recipe);
+                  },
+                );
+              },
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Close'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final dayMeals = view[day] ?? const {};
@@ -303,8 +339,12 @@ class _DayColumn extends StatelessWidget {
                             onEdit: () => onChangeMeal(meal),
                             onTap: () {
                               final recipeList = dayMeals[meal];
-                              if (recipeList != null && recipeList.length == 1) {
-                                onShowRecipe(recipeList.first);
+                              if (recipeList != null) {
+                                if (recipeList.length == 1) {
+                                  onShowRecipe(recipeList.first);
+                                } else if (recipeList.length > 1) {
+                                  _showRecipeSelectionDialog(context, recipeList, onShowRecipe);
+                                }
                               }
                             },
                           ),
