@@ -156,10 +156,7 @@ class _IngredientsScreenState extends ConsumerState<IngredientsScreen> {
                 ? Icon(_selectedIds.contains(items[i].id)
                     ? Icons.check_circle
                     : Icons.circle_outlined)
-                : IconButton(
-                    icon: const Icon(Icons.delete),
-                    onPressed: () => _deleteIngredients([items[i]]),
-                  ),
+                : const Icon(Icons.chevron_right),
           ),
         ),
         loading: () => const Center(child: CircularProgressIndicator()),

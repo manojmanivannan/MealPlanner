@@ -8,6 +8,24 @@ import '../providers.dart';
 import 'ingredient_edit_screen.dart';
 import 'form_fields.dart';
 
+Color _colorFromString(String str) {
+  return Colors.primaries[str.hashCode % Colors.primaries.length];
+}
+
+class _CalculatedNutrients {
+  final double energy;
+  final double protein;
+  final double carbs;
+  final double fat;
+
+  _CalculatedNutrients({
+    this.energy = 0.0,
+    this.protein = 0.0,
+    this.carbs = 0.0,
+    this.fat = 0.0,
+  });
+}
+
 class RecipeEditScreen extends ConsumerStatefulWidget {
   final String recipeId;
 
@@ -51,6 +69,61 @@ class _RecipeEditScreenState extends ConsumerState<RecipeEditScreen> {
     }
   }
 
+  _CalculatedNutrients _calculateNutrients(List<({RecipeIngredient usage, Ingredient? ingredient})> ingredients) {
+    double totalEnergy = 0.0;
+    double totalProtein = 0.0;
+    double totalCarbs = 0.0;
+    double totalFat = 0.0;
+
+    for (final item in ingredients) {
+      final ingredient = item.ingredient;
+      final usage = item.usage;
+
+      if (ingredient != null && ingredient.servingSize != null && ingredient.servingSize! > 0) {
+        final ratio = usage.quantity / ingredient.servingSize!;
+        totalEnergy += (ingredient.energy ?? 0) * ratio;
+        totalProtein += (ingredient.protein ?? 0) * ratio;
+        totalCarbs += (ingredient.carbs ?? 0) * ratio;
+        totalFat += (ingredient.fat ?? 0) * ratio;
+      }
+    }
+
+    return _CalculatedNutrients(
+      energy: totalEnergy,
+      protein: totalProtein,
+      carbs: totalCarbs,
+      fat: totalFat,
+    );
+  }
+
+  Widget _buildNutrientInfo(_CalculatedNutrients nutrients) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: Column(
+          children: [
+            ListTile(
+              title: const Text('Energy'),
+              trailing: Text('${nutrients.energy.toStringAsFixed(1)} kcal'),
+            ),
+            ListTile(
+              title: const Text('Protein'),
+              trailing: Text('${nutrients.protein.toStringAsFixed(1)} g'),
+            ),
+            ListTile(
+              title: const Text('Carbohydrates'),
+              trailing: Text('${nutrients.carbs.toStringAsFixed(1)} g'),
+            ),
+            ListTile(
+              title: const Text('Fat'),
+              trailing: Text('${nutrients.fat.toStringAsFixed(1)} g'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final recipeAsync = ref.watch(recipeDetailProvider(widget.recipeId));
@@ -69,6 +142,7 @@ class _RecipeEditScreenState extends ConsumerState<RecipeEditScreen> {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, st) => Center(child: Text('Error: $e')),      
         data: (data) {
+          final nutrients = _calculateNutrients(data.ingredients);
           return Form(
             key: _formKey,
             child: SingleChildScrollView(
@@ -78,19 +152,25 @@ class _RecipeEditScreenState extends ConsumerState<RecipeEditScreen> {
                 children: [
                   TextFormField(
                     controller: _nameController,
-                    decoration: const InputDecoration(labelText: 'Recipe Name'),
+                    decoration: const InputDecoration(labelText: 'Recipe Name', border: OutlineInputBorder()),
                     validator: (value) => (value?.isEmpty ?? true) ? 'Please enter a name' : null,
                   ),
+                  const SizedBox(height: 12),
                   TextFormField(
                     controller: _servesController,
-                    decoration: const InputDecoration(labelText: 'Serves'),
+                    decoration: const InputDecoration(labelText: 'Serves', border: OutlineInputBorder()),
                     keyboardType: TextInputType.number,
                   ),
+                  const SizedBox(height: 12),
                   TextFormField(
                     controller: _instructionsController,
-                    decoration: const InputDecoration(labelText: 'Instructions'),
-                    maxLines: null,
+                    decoration: const InputDecoration(labelText: 'Instructions', border: OutlineInputBorder()),
+                    maxLines: 5,
                   ),
+                  const SizedBox(height: 24),
+                  Text('Nutritional Information', style: Theme.of(context).textTheme.titleLarge),
+                  const Divider(),
+                  _buildNutrientInfo(nutrients),
                   const SizedBox(height: 24),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -104,11 +184,16 @@ class _RecipeEditScreenState extends ConsumerState<RecipeEditScreen> {
                   ),
                   const Divider(),
                   ...data.ingredients.map((item) {
+                    final color = _colorFromString(item.ingredient?.name ?? '');
                     return ListTile(
+                      leading: CircleAvatar(
+                        backgroundColor: color,
+                        child: Text((item.ingredient?.name ?? '?').substring(0, 1), style: const TextStyle(color: Colors.white)),
+                      ),
                       title: Text(item.ingredient?.name ?? 'Unknown Ingredient'),
-                      subtitle: Text('${item.usage.quantity} ${item.usage.servingUnit ?? ''}'),
+                      subtitle: Text('${item.usage.quantity} ${item.ingredient?.servingUnit ?? ''}'),
                       trailing: IconButton(
-                        icon: const Icon(Icons.delete, color: Colors.red),
+                        icon: Icon(Icons.delete, color: Theme.of(context).colorScheme.error),
                         onPressed: () => _removeIngredient(ref, item.usage.id),
                       ),
                       onTap: () => _editIngredientUsage(context, ref, item.usage, item.ingredient),
@@ -145,7 +230,6 @@ class _RecipeEditScreenState extends ConsumerState<RecipeEditScreen> {
 
     if (selectedIngredient != null) {
       final quantityController = TextEditingController();
-      String? selectedUnit = servingUnitOptions.first;
 
       final confirmed = await showDialog<bool>(
         context: context,
@@ -156,12 +240,8 @@ class _RecipeEditScreenState extends ConsumerState<RecipeEditScreen> {
             children: [
               TextField(
                 controller: quantityController,
-                decoration: const InputDecoration(labelText: 'Quantity'),
+                decoration: InputDecoration(labelText: 'Quantity', suffixText: selectedIngredient.servingUnit),
                 keyboardType: TextInputType.number,
-              ),
-              ServingUnitDropdown(
-                selectedValue: selectedUnit,
-                onChanged: (value) => selectedUnit = value,
               ),
             ],
           ),
@@ -178,7 +258,6 @@ class _RecipeEditScreenState extends ConsumerState<RecipeEditScreen> {
           recipeId: widget.recipeId,
           ingredientId: selectedIngredient.id,
           quantity: double.tryParse(quantityController.text) ?? 0,
-          servingUnit: d.Value(selectedUnit),
         ));
         ref.invalidate(recipeDetailProvider(widget.recipeId));
       }
@@ -188,23 +267,19 @@ class _RecipeEditScreenState extends ConsumerState<RecipeEditScreen> {
   Future<void> _editIngredientUsage(BuildContext context, WidgetRef ref, RecipeIngredient usage, Ingredient? ingredient) async {
     final db = ref.read(databaseProvider);
     final quantityController = TextEditingController(text: usage.quantity.toString());
-    String? selectedUnit = usage.servingUnit;
 
-    final confirmed = await showDialog<bool>(
+    final result = await showDialog<bool?>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(ingredient?.name ?? 'Edit Usage'),
+            Flexible(child: Text(ingredient?.name ?? 'Edit Usage', overflow: TextOverflow.ellipsis)),
             if (ingredient != null)
               IconButton(
                 icon: const Icon(Icons.edit, color: Colors.blue),
                 onPressed: () {
-                  Navigator.of(ctx).pop(); // Close the dialog
-                  Navigator.of(context).push(MaterialPageRoute(
-                    builder: (_) => IngredientEditScreen(ingredientId: ingredient.id),
-                  ));
+                  Navigator.of(ctx).pop(null); // Indicates edit action
                 },
               ),
           ],
@@ -214,12 +289,8 @@ class _RecipeEditScreenState extends ConsumerState<RecipeEditScreen> {
           children: [
             TextField(
               controller: quantityController,
-              decoration: const InputDecoration(labelText: 'Quantity'),
+              decoration: InputDecoration(labelText: 'Quantity', suffixText: ingredient?.servingUnit),
               keyboardType: TextInputType.number,
-            ),
-            ServingUnitDropdown(
-              selectedValue: selectedUnit,
-              onChanged: (value) => selectedUnit = value,
             ),
           ],
         ),
@@ -230,15 +301,25 @@ class _RecipeEditScreenState extends ConsumerState<RecipeEditScreen> {
       ),
     );
 
-    if (confirmed == true && quantityController.text.isNotEmpty) {
-      await db.upsertRecipeIngredient(RecipeIngredientsCompanion(
-        id: d.Value(usage.id),
-        recipeId: d.Value(usage.recipeId),
-        ingredientId: d.Value(usage.ingredientId),
-        quantity: d.Value(double.tryParse(quantityController.text) ?? 0),
-        servingUnit: d.Value(selectedUnit),
-      ));
-      ref.invalidate(recipeDetailProvider(widget.recipeId));
+    if (result == null) {
+      // User wants to edit the ingredient
+      if (ingredient != null) {
+        await Navigator.of(context).push(MaterialPageRoute(
+          builder: (_) => IngredientEditScreen(ingredientId: ingredient.id),
+        ));
+        ref.invalidate(recipeDetailProvider(widget.recipeId));
+      }
+    } else if (result == true) {
+      // User wants to save the quantity
+      if (quantityController.text.isNotEmpty) {
+        await db.upsertRecipeIngredient(RecipeIngredientsCompanion(
+          id: d.Value(usage.id),
+          recipeId: d.Value(usage.recipeId),
+          ingredientId: d.Value(usage.ingredientId),
+          quantity: d.Value(double.tryParse(quantityController.text) ?? 0),
+        ));
+        ref.invalidate(recipeDetailProvider(widget.recipeId));
+      }
     }
   }
 

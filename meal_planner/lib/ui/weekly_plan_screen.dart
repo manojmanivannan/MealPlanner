@@ -26,15 +26,15 @@ String mealLabel(String meal) {
 Color _colorForMeal(String meal, ColorScheme scheme) {
   switch (meal) {
     case 'pre_breakfast':
-      return scheme.primaryContainer.withOpacity(0.15);
+      return Colors.blue.shade100;
     case 'breakfast':
-      return scheme.tertiaryContainer.withOpacity(0.25);
+      return Colors.green.shade100;
     case 'lunch':
-      return scheme.secondaryContainer.withOpacity(0.25);
+      return Colors.orange.shade100;
     case 'snack':
-      return scheme.primaryContainer.withOpacity(0.35);
+      return Colors.purple.shade100;
     case 'dinner':
-      return scheme.secondaryContainer.withOpacity(0.45);
+      return Colors.red.shade100;
     default:
       return Colors.grey.shade200;
   }
@@ -52,36 +52,33 @@ class WeeklyPlanScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Weekly Plan')),
-      body: Container(
-        color: Theme.of(context).colorScheme.surface,
-        child: planAsync.when(
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (e, _) => Center(child: Text('Error: $e')),
-          data: (view) {
-            final viewportHeight = MediaQuery.of(context).size.height -
-                kToolbarHeight -
-                MediaQuery.of(context).padding.vertical -
-                24;
-            return SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  for (int i = 0; i < _days.length; i++)
-                    _DayColumn(
-                      day: _days[i],
-                      meals: _meals,
-                      view: view,
-                      height: viewportHeight,
-                      onChangeMeal: (mealType) => _pickRecipe(context, ref, _days[i], mealType),
-                      onShowRecipe: (recipe) => _showRecipeDetails(context, ref, recipe),
-                    ),
-                ],
-              ),
-            );
-          },
-        ),
+      body: planAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (e, _) => Center(child: Text('Error: $e')),
+        data: (view) {
+          final viewportHeight = MediaQuery.of(context).size.height -
+              kToolbarHeight -
+              MediaQuery.of(context).padding.vertical -
+              24;
+          return SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                for (int i = 0; i < _days.length; i++)
+                  _DayColumn(
+                    day: _days[i],
+                    meals: _meals,
+                    view: view,
+                    height: viewportHeight,
+                    onChangeMeal: (mealType) => _pickRecipe(context, ref, _days[i], mealType),
+                    onShowRecipe: (recipe) => _showRecipeDetails(context, ref, recipe),
+                  ),
+              ],
+            ),
+          );
+        },
       ),
     );
   }
@@ -272,68 +269,52 @@ class _DayColumn extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dayMeals = view[day] ?? const {};
-    final cardBorder = Border.all(color: Theme.of(context).dividerColor.withOpacity(0.15));
     final scheme = Theme.of(context).colorScheme;
 
-    return Container(
+    return SizedBox(
       width: 280,
-      margin: const EdgeInsets.only(right: 12),
-      child: Material(
-        elevation: 2,
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(20),
-        child: Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 12, offset: const Offset(0, 6)),
-            ],
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(20),
-            child: Container(
-              padding: const EdgeInsets.all(14),
-              child: SizedBox(
-                height: height,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 10),
-                      child: Text(
-                        day,
-                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Expanded(
-                      child: SingleChildScrollView(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            for (final meal in meals) ...[
-                              _MealSection(
-                                title: mealLabel(meal),
-                                recipes: dayMeals[meal] ?? const [],
-                                background: _colorForMeal(meal, scheme),
-                                border: cardBorder,
-                                onEdit: () => onChangeMeal(meal),
-                                onTap: () {
-                                  final recipeList = dayMeals[meal];
-                                  if (recipeList != null && recipeList.length == 1) {
-                                    onShowRecipe(recipeList.first);
-                                  }
-                                },
-                              ),
-                              const SizedBox(height: 12),
-                            ],
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
+      child: Card(
+        margin: const EdgeInsets.only(right: 12),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: SizedBox(
+            height: height,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: Text(
+                    day,
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
+                  ),
                 ),
-              ),
+                const SizedBox(height: 4),
+                Expanded(
+                  child: SingleChildScrollView(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        for (final meal in meals) ...[
+                          _MealSection(
+                            title: mealLabel(meal),
+                            recipes: dayMeals[meal] ?? const [],
+                            color: _colorForMeal(meal, scheme),
+                            onEdit: () => onChangeMeal(meal),
+                            onTap: () {
+                              final recipeList = dayMeals[meal];
+                              if (recipeList != null && recipeList.length == 1) {
+                                onShowRecipe(recipeList.first);
+                              }
+                            },
+                          ),
+                          const SizedBox(height: 12),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ),
@@ -346,14 +327,12 @@ class _MealSection extends StatelessWidget {
   const _MealSection(
       {required this.title,
       required this.recipes,
-      required this.background,
-      required this.border,
+      required this.color,
       required this.onEdit,
       required this.onTap});
   final String title;
   final List<Recipe> recipes;
-  final Color background;
-  final BoxBorder border;
+  final Color color;
   final VoidCallback onEdit;
   final VoidCallback onTap;
 
@@ -369,52 +348,51 @@ class _MealSection extends StatelessWidget {
     final totalCarbs = recipes.fold<double>(0, (prev, r) => prev + (r.carbs ?? 0));
     final totalFat = recipes.fold<double>(0, (prev, r) => prev + (r.fat ?? 0));
 
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: background,
-          borderRadius: BorderRadius.circular(16),
-          border: border,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(title, style: titleStyle),
-                IconButton(
-                  icon: Icon(recipes.isEmpty ? Icons.add : Icons.edit),
-                  onPressed: onEdit,
-                  visualDensity: VisualDensity.compact,
-                  padding: EdgeInsets.zero,
-                ),
-              ],
-            ),
-            const SizedBox(height: 6),
-            if (recipes.isEmpty)
-              Text('—', style: bodyStyle)
-            else ...[
-              ...recipes.map((r) => Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 2),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text('• '),
-                        Expanded(child: Text(r.name, style: bodyStyle, softWrap: true)),
-                      ],
-                    ),
-                  )),
-              const SizedBox(height: 8),
-              Text(
-                'E: ${totalEnergy.toStringAsFixed(0)}kcal | P: ${totalProtein.toStringAsFixed(1)}g | C: ${totalCarbs.toStringAsFixed(1)}g | F: ${totalFat.toStringAsFixed(1)}g',
-                style: subBodyStyle,
+    return Card(
+      elevation: 0,
+      color: color,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: const BorderRadius.all(Radius.circular(12.0)),
+        child: Padding(
+          padding: const EdgeInsets.all(12.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(title, style: titleStyle),
+                  IconButton(
+                    icon: Icon(recipes.isEmpty ? Icons.add : Icons.edit),
+                    onPressed: onEdit,
+                    visualDensity: VisualDensity.compact,
+                    padding: EdgeInsets.zero,
+                  ),
+                ],
               ),
-            ]
-          ],
+              const SizedBox(height: 6),
+              if (recipes.isEmpty)
+                Text('—', style: bodyStyle)
+              else ...[
+                ...recipes.map((r) => Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 2),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('• '),
+                          Expanded(child: Text(r.name, style: bodyStyle, softWrap: true)),
+                        ],
+                      ),
+                    )),
+                const SizedBox(height: 8),
+                Text(
+                  'E: ${totalEnergy.toStringAsFixed(0)}kcal | P: ${totalProtein.toStringAsFixed(1)}g | C: ${totalCarbs.toStringAsFixed(1)}g | F: ${totalFat.toStringAsFixed(1)}g',
+                  style: subBodyStyle,
+                ),
+              ]
+            ],
+          ),
         ),
       ),
     );

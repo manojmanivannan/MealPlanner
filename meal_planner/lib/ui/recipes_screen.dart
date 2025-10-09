@@ -6,6 +6,10 @@ import '../data/app_database.dart';
 import 'recipe_detail_screen.dart';
 import 'recipe_edit_screen.dart';
 
+Color _colorFromString(String str) {
+  return Colors.primaries[str.hashCode % Colors.primaries.length];
+}
+
 class RecipesScreen extends ConsumerStatefulWidget {
   const RecipesScreen({super.key});
 
@@ -125,8 +129,13 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
           separatorBuilder: (_, __) => const Divider(height: 1),
           itemBuilder: (_, i) {
             final recipe = items[i];
+            final color = _colorFromString(recipe.name);
             return ListTile(
               selected: _selectedIds.contains(recipe.id),
+              leading: CircleAvatar(
+                backgroundColor: color,
+                child: Text(recipe.name.substring(0, 1), style: const TextStyle(color: Colors.white)),
+              ),
               title: Text(recipe.name),
               subtitle: Text(
                   'E: ${recipe.energy?.toStringAsFixed(0) ?? '?'}kcal | P: ${recipe.protein?.toStringAsFixed(1) ?? '?'}g | C: ${recipe.carbs?.toStringAsFixed(1) ?? '?'}g | F: ${recipe.fat?.toStringAsFixed(1) ?? '?'}g'),
@@ -154,10 +163,7 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
                   ? Icon(_selectedIds.contains(recipe.id)
                       ? Icons.check_circle
                       : Icons.circle_outlined)
-                  : IconButton(
-                      icon: const Icon(Icons.delete),
-                      onPressed: () => _deleteRecipes([recipe]),
-                    ),
+                  : const Icon(Icons.chevron_right),
             );
           },
         ),

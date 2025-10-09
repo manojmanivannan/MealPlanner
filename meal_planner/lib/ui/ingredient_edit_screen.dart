@@ -15,15 +15,16 @@ class IngredientEditScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final ingredientAsync = ref.watch(ingredientDetailProvider(ingredientId));
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Edit Ingredient')),
-      body: ingredientAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, st) => Center(child: Text('Error: $e')),      
-        data: (ingredient) {
-          return _IngredientEditForm(ingredient: ingredient);
-        },
+    return ingredientAsync.when(
+      loading: () => Scaffold(
+        appBar: AppBar(title: const Text('Edit Ingredient')),
+        body: const Center(child: CircularProgressIndicator()),
       ),
+      error: (e, st) => Scaffold(
+        appBar: AppBar(title: const Text('Edit Ingredient')),
+        body: Center(child: Text('Error: $e')),
+      ),
+      data: (ingredient) => _IngredientEditForm(ingredient: ingredient),
     );
   }
 }
@@ -57,60 +58,18 @@ class _IngredientEditFormState extends ConsumerState<_IngredientEditForm> {
     _fatController = TextEditingController(text: widget.ingredient.fat?.toString());
     _servingSizeController = TextEditingController(text: widget.ingredient.servingSize?.toString());
     _selectedServingUnit = widget.ingredient.servingUnit;
+
+    _servingSizeController.addListener(() => setState(() {}));
+    // No need to add listener for dropdown, onChanged does it.
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Form(
-      key: _formKey,
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            TextFormField(
-              controller: _nameController,
-              decoration: const InputDecoration(labelText: 'Ingredient Name'),
-              validator: (value) => (value?.isEmpty ?? true) ? 'Please enter a name' : null,
-            ),
-            TextFormField(
-              controller: _servingSizeController,
-              decoration: const InputDecoration(labelText: 'Serving Size'),
-              keyboardType: TextInputType.number,
-            ),
-            ServingUnitDropdown(
-              selectedValue: _selectedServingUnit,
-              onChanged: (value) => setState(() => _selectedServingUnit = value),
-            ),
-            TextFormField(
-              controller: _energyController,
-              decoration: const InputDecoration(labelText: 'Energy (kcal)'),
-              keyboardType: TextInputType.number,
-            ),
-            TextFormField(
-              controller: _proteinController,
-              decoration: const InputDecoration(labelText: 'Protein (g)'),
-              keyboardType: TextInputType.number,
-            ),
-            TextFormField(
-              controller: _carbsController,
-              decoration: const InputDecoration(labelText: 'Carbohydrates (g)'),
-              keyboardType: TextInputType.number,
-            ),
-            TextFormField(
-              controller: _fatController,
-              decoration: const InputDecoration(labelText: 'Fat (g)'),
-              keyboardType: TextInputType.number,
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton(
-              onPressed: _save,
-              child: const Text('Save'),
-            ),
-          ],
-        ),
-      ),
-    );
+  String _getUnitLabel(String baseUnit) {
+    final servingSize = _servingSizeController.text;
+    final servingUnit = _selectedServingUnit ?? '';
+    if (servingSize.isNotEmpty && servingUnit.isNotEmpty) {
+      return '$baseUnit/$servingSize-$servingUnit';
+    }
+    return baseUnit;
   }
 
   Future<void> _save() async {
@@ -134,6 +93,72 @@ class _IngredientEditFormState extends ConsumerState<_IngredientEditForm> {
         Navigator.of(context).pop();
       }
     }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Edit Ingredient'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.check),
+            onPressed: _save,
+          ),
+        ],
+      ),
+      body: Form(
+        key: _formKey,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              TextFormField(
+                controller: _nameController,
+                decoration: const InputDecoration(labelText: 'Ingredient Name', border: OutlineInputBorder()),
+                validator: (value) => (value?.isEmpty ?? true) ? 'Please enter a name' : null,
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _servingSizeController,
+                decoration: const InputDecoration(labelText: 'Serving Size', border: OutlineInputBorder()),
+                keyboardType: TextInputType.number,
+              ),
+              const SizedBox(height: 12),
+              ServingUnitDropdown(
+                selectedValue: _selectedServingUnit,
+                onChanged: (value) => setState(() => _selectedServingUnit = value),
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _energyController,
+                decoration: InputDecoration(labelText: 'Energy (${_getUnitLabel('kcal')})', border: OutlineInputBorder()),
+                keyboardType: TextInputType.number,
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _proteinController,
+                decoration: InputDecoration(labelText: 'Protein (${_getUnitLabel('g')})', border: OutlineInputBorder()),
+                keyboardType: TextInputType.number,
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _carbsController,
+                decoration: InputDecoration(labelText: 'Carbohydrates (${_getUnitLabel('g')})', border: OutlineInputBorder()),
+                keyboardType: TextInputType.number,
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _fatController,
+                decoration: InputDecoration(labelText: 'Fat (${_getUnitLabel('g')})', border: OutlineInputBorder()),
+                keyboardType: TextInputType.number,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 
