@@ -2,3 +2,101 @@
 tailscale-nginx
 postgres-data
 __pycache__
+# Ignore Android build outputs and config files inside the meal_planner directory
+
+# Built application files
+meal_planner/**/*.apk
+meal_planner/**/*.aar
+meal_planner/**/*.ap_
+meal_planner/**/*.aab
+
+# Files for the ART/Dalvik VM
+meal_planner/**/*.dex
+
+# Java class files
+meal_planner/**/*.class
+
+# Generated files and build directories
+meal_planner/**/bin/
+meal_planner/**/gen/
+meal_planner/**/out/
+meal_planner/**/build/
+meal_planner/**/captures/
+meal_planner/**/.gradle/
+meal_planner/local.properties
+
+# IntelliJ / Android Studio files
+meal_planner/.idea/
+meal_planner/**/*.iml
+meal_planner/**/*.ipr
+meal_planner/**/*.iws
+
+# Gradle cache and logs
+meal_planner/**/.gradle/
+meal_planner/**/build/
+!meal_planner/gradle/wrapper/gradle-wrapper.jar
+meal_planner/**/.gradle-cache/
+meal_planner/**/.gradle-test-kit/
+
+# Log files
+meal_planner/**/*.log
+
+# Android Studio Navigation editor temp files
+meal_planner/**/.navigation/
+
+# Keystore files (DON'T EVER COMMIT THESE)
+meal_planner/**/*.jks
+meal_planner/**/*.keystore
+
+# Google Services (API keys, Firebase configs)
+meal_planner/**/google-services.json
+meal_planner/**/GoogleService-Info.plist
+
+# Signing configs
+meal_planner/**/signing.properties
+meal_planner/**/key.properties
+
+# Local configuration files
+meal_planner/local.properties
+meal_planner/.env
+
+# Android Profiling
+meal_planner/**/*.hprof
+
+# Misc system files
+meal_planner/**/.DS_Store
+meal_planner/**/Thumbs.db
+
+# NDK
+meal_planner/**/obj/
+meal_planner/**/.externalNativeBuild/
+meal_planner/**/.cxx/
+
+# Lint
+meal_planner/**/lint/intermediates/
+meal_planner/**/lint/generated/
+meal_planner/**/lint/outputs/
+meal_planner/**/lint/tmp/
+meal_planner/**/lint-results.*
+
+# Kotlin specific
+meal_planner/**/*.kotlin_module
+
+# VSCode
+meal_planner/.vscode/
+
+# Fastlane
+meal_planner/fastlane/report.xml
+meal_planner/fastlane/Preview.html
+meal_planner/fastlane/screenshots/
+
+# Firebase Crashlytics
+meal_planner/**/crashlytics-build.properties
+
+# Jetpack Compose compiler caches
+meal_planner/**/compose-cache/
+
+# Temporary files
+meal_planner/**/*.tmp
+meal_planner/**/*.temp
+
