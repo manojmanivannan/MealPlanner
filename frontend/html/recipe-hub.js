@@ -14,16 +14,16 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     const hubContent = document.getElementById('hub-content');
     const hubTabsContainer = document.getElementById('hub-tabs');
-    
+
     // --- NEW: State and constants from the planner ---
     const daysOfWeek = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
     const mealSlots = ["pre_breakfast", "breakfast", "lunch", "snack", "dinner"];
     let weeklyPlan = {};
-    
+
     let recipes = [];
     let activeCategory = '🍳 Breakfast';
     let vegFilter = 'both';
-    let searchTerm = ''; 
+    let searchTerm = '';
 
     const mealTypeMap = {
         '☕ Pre-Breakfast': ['pre_breakfast'],
@@ -96,7 +96,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // This function now only renders based on category and veg filters.
         // The search filter is applied separately and doesn't cause a re-render.
         let filteredRecipes = recipes.filter(r => mealTypeMap[activeCategory]?.includes(r.meal_type));
-        
+
         if (vegFilter === 'veg') {
             filteredRecipes = filteredRecipes.filter(r => r.is_vegetarian);
         } else if (vegFilter === 'nonveg') {
@@ -119,16 +119,16 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
             <div id="recipe-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 ${filteredRecipes.map(recipe => {
-                    const maxLen = 250;
-                    let instr = recipe.instructions || '';
-                    let ingr = Array.isArray(recipe.ingredients) ? recipe.ingredients.map(i => `${i.quantity} ${i.serving_unit} ${i.name}`).join('; ') : '';
-                    let instrTrunc = instr.length > maxLen ? instr.slice(0, maxLen) + '…' : instr;
-                    let ingrTrunc = ingr.length > maxLen ? ingr.slice(0, maxLen) + '…' : ingr;
-                    instrTrunc = instrTrunc.replace(/\n/g, '<br>');
-                    ingrTrunc = ingrTrunc.replace(/\n/g, '<br>');
-                    
-                    // Added a wrapper div with a data attribute for the recipe name
-                    return `
+            const maxLen = 250;
+            let instr = recipe.instructions || '';
+            let ingr = Array.isArray(recipe.ingredients) ? recipe.ingredients.map(i => `${i.quantity} ${i.serving_unit} ${i.name}`).join('; ') : '';
+            let instrTrunc = instr.length > maxLen ? instr.slice(0, maxLen) + '…' : instr;
+            let ingrTrunc = ingr.length > maxLen ? ingr.slice(0, maxLen) + '…' : ingr;
+            instrTrunc = instrTrunc.replace(/\n/g, '<br>');
+            ingrTrunc = ingrTrunc.replace(/\n/g, '<br>');
+
+            // Added a wrapper div with a data attribute for the recipe name
+            return `
                         <div class="recipe-card-container border border-stone-200 rounded-xl shadow-sm" data-recipe-name="${recipe.name}">
                             <div class="recipe-card relative flex flex-col h-full bg-white">
                                 <div class="absolute top-2 right-2">
@@ -159,20 +159,20 @@ document.addEventListener('DOMContentLoaded', () => {
                             </div>
                         </div>
                     `;
-                }).join('')}
+        }).join('')}
             </div>
             <div id="no-results-message" class="col-span-full text-center text-stone-500 py-8" style="display: none;">No recipes found matching your search.</div>
         `;
-        
+
         // --- Event Listeners ---
         document.getElementById('add-recipe-btn').addEventListener('click', () => showRecipeModal());
-        
+
         // --- CHANGE 2: Other filters now call renderRecipes, which is correct ---
         document.getElementById('veg-filter-dropdown').addEventListener('change', (e) => {
             vegFilter = e.target.value;
             renderRecipes();
         });
-        
+
         // --- CHANGE 3: Search input now calls the new lightweight filter function ---
         document.getElementById('recipe-search-input').addEventListener('input', (e) => {
             searchTerm = e.target.value;
@@ -199,7 +199,7 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error('Error fetching recipes:', error);
         }
     }
-    
+
     // --- CHANGE 4: The tab click now also calls renderRecipes ---
     hubTabsContainer.addEventListener('click', (e) => {
         if (e.target.classList.contains('hub-tab')) {
@@ -222,7 +222,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Suggest a meal slot based on the recipe's type
         let suggestedSlot = recipe.meal_type;
         if (recipe.meal_type === 'lunch' || recipe.meal_type === 'dinner') {
-             // For simplicity, default lunch/dinner types to lunch
+            // For simplicity, default lunch/dinner types to lunch
             suggestedSlot = 'lunch';
         }
 
@@ -259,7 +259,7 @@ document.addEventListener('DOMContentLoaded', () => {
             e.preventDefault();
             const day = document.getElementById('assign-day').value;
             const meal = document.getElementById('assign-meal').value;
-            
+
             let existingIds = weeklyPlan[day]?.[meal] || [];
             if (!Array.isArray(existingIds)) {
                 existingIds = [existingIds];
@@ -369,8 +369,8 @@ document.addEventListener('DOMContentLoaded', () => {
                             </div>
                             <div id="ingredient-select-list" class="space-y-2 max-h-72 overflow-y-auto border rounded p-2 bg-stone-50">
                                 ${ingredientList.map(ing => {
-                                    const sel = selectedIngredients.find(si => si.name === ing.name);
-                                    return `
+            const sel = selectedIngredients.find(si => si.name === ing.name);
+            return `
                                     <div class="ingredient-item flex items-center space-x-2">
                                         <input type="checkbox" class="ingredient-checkbox" data-id="${ing.id}" ${sel ? 'checked' : ''}>
                                         <span>${ing.name}</span>
@@ -379,7 +379,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                         <span class="ingredient-unit w-16 px-1 border rounded bg-gray-100 text-gray-600" style="padding:2px 6px;">${sel ? sel.serving_unit : ing.serving_unit}</span>
                                     </div>
                                     `;
-                                }).join('')}
+        }).join('')}
                             </div>
                              <div id="add-ingredient-panel" class="mt-2 p-2 border rounded bg-amber-50 hidden">
                                  <div class="text-xs text-stone-700 mb-2">No matches found. Add "<span id="add-ing-name-preview"></span>"?</div>
@@ -441,7 +441,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const defaultUnit = units.includes('g') ? 'g' : units[0];
                 unitSelect.value = defaultUnit;
             } catch (e) {
-                const fallback = ['g','ml','cup','tbsp','tsp','nos'];
+                const fallback = ['g', 'ml', 'cup', 'tbsp', 'tsp', 'nos'];
                 const unitSelect = document.getElementById('new-ing-unit');
                 unitSelect.innerHTML = fallback.map(u => `<option value="${u}">${u}</option>`).join('');
                 unitSelect.value = 'g';
@@ -481,7 +481,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         function attachIngredientRowHandlers(row) {
             const cb = row.querySelector('.ingredient-checkbox');
-            cb.addEventListener('change', function() {
+            cb.addEventListener('change', function () {
                 const parent = cb.parentElement;
                 parent.querySelector('.ingredient-qty').disabled = !cb.checked;
                 parent.querySelector('.ingredient-unit').disabled = !cb.checked;
@@ -489,7 +489,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         overlay.querySelectorAll('.ingredient-checkbox').forEach(cb => {
-            cb.addEventListener('change', function() {
+            cb.addEventListener('change', function () {
                 const parent = cb.parentElement;
                 parent.querySelector('.ingredient-qty').disabled = !cb.checked;
                 parent.querySelector('.ingredient-unit').disabled = !cb.checked;
@@ -509,7 +509,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 addError.classList.add('hidden');
                 addError.textContent = '';
                 const params = new URLSearchParams({ name, shelf_life: shelfLife, serving_unit: unit });
-                const resp = await fetch(`${API_BASE}/ingredients?${params.toString()}`, { method: 'POST' });
+                const resp = await fetch(`${API_BASE}/ingredients?${params.toString()}`, { method: 'POST', headers: authHeaders() });
                 if (!resp.ok) {
                     const msg = await resp.json().catch(() => ({}));
                     throw new Error(msg.detail || 'Failed to create ingredient');
