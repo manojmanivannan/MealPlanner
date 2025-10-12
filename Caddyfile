@@ -1,0 +1,11 @@
+{
+    email YOUR_NAME@EMAIL.com
+}
+
+YOUR_DOMAIN.com {
+    reverse_proxy nginx-prod:80
+}
+
+api.YOUR_DOMAIN.com {
+    reverse_proxy backend:5000
+}

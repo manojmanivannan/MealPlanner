@@ -1,5 +1,8 @@
 services:
   # --- LOCAL DEVELOPMENT PROFILE ---
+  # ---------------------------------
+
+  # Front end service for local development
   nginx-local:
     profiles:
       - local
@@ -21,7 +24,10 @@ services:
           path: ./frontend/html
           target: /usr/share/nginx/html
 
-  # --- PRODUCTION PROFILE ---
+  # ------ PRODUCTION PROFILE -------
+  # ---------------------------------
+
+  # Tailscale service to provide secure access to nginx-prod
   tailscale-nginx:
     profiles:
       - prod
@@ -41,6 +47,7 @@ services:
       - net_admin
     restart: unless-stopped
 
+  # Front end service behind Tailscale
   nginx-prod:
     profiles:
       - prod
@@ -102,5 +109,29 @@ services:
       start_period: 10s
     restart: unless-stopped
 
+# Using Caddy for automatic HTTPS in production instead of tailscale
+# disable tailscale-nginx
+#   # --- CADDY REVERSE PROXY ---
+#   caddy:
+#     image: caddy:latest
+#     container_name: caddy
+#     restart: unless-stopped
+#     ports:
+#       - "80:80"
+#       - "443:443"
+#     volumes:
+#       - ./Caddyfile:/etc/caddy/Caddyfile
+#       - caddy_data:/data
+#       - caddy_config:/config
+#     environment:
+#       - CLOUDFLARE_API_TOKEN=$CLOUDFLARE_API_TOKEN
+#     networks:
+#       - web
+
+# networks:
+#   web:
+
 # volumes:
-  # db-data:  # (no longer needed, using host directory)
+#   caddy_data:
+#   caddy_config:
+
