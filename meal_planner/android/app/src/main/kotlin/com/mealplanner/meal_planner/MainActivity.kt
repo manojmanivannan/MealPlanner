@@ -1,4 +1,4 @@
-package com.mealplanner.meal_planner
+package com.manojmanivannan.mealplanner
 
 import io.flutter.embedding.android.FlutterActivity
 

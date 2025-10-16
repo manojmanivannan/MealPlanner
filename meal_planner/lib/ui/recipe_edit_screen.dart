@@ -53,12 +53,19 @@ class _RecipeEditScreenState extends ConsumerState<RecipeEditScreen> {
   Future<void> _save() async {
     if (_formKey.currentState!.validate()) {
       final db = ref.read(databaseProvider);
+      final recipeData = await ref.read(recipeDetailProvider(widget.recipeId).future);
+      final nutrients = _calculateNutrients(recipeData.ingredients);
+
       await db.updateRecipe(
         widget.recipeId,
         RecipesCompanion(
           name: d.Value(_nameController.text),
           serves: d.Value(int.tryParse(_servesController.text) ?? 1),
           instructions: d.Value(_instructionsController.text),
+          energy: d.Value(nutrients.energy),
+          protein: d.Value(nutrients.protein),
+          carbs: d.Value(nutrients.carbs),
+          fat: d.Value(nutrients.fat),
         ),
       );
       ref.invalidate(recipesProvider);
@@ -140,7 +147,7 @@ class _RecipeEditScreenState extends ConsumerState<RecipeEditScreen> {
       ),
       body: recipeAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, st) => Center(child: Text('Error: $e')),      
+        error: (e, st) => Center(child: Text('Error: $e')),
         data: (data) {
           final nutrients = _calculateNutrients(data.ingredients);
           return Form(
@@ -214,14 +221,14 @@ class _RecipeEditScreenState extends ConsumerState<RecipeEditScreen> {
 
     final selectedIngredient = await showModalBottomSheet<Ingredient>(
       context: context,
+      isScrollControlled: true,
       builder: (ctx) {
-        return ListView.builder(
-          itemCount: allIngredients.length,
-          itemBuilder: (context, index) {
-            final ing = allIngredients[index];
-            return ListTile(
-              title: Text(ing.name),
-              onTap: () => Navigator.of(ctx).pop(ing),
+        return DraggableScrollableSheet(
+          expand: false,
+          builder: (context, scrollController) {
+            return _IngredientSelectionSheet(
+              ingredients: allIngredients,
+              scrollController: scrollController,
             );
           },
         );
@@ -327,5 +334,83 @@ class _RecipeEditScreenState extends ConsumerState<RecipeEditScreen> {
     final db = ref.read(databaseProvider);
     await db.deleteRecipeIngredient(usageId);
     ref.invalidate(recipeDetailProvider(widget.recipeId));
+  }
+}
+
+class _IngredientSelectionSheet extends StatefulWidget {
+  final List<Ingredient> ingredients;
+  final ScrollController scrollController;
+
+  const _IngredientSelectionSheet({required this.ingredients, required this.scrollController});
+
+  @override
+  State<_IngredientSelectionSheet> createState() => _IngredientSelectionSheetState();
+}
+
+class _IngredientSelectionSheetState extends State<_IngredientSelectionSheet> {
+  final _searchController = TextEditingController();
+  String _searchTerm = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _searchController.addListener(() => setState(() => _searchTerm = _searchController.text));
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final filteredIngredients = widget.ingredients.where((ing) {
+      return _searchTerm.isEmpty || ing.name.toLowerCase().contains(_searchTerm.toLowerCase());
+    }).toList();
+
+    filteredIngredients.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+
+    final grouped = <String, List<Ingredient>>{};
+    for (final ing in filteredIngredients) {
+      final letter = ing.name.substring(0, 1).toUpperCase();
+      (grouped[letter] ??= []).add(ing);
+    }
+
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: TextField(
+            controller: _searchController,
+            decoration: const InputDecoration(
+              labelText: 'Search Ingredients',
+              border: OutlineInputBorder(),
+              prefixIcon: Icon(Icons.search),
+            ),
+          ),
+        ),
+        Expanded(
+          child: ListView.builder(
+            controller: widget.scrollController,
+            itemCount: grouped.length,
+            itemBuilder: (context, index) {
+              final letter = grouped.keys.elementAt(index);
+              final ingredientsInGroup = grouped[letter]!;
+              return ExpansionTile(
+                title: Text(letter, style: Theme.of(context).textTheme.titleLarge),
+                initiallyExpanded: true,
+                children: ingredientsInGroup.map((ing) {
+                  return ListTile(
+                    title: Text(ing.name),
+                    onTap: () => Navigator.of(context).pop(ing),
+                  );
+                }).toList(),
+              );
+            },
+          ),
+        ),
+      ],
+    );
   }
 }

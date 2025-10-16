@@ -51,7 +51,7 @@ class WeeklyPlanScreen extends ConsumerWidget {
     final planAsync = ref.watch(weeklyPlanViewProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Weekly Plan')),
+      appBar: AppBar(title: const Text('Meal Planner')),
       body: planAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Error: $e')),
@@ -111,33 +111,67 @@ class WeeklyPlanScreen extends ConsumerWidget {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(r.name, style: Theme.of(context).textTheme.headlineMedium),
+                              Text(r.name, style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w700)),
                               const SizedBox(height: 8),
-                              Text('Serves: ${r.serves ?? 1}', style: Theme.of(context).textTheme.titleMedium),
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 4,
+                                children: [
+                                  Chip(label: Text('Serves: ${r.serves?.toString() ?? '-'}')),
+                                  Chip(label: Text('Meal: ${r.mealType ?? '-'}')),
+                                  if (r.isVegetarian == true) const Chip(label: Text('Vegetarian')),
+                                ],
+                              ),
+                              const SizedBox(height: 16),
+                              Text('Nutrition Information', style: Theme.of(context).textTheme.titleLarge),
+                              const SizedBox(height: 8),
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 4,
+                                children: [
+                                  Chip(
+                                    label: Text('Protein: ${r.protein?.toStringAsFixed(1) ?? '-'}g'),
+                                    backgroundColor: Colors.green[100],
+                                  ),
+                                  Chip(
+                                    label: Text('Carbs: ${r.carbs?.toStringAsFixed(1) ?? '-'}g'),
+                                    backgroundColor: Colors.orange[100],
+                                  ),
+                                  Chip(
+                                    label: Text('Fat: ${r.fat?.toStringAsFixed(1) ?? '-'}g'),
+                                    backgroundColor: Colors.red[100],
+                                  ),
+                                  Chip(
+                                    label: Text('Fiber: ${r.fiber?.toStringAsFixed(1) ?? '-'}g'),
+                                    backgroundColor: Colors.brown[100],
+                                  ),
+                                  Chip(
+                                    label: Text('Energy: ${r.energy?.toStringAsFixed(0) ?? '-'} kcal'),
+                                    backgroundColor: Colors.blue[100],
+                                  ),
+                                ],
+                              ),
                               const SizedBox(height: 16),
                               Text('Ingredients', style: Theme.of(context).textTheme.titleLarge),
-                              const Divider(),
-                              if (ingredients.isEmpty)
-                                const Text('No ingredients listed.')
-                              else
-                                for (final item in ingredients)
-                                  Padding(
-                                    padding: const EdgeInsets.symmetric(vertical: 4.0),
-                                    child: Text(
-                                        '• ${item.usage.quantity} ${item.ingredient?.servingUnit ?? ''} ${item.ingredient?.name ?? 'Unknown'}'),
-                                  ),
+                              const SizedBox(height: 8),
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 4,
+                                children: ingredients.map((p) {
+                                  final ing = p.ingredient;
+                                  final u = p.usage;
+                                  final name = ing?.name ?? u.ingredientId;
+                                  final qty = u.quantity;
+                                  final unit = ing?.servingUnit ?? '';
+                                  return Chip(
+                                    label: Text(qty == null ? name : '$name ($qty $unit)'),
+                                  );
+                                }).toList(),
+                              ),
                               const SizedBox(height: 16),
                               Text('Instructions', style: Theme.of(context).textTheme.titleLarge),
-                              const Divider(),
-                              Text(r.instructions ?? 'No instructions provided.'),
-                              const SizedBox(height: 16),
-                              Text('Nutrition (per serving)', style: Theme.of(context).textTheme.titleLarge),
-                              const Divider(),
-                              Text('Energy: ${r.energy?.toStringAsFixed(0) ?? '?'} kcal'),
-                              Text('Protein: ${r.protein?.toStringAsFixed(1) ?? '?'} g'),
-                              Text('Carbs: ${r.carbs?.toStringAsFixed(1) ?? '?'} g'),
-                              Text('Fat: ${r.fat?.toStringAsFixed(1) ?? '?'} g'),
-                              Text('Fiber: ${r.fiber?.toStringAsFixed(1) ?? '?'} g'),
+                              const SizedBox(height: 6),
+                              Text(r.instructions ?? '—'),
                             ],
                           ),
                         ),

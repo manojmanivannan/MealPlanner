@@ -45,38 +45,52 @@ class RecipeDetailScreen extends ConsumerWidget {
                       const Chip(label: Text('Vegetarian'))
                   ],
                 ),
-                const SizedBox(height: 12),
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(12.0),
-                    child: Wrap(
-                      spacing: 16,
-                      runSpacing: 8,
-                      children: [
-                        Text('Protein: ${r.protein?.toStringAsFixed(1) ?? '-'}g'),
-                        Text('Carbs: ${r.carbs?.toStringAsFixed(1) ?? '-'}g'),
-                        Text('Fat: ${r.fat?.toStringAsFixed(1) ?? '-'}g'),
-                        Text('Fiber: ${r.fiber?.toStringAsFixed(1) ?? '-'}g'),
-                        Text('Energy: ${r.energy?.toStringAsFixed(0) ?? '-'} kcal'),
-                      ],
+                const SizedBox(height: 16),
+                Text('Nutrition Information', style: Theme.of(context).textTheme.titleLarge),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 4,
+                  children: [
+                    Chip(
+                      label: Text('Protein: ${r.protein?.toStringAsFixed(1) ?? '-'}g'),
+                      backgroundColor: Colors.green[100],
                     ),
-                  ),
+                    Chip(
+                      label: Text('Carbs: ${r.carbs?.toStringAsFixed(1) ?? '-'}g'),
+                      backgroundColor: Colors.orange[100],
+                    ),
+                    Chip(
+                      label: Text('Fat: ${r.fat?.toStringAsFixed(1) ?? '-'}g'),
+                      backgroundColor: Colors.red[100],
+                    ),
+                    Chip(
+                      label: Text('Fiber: ${r.fiber?.toStringAsFixed(1) ?? '-'}g'),
+                      backgroundColor: Colors.brown[100],
+                    ),
+                    Chip(
+                      label: Text('Energy: ${r.energy?.toStringAsFixed(0) ?? '-'} kcal'),
+                      backgroundColor: Colors.blue[100],
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 16),
                 Text('Ingredients', style: Theme.of(context).textTheme.titleLarge),
                 const SizedBox(height: 8),
-                ...d.ingredients.map((p) {
-                  final ing = p.ingredient;
-                  final u = p.usage;
-                  final name = ing?.name ?? u.ingredientId;
-                  final qty = u.quantity;
-                  final unit = u.servingUnit ?? '';
-                  return ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: Text(name),
-                    subtitle: Text(qty == null ? unit : '$qty $unit'),
-                  );
-                }),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 4,
+                  children: d.ingredients.map((p) {
+                    final ing = p.ingredient;
+                    final u = p.usage;
+                    final name = ing?.name ?? u.ingredientId;
+                    final qty = u.quantity;
+                    final unit = u.servingUnit ?? '';
+                    return Chip(
+                      label: Text(qty == null ? name : '$name ($qty $unit)'),
+                    );
+                  }).toList(),
+                ),
                 const SizedBox(height: 16),
                 Text('Instructions', style: Theme.of(context).textTheme.titleLarge),
                 const SizedBox(height: 6),
