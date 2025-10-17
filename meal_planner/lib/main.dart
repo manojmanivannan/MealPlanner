@@ -1,13 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 import 'data/app_database.dart';
 import 'data/seed_service.dart';
-import 'providers.dart' as p;
+import 'services/notification_service.dart';
+import 'services/notification_scheduler_service.dart';
 import 'ui/shell.dart';
 
 final databaseProvider = Provider<AppDatabase>((ref) => AppDatabase());
 final seedProvider = Provider<SeedService>((ref) => SeedService(ref.read(databaseProvider)));
+final notificationServiceProvider = Provider<NotificationService>((ref) => NotificationService());
+final sharedPreferencesProvider = FutureProvider<SharedPreferences>((ref) async => await SharedPreferences.getInstance());
+
+final notificationSchedulerServiceProvider = FutureProvider<NotificationSchedulerService>((ref) async {
+  final notificationService = ref.watch(notificationServiceProvider);
+  final prefs = await ref.watch(sharedPreferencesProvider.future);
+  final db = ref.watch(databaseProvider);
+  return NotificationSchedulerService(notificationService, prefs, db);
+});
 
 class AppInitializer extends ConsumerStatefulWidget {
   const AppInitializer({super.key, required this.child});
@@ -24,9 +36,22 @@ class _AppInitializerState extends ConsumerState<AppInitializer> {
   void initState() {
     super.initState();
     Future(() async {
+      await _requestPermissions();
       await ref.read(seedProvider).seedIfNeeded();
+      await ref.read(notificationServiceProvider).init();
+      final scheduler = await ref.read(notificationSchedulerServiceProvider.future);
+      await scheduler.rescheduleAllNotifications();
       if (mounted) setState(() => _ready = true);
     });
+  }
+
+  Future<void> _requestPermissions() async {
+    if (await Permission.scheduleExactAlarm.isDenied) {
+      await Permission.scheduleExactAlarm.request();
+    }
+    if (await Permission.notification.isDenied) {
+      await Permission.notification.request();
+    }
   }
 
   @override
@@ -69,20 +94,6 @@ class MealPlannerApp extends StatelessWidget {
           useMaterial3: true,
         ),
         home: const AppShell(),
-      ),
-    );
-  }
-}
-
-class _HomeScreen extends StatelessWidget {
-  const _HomeScreen();
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Meal Planner')),
-      body: const Center(
-        child: Text('Welcome to Meal Planner (Offline)'),
       ),
     );
   }

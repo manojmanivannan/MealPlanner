@@ -60,23 +60,21 @@ class WeeklyPlanScreen extends ConsumerWidget {
               kToolbarHeight -
               MediaQuery.of(context).padding.vertical -
               24;
-          return SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                for (int i = 0; i < _days.length; i++)
-                  _DayColumn(
-                    day: _days[i],
-                    meals: _meals,
-                    view: view,
-                    height: viewportHeight,
-                    onChangeMeal: (mealType) => _pickRecipe(context, ref, _days[i], mealType),
-                    onShowRecipe: (recipe) => _showRecipeDetails(context, ref, recipe),
-                  ),
-              ],
-            ),
+          return PageView(
+            children: _days.map((day) {
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                child: _DayColumn(
+                  key: ValueKey(day),
+                  day: day,
+                  meals: _meals,
+                  view: view,
+                  height: viewportHeight,
+                  onChangeMeal: (mealType) => _pickRecipe(context, ref, day, mealType),
+                  onShowRecipe: (recipe) => _showRecipeDetails(context, ref, recipe),
+                ),
+              );
+            }).toList(),
           );
         },
       ),
@@ -284,8 +282,9 @@ class WeeklyPlanScreen extends ConsumerWidget {
   }
 }
 
-class _DayColumn extends StatelessWidget {
+class _DayColumn extends StatefulWidget {
   const _DayColumn({
+    super.key,
     required this.day,
     required this.meals,
     required this.view,
@@ -299,6 +298,14 @@ class _DayColumn extends StatelessWidget {
   final double height;
   final void Function(String mealType) onChangeMeal;
   final void Function(Recipe recipe) onShowRecipe;
+
+  @override
+  State<_DayColumn> createState() => _DayColumnState();
+}
+
+class _DayColumnState extends State<_DayColumn> with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
 
   Future<void> _showRecipeSelectionDialog(
       BuildContext context, List<Recipe> recipes, void Function(Recipe recipe) onShowRecipe) async {
@@ -338,58 +345,55 @@ class _DayColumn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dayMeals = view[day] ?? const {};
+    super.build(context);
+    final dayMeals = widget.view[widget.day] ?? const {};
     final scheme = Theme.of(context).colorScheme;
 
-    return SizedBox(
-      width: 280,
-      child: Card(
-        margin: const EdgeInsets.only(right: 12),
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: SizedBox(
-            height: height,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: Text(
-                    day,
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
-                  ),
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: SizedBox(
+          height: widget.height,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Text(
+                  widget.day,
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
                 ),
-                const SizedBox(height: 4),
-                Expanded(
-                  child: SingleChildScrollView(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        for (final meal in meals) ...[
-                          _MealSection(
-                            title: mealLabel(meal),
-                            recipes: dayMeals[meal] ?? const [],
-                            color: _colorForMeal(meal, scheme),
-                            onEdit: () => onChangeMeal(meal),
-                            onTap: () {
-                              final recipeList = dayMeals[meal];
-                              if (recipeList != null) {
-                                if (recipeList.length == 1) {
-                                  onShowRecipe(recipeList.first);
-                                } else if (recipeList.length > 1) {
-                                  _showRecipeSelectionDialog(context, recipeList, onShowRecipe);
-                                }
+              ),
+              const SizedBox(height: 4),
+              Expanded(
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      for (final meal in widget.meals) ...[
+                        _MealSection(
+                          title: mealLabel(meal),
+                          recipes: dayMeals[meal] ?? const [],
+                          color: _colorForMeal(meal, scheme),
+                          onEdit: () => widget.onChangeMeal(meal),
+                          onTap: () {
+                            final recipeList = dayMeals[meal];
+                            if (recipeList != null) {
+                              if (recipeList.length == 1) {
+                                widget.onShowRecipe(recipeList.first);
+                              } else if (recipeList.length > 1) {
+                                _showRecipeSelectionDialog(context, recipeList, widget.onShowRecipe);
                               }
-                            },
-                          ),
-                          const SizedBox(height: 12),
-                        ],
+                            }
+                          },
+                        ),
+                        const SizedBox(height: 12),
                       ],
-                    ),
+                    ],
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),

@@ -219,20 +219,12 @@ class _RecipeEditScreenState extends ConsumerState<RecipeEditScreen> {
     final db = ref.read(databaseProvider);
     final allIngredients = await db.getAllIngredients();
 
-    final selectedIngredient = await showModalBottomSheet<Ingredient>(
-      context: context,
-      isScrollControlled: true,
-      builder: (ctx) {
-        return DraggableScrollableSheet(
-          expand: false,
-          builder: (context, scrollController) {
-            return _IngredientSelectionSheet(
-              ingredients: allIngredients,
-              scrollController: scrollController,
-            );
-          },
-        );
-      },
+    final selectedIngredient = await Navigator.of(context).push<Ingredient>(
+      MaterialPageRoute(
+        builder: (ctx) {
+          return _IngredientSelectionScreen(ingredients: allIngredients);
+        },
+      ),
     );
 
     if (selectedIngredient != null) {
@@ -337,17 +329,16 @@ class _RecipeEditScreenState extends ConsumerState<RecipeEditScreen> {
   }
 }
 
-class _IngredientSelectionSheet extends StatefulWidget {
+class _IngredientSelectionScreen extends StatefulWidget {
   final List<Ingredient> ingredients;
-  final ScrollController scrollController;
 
-  const _IngredientSelectionSheet({required this.ingredients, required this.scrollController});
+  const _IngredientSelectionScreen({required this.ingredients});
 
   @override
-  State<_IngredientSelectionSheet> createState() => _IngredientSelectionSheetState();
+  State<_IngredientSelectionScreen> createState() => _IngredientSelectionScreenState();
 }
 
-class _IngredientSelectionSheetState extends State<_IngredientSelectionSheet> {
+class _IngredientSelectionScreenState extends State<_IngredientSelectionScreen> {
   final _searchController = TextEditingController();
   String _searchTerm = '';
 
@@ -377,40 +368,44 @@ class _IngredientSelectionSheetState extends State<_IngredientSelectionSheet> {
       (grouped[letter] ??= []).add(ing);
     }
 
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: TextField(
-            controller: _searchController,
-            decoration: const InputDecoration(
-              labelText: 'Search Ingredients',
-              border: OutlineInputBorder(),
-              prefixIcon: Icon(Icons.search),
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Select Ingredient'),
+      ),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: TextField(
+              controller: _searchController,
+              decoration: const InputDecoration(
+                labelText: 'Search Ingredients',
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.search),
+              ),
             ),
           ),
-        ),
-        Expanded(
-          child: ListView.builder(
-            controller: widget.scrollController,
-            itemCount: grouped.length,
-            itemBuilder: (context, index) {
-              final letter = grouped.keys.elementAt(index);
-              final ingredientsInGroup = grouped[letter]!;
-              return ExpansionTile(
-                title: Text(letter, style: Theme.of(context).textTheme.titleLarge),
-                initiallyExpanded: true,
-                children: ingredientsInGroup.map((ing) {
-                  return ListTile(
-                    title: Text(ing.name),
-                    onTap: () => Navigator.of(context).pop(ing),
-                  );
-                }).toList(),
-              );
-            },
+          Expanded(
+            child: ListView.builder(
+              itemCount: grouped.length,
+              itemBuilder: (context, index) {
+                final letter = grouped.keys.elementAt(index);
+                final ingredientsInGroup = grouped[letter]!;
+                return ExpansionTile(
+                  title: Text(letter, style: Theme.of(context).textTheme.titleLarge),
+                  initiallyExpanded: true,
+                  children: ingredientsInGroup.map((ing) {
+                    return ListTile(
+                      title: Text(ing.name),
+                      onTap: () => Navigator.of(context).pop(ing),
+                    );
+                  }).toList(),
+                );
+              },
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
