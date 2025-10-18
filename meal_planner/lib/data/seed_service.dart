@@ -11,25 +11,26 @@ class SeedService {
   final AppDatabase db;
   final Uuid _uuid = const Uuid();
 
+  // Increment this version to force a re-seed of all data
+  static const int kDataVersion = 6;
+
   Future<void> seedIfNeeded() async {
-    final initialized = await db.getKey('app_initialized');
-    if (initialized != 'true') {
-      await _seedIngredients();
-      await _seedRecipes();
-      await _seedWeeklyPlan(clearExisting: true);
-      await db.setKey('app_initialized', 'true');
-    }
-    // Repair/upgrade weekly plan data if needed (e.g., early seeds with bad IDs)
-    final planVer = await db.getKey('plan_seed_version');
-    if (planVer != '2') {
-      await _seedWeeklyPlan(clearExisting: true);
-      await db.setKey('plan_seed_version', '2');
+    final version = await db.getKey('data_version');
+    if (version != kDataVersion.toString()) {
+      await _seedAll();
+      await db.setKey('data_version', kDataVersion.toString());
     }
   }
 
-  Future<void> repairWeeklyPlan() async {
-    await _seedWeeklyPlan(clearExisting: true);
-    await db.setKey('plan_seed_version', '2');
+  Future<void> _seedAll() async {
+    await db.delete(db.ingredients).go();
+    await db.delete(db.recipes).go();
+    await db.delete(db.recipeIngredients).go();
+    await db.delete(db.weeklyPlanItems).go();
+
+    await _seedIngredients();
+    await _seedRecipes();
+    await _seedWeeklyPlan();
   }
 
   Map<String, int> _buildIndex(List<dynamic> headerRow) {
@@ -47,23 +48,26 @@ class SeedService {
 
   Future<void> _seedIngredients() async {
     final csvStr = await rootBundle.loadString('assets/data/ingredients.csv');
-    final rows = const CsvToListConverter(eol: '\n', shouldParseNumbers: false).convert(csvStr);
+    final normalized = csvStr.replaceAll('\r\n', '\n').replaceAll('\r', '\n');
+    final rows = const CsvToListConverter(eol: '\n', shouldParseNumbers: false).convert(normalized);
     if (rows.isEmpty) return;
     final idx = _buildIndex(rows.first);
 
     for (final row in rows.skip(1)) {
+      if (row.isEmpty || row.every((e) => e.toString().trim().isEmpty)) continue;
       final cols = (row as List).map((e) => (e?.toString() ?? '').trim()).toList();
-      final idStr = _col(cols, idx, 'id');
-      final name = _col(cols, idx, 'name');
+      final idStr = _col(cols, idx, 'id').trim();
+      final name = _col(cols, idx, 'name').trim();
       if (idStr.isEmpty || name.isEmpty) continue;
       await db.upsertIngredient(
         IngredientsCompanion.insert(
           id: idStr,
           name: name,
+          category: Value(_col(cols, idx, 'category').trim()),
           shelfLifeDays: _intV(_col(cols, idx, 'shelf_life')),
           available: Value(_col(cols, idx, 'available') == 't'),
           lastAvailable: _dateV(_col(cols, idx, 'last_available')),
-          servingUnit: Value(_col(cols, idx, 'serving_unit')),
+          servingUnit: Value(_col(cols, idx, 'serving_unit').trim()),
           servingSize: _doubleV(_col(cols, idx, 'serving_size')),
           protein: _doubleV(_col(cols, idx, 'protein')),
           carbs: _doubleV(_col(cols, idx, 'carbs')),
@@ -83,20 +87,21 @@ class SeedService {
 
   Future<void> _seedRecipes() async {
     final allIngredients = await db.getAllIngredients();
-    final ingredientMap = {for (var i in allIngredients) i.id: i};
+    final ingredientMap = {for (var i in allIngredients) i.id.trim(): i};
 
     final csvStr = await rootBundle.loadString('assets/data/recipes.csv');
-    final rows = const CsvToListConverter(eol: '\n', shouldParseNumbers: false).convert(csvStr);
+    final normalized = csvStr.replaceAll('\r\n', '\n').replaceAll('\r', '\n');
+    final rows = const CsvToListConverter(eol: '\n', shouldParseNumbers: false).convert(normalized);
     if (rows.isEmpty) return;
     final idx = _buildIndex(rows.first);
 
     for (final row in rows.skip(1)) {
+      if (row.isEmpty || row.every((e) => e.toString().trim().isEmpty)) continue;
       final cols = (row as List).map((e) => (e?.toString() ?? '').trim()).toList();
-      final idStr = _col(cols, idx, 'id');
-      final name = _col(cols, idx, 'name');
+      final idStr = _col(cols, idx, 'id').trim();
+      final name = _col(cols, idx, 'name').trim();
       if (idStr.isEmpty || name.isEmpty) continue;
 
-      // Calculate nutrients from ingredients
       double totalEnergy = 0, totalProtein = 0, totalCarbs = 0, totalFat = 0, totalFiber = 0;
       double totalIron = 0, totalMagnesium = 0, totalCalcium = 0, totalPotassium = 0, totalSodium = 0, totalVitaminC = 0;
 
@@ -106,24 +111,20 @@ class SeedService {
           final List<dynamic> items = json.decode(ingredientsJson);
           for (final item in items) {
             final ingCsvId = (item['id']?.toString() ?? '').trim();
-            if (ingCsvId.isEmpty) {
-              continue;
-            }
+            if (ingCsvId.isEmpty) continue;
 
             final quantity = (item['quantity'] as num?)?.toDouble() ?? 0;
 
-            // Always add the ingredient to the recipe
             await db.addRecipeIngredient(
               RecipeIngredientsCompanion.insert(
                 id: _uuid.v4(),
                 recipeId: idStr,
                 ingredientId: ingCsvId,
                 quantity: quantity,
-                servingUnit: Value(item['serving_unit']?.toString()),
+                servingUnit: Value((item['serving_unit']?.toString() ?? '').trim()),
               ),
             );
 
-            // If nutrient data is available, add it to the total
             final ingredient = ingredientMap[ingCsvId];
             if (ingredient != null && ingredient.servingSize != null && ingredient.servingSize! > 0) {
               final ratio = quantity / ingredient.servingSize!;
@@ -141,7 +142,9 @@ class SeedService {
             }
           }
         } catch (e) {
-          // Ignore malformed JSON
+          if (kDebugMode) {
+            print('Failed to parse ingredients for recipe $idStr: $e');
+          }
         }
       }
 
@@ -169,25 +172,24 @@ class SeedService {
     }
   }
 
-  Future<void> _seedWeeklyPlan({bool clearExisting = false}) async {
-    if (clearExisting) {
-      await db.delete(db.weeklyPlanItems).go();
-    }
+  Future<void> _seedWeeklyPlan() async {
     final csvStr = await rootBundle.loadString('assets/data/weekly_plan.csv');
-    final rows = const CsvToListConverter(eol: '\n', shouldParseNumbers: false).convert(csvStr);
+    final normalized = csvStr.replaceAll('\r\n', '\n').replaceAll('\r', '\n');
+    final rows = const CsvToListConverter(eol: '\n', shouldParseNumbers: false).convert(normalized);
     if (rows.isEmpty) return;
     final idx = _buildIndex(rows.first);
 
     final recipeIds = (await db.getAllRecipes()).map((r) => r.id).toSet();
 
     for (final row in rows.skip(1)) {
+      if (row.isEmpty || row.every((e) => e.toString().trim().isEmpty)) continue;
       final cols = (row as List).map((e) => (e?.toString() ?? '').trim()).toList();
       final day = _col(cols, idx, 'day');
       final mealType = _col(cols, idx, 'meal_type');
       final idSetRaw = _col(cols, idx, 'recipe_ids');
       final ids = idSetRaw.replaceAll('{', '').replaceAll('}', '').split(',').map((e) => e.trim()).where((e) => e.isNotEmpty);
       for (final recipeId in ids) {
-        if (!recipeIds.contains(recipeId)) continue; // skip bad IDs
+        if (!recipeIds.contains(recipeId)) continue;
         await db.addWeeklyPlanItem(
           WeeklyPlanItemsCompanion.insert(
             id: _uuid.v4(),

@@ -19,6 +19,12 @@ class $IngredientsTable extends Ingredients
   late final GeneratedColumn<String> name = GeneratedColumn<String>(
       'name', aliasedName, false,
       type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _categoryMeta =
+      const VerificationMeta('category');
+  @override
+  late final GeneratedColumn<String> category = GeneratedColumn<String>(
+      'category', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
   static const VerificationMeta _shelfLifeDaysMeta =
       const VerificationMeta('shelfLifeDays');
   @override
@@ -118,6 +124,7 @@ class $IngredientsTable extends Ingredients
   List<GeneratedColumn> get $columns => [
         id,
         name,
+        category,
         shelfLifeDays,
         available,
         lastAvailable,
@@ -155,6 +162,10 @@ class $IngredientsTable extends Ingredients
           _nameMeta, name.isAcceptableOrUnknown(data['name']!, _nameMeta));
     } else if (isInserting) {
       context.missing(_nameMeta);
+    }
+    if (data.containsKey('category')) {
+      context.handle(_categoryMeta,
+          category.isAcceptableOrUnknown(data['category']!, _categoryMeta));
     }
     if (data.containsKey('shelf_life_days')) {
       context.handle(
@@ -247,6 +258,8 @@ class $IngredientsTable extends Ingredients
           .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
       name: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}name'])!,
+      category: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}category']),
       shelfLifeDays: attachedDatabase.typeMapping
           .read(DriftSqlType.int, data['${effectivePrefix}shelf_life_days']),
       available: attachedDatabase.typeMapping
@@ -291,6 +304,7 @@ class $IngredientsTable extends Ingredients
 class Ingredient extends DataClass implements Insertable<Ingredient> {
   final String id;
   final String name;
+  final String? category;
   final int? shelfLifeDays;
   final bool available;
   final DateTime? lastAvailable;
@@ -310,6 +324,7 @@ class Ingredient extends DataClass implements Insertable<Ingredient> {
   const Ingredient(
       {required this.id,
       required this.name,
+      this.category,
       this.shelfLifeDays,
       required this.available,
       this.lastAvailable,
@@ -331,6 +346,9 @@ class Ingredient extends DataClass implements Insertable<Ingredient> {
     final map = <String, Expression>{};
     map['id'] = Variable<String>(id);
     map['name'] = Variable<String>(name);
+    if (!nullToAbsent || category != null) {
+      map['category'] = Variable<String>(category);
+    }
     if (!nullToAbsent || shelfLifeDays != null) {
       map['shelf_life_days'] = Variable<int>(shelfLifeDays);
     }
@@ -384,6 +402,9 @@ class Ingredient extends DataClass implements Insertable<Ingredient> {
     return IngredientsCompanion(
       id: Value(id),
       name: Value(name),
+      category: category == null && nullToAbsent
+          ? const Value.absent()
+          : Value(category),
       shelfLifeDays: shelfLifeDays == null && nullToAbsent
           ? const Value.absent()
           : Value(shelfLifeDays),
@@ -433,6 +454,7 @@ class Ingredient extends DataClass implements Insertable<Ingredient> {
     return Ingredient(
       id: serializer.fromJson<String>(json['id']),
       name: serializer.fromJson<String>(json['name']),
+      category: serializer.fromJson<String?>(json['category']),
       shelfLifeDays: serializer.fromJson<int?>(json['shelfLifeDays']),
       available: serializer.fromJson<bool>(json['available']),
       lastAvailable: serializer.fromJson<DateTime?>(json['lastAvailable']),
@@ -457,6 +479,7 @@ class Ingredient extends DataClass implements Insertable<Ingredient> {
     return <String, dynamic>{
       'id': serializer.toJson<String>(id),
       'name': serializer.toJson<String>(name),
+      'category': serializer.toJson<String?>(category),
       'shelfLifeDays': serializer.toJson<int?>(shelfLifeDays),
       'available': serializer.toJson<bool>(available),
       'lastAvailable': serializer.toJson<DateTime?>(lastAvailable),
@@ -479,6 +502,7 @@ class Ingredient extends DataClass implements Insertable<Ingredient> {
   Ingredient copyWith(
           {String? id,
           String? name,
+          Value<String?> category = const Value.absent(),
           Value<int?> shelfLifeDays = const Value.absent(),
           bool? available,
           Value<DateTime?> lastAvailable = const Value.absent(),
@@ -498,6 +522,7 @@ class Ingredient extends DataClass implements Insertable<Ingredient> {
       Ingredient(
         id: id ?? this.id,
         name: name ?? this.name,
+        category: category.present ? category.value : this.category,
         shelfLifeDays:
             shelfLifeDays.present ? shelfLifeDays.value : this.shelfLifeDays,
         available: available ?? this.available,
@@ -521,6 +546,7 @@ class Ingredient extends DataClass implements Insertable<Ingredient> {
     return Ingredient(
       id: data.id.present ? data.id.value : this.id,
       name: data.name.present ? data.name.value : this.name,
+      category: data.category.present ? data.category.value : this.category,
       shelfLifeDays: data.shelfLifeDays.present
           ? data.shelfLifeDays.value
           : this.shelfLifeDays,
@@ -554,6 +580,7 @@ class Ingredient extends DataClass implements Insertable<Ingredient> {
     return (StringBuffer('Ingredient(')
           ..write('id: $id, ')
           ..write('name: $name, ')
+          ..write('category: $category, ')
           ..write('shelfLifeDays: $shelfLifeDays, ')
           ..write('available: $available, ')
           ..write('lastAvailable: $lastAvailable, ')
@@ -578,6 +605,7 @@ class Ingredient extends DataClass implements Insertable<Ingredient> {
   int get hashCode => Object.hash(
       id,
       name,
+      category,
       shelfLifeDays,
       available,
       lastAvailable,
@@ -600,6 +628,7 @@ class Ingredient extends DataClass implements Insertable<Ingredient> {
       (other is Ingredient &&
           other.id == this.id &&
           other.name == this.name &&
+          other.category == this.category &&
           other.shelfLifeDays == this.shelfLifeDays &&
           other.available == this.available &&
           other.lastAvailable == this.lastAvailable &&
@@ -621,6 +650,7 @@ class Ingredient extends DataClass implements Insertable<Ingredient> {
 class IngredientsCompanion extends UpdateCompanion<Ingredient> {
   final Value<String> id;
   final Value<String> name;
+  final Value<String?> category;
   final Value<int?> shelfLifeDays;
   final Value<bool> available;
   final Value<DateTime?> lastAvailable;
@@ -641,6 +671,7 @@ class IngredientsCompanion extends UpdateCompanion<Ingredient> {
   const IngredientsCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
+    this.category = const Value.absent(),
     this.shelfLifeDays = const Value.absent(),
     this.available = const Value.absent(),
     this.lastAvailable = const Value.absent(),
@@ -662,6 +693,7 @@ class IngredientsCompanion extends UpdateCompanion<Ingredient> {
   IngredientsCompanion.insert({
     required String id,
     required String name,
+    this.category = const Value.absent(),
     this.shelfLifeDays = const Value.absent(),
     this.available = const Value.absent(),
     this.lastAvailable = const Value.absent(),
@@ -684,6 +716,7 @@ class IngredientsCompanion extends UpdateCompanion<Ingredient> {
   static Insertable<Ingredient> custom({
     Expression<String>? id,
     Expression<String>? name,
+    Expression<String>? category,
     Expression<int>? shelfLifeDays,
     Expression<bool>? available,
     Expression<DateTime>? lastAvailable,
@@ -705,6 +738,7 @@ class IngredientsCompanion extends UpdateCompanion<Ingredient> {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (name != null) 'name': name,
+      if (category != null) 'category': category,
       if (shelfLifeDays != null) 'shelf_life_days': shelfLifeDays,
       if (available != null) 'available': available,
       if (lastAvailable != null) 'last_available': lastAvailable,
@@ -728,6 +762,7 @@ class IngredientsCompanion extends UpdateCompanion<Ingredient> {
   IngredientsCompanion copyWith(
       {Value<String>? id,
       Value<String>? name,
+      Value<String?>? category,
       Value<int?>? shelfLifeDays,
       Value<bool>? available,
       Value<DateTime?>? lastAvailable,
@@ -748,6 +783,7 @@ class IngredientsCompanion extends UpdateCompanion<Ingredient> {
     return IngredientsCompanion(
       id: id ?? this.id,
       name: name ?? this.name,
+      category: category ?? this.category,
       shelfLifeDays: shelfLifeDays ?? this.shelfLifeDays,
       available: available ?? this.available,
       lastAvailable: lastAvailable ?? this.lastAvailable,
@@ -776,6 +812,9 @@ class IngredientsCompanion extends UpdateCompanion<Ingredient> {
     }
     if (name.present) {
       map['name'] = Variable<String>(name.value);
+    }
+    if (category.present) {
+      map['category'] = Variable<String>(category.value);
     }
     if (shelfLifeDays.present) {
       map['shelf_life_days'] = Variable<int>(shelfLifeDays.value);
@@ -836,6 +875,7 @@ class IngredientsCompanion extends UpdateCompanion<Ingredient> {
     return (StringBuffer('IngredientsCompanion(')
           ..write('id: $id, ')
           ..write('name: $name, ')
+          ..write('category: $category, ')
           ..write('shelfLifeDays: $shelfLifeDays, ')
           ..write('available: $available, ')
           ..write('lastAvailable: $lastAvailable, ')
@@ -2474,6 +2514,7 @@ typedef $$IngredientsTableCreateCompanionBuilder = IngredientsCompanion
     Function({
   required String id,
   required String name,
+  Value<String?> category,
   Value<int?> shelfLifeDays,
   Value<bool> available,
   Value<DateTime?> lastAvailable,
@@ -2496,6 +2537,7 @@ typedef $$IngredientsTableUpdateCompanionBuilder = IngredientsCompanion
     Function({
   Value<String> id,
   Value<String> name,
+  Value<String?> category,
   Value<int?> shelfLifeDays,
   Value<bool> available,
   Value<DateTime?> lastAvailable,
@@ -2552,6 +2594,9 @@ class $$IngredientsTableFilterComposer
 
   ColumnFilters<String> get name => $composableBuilder(
       column: $table.name, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get category => $composableBuilder(
+      column: $table.category, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<int> get shelfLifeDays => $composableBuilder(
       column: $table.shelfLifeDays, builder: (column) => ColumnFilters(column));
@@ -2638,6 +2683,9 @@ class $$IngredientsTableOrderingComposer
   ColumnOrderings<String> get name => $composableBuilder(
       column: $table.name, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<String> get category => $composableBuilder(
+      column: $table.category, builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<int> get shelfLifeDays => $composableBuilder(
       column: $table.shelfLifeDays,
       builder: (column) => ColumnOrderings(column));
@@ -2703,6 +2751,9 @@ class $$IngredientsTableAnnotationComposer
 
   GeneratedColumn<String> get name =>
       $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get category =>
+      $composableBuilder(column: $table.category, builder: (column) => column);
 
   GeneratedColumn<int> get shelfLifeDays => $composableBuilder(
       column: $table.shelfLifeDays, builder: (column) => column);
@@ -2800,6 +2851,7 @@ class $$IngredientsTableTableManager extends RootTableManager<
           updateCompanionCallback: ({
             Value<String> id = const Value.absent(),
             Value<String> name = const Value.absent(),
+            Value<String?> category = const Value.absent(),
             Value<int?> shelfLifeDays = const Value.absent(),
             Value<bool> available = const Value.absent(),
             Value<DateTime?> lastAvailable = const Value.absent(),
@@ -2821,6 +2873,7 @@ class $$IngredientsTableTableManager extends RootTableManager<
               IngredientsCompanion(
             id: id,
             name: name,
+            category: category,
             shelfLifeDays: shelfLifeDays,
             available: available,
             lastAvailable: lastAvailable,
@@ -2842,6 +2895,7 @@ class $$IngredientsTableTableManager extends RootTableManager<
           createCompanionCallback: ({
             required String id,
             required String name,
+            Value<String?> category = const Value.absent(),
             Value<int?> shelfLifeDays = const Value.absent(),
             Value<bool> available = const Value.absent(),
             Value<DateTime?> lastAvailable = const Value.absent(),
@@ -2863,6 +2917,7 @@ class $$IngredientsTableTableManager extends RootTableManager<
               IngredientsCompanion.insert(
             id: id,
             name: name,
+            category: category,
             shelfLifeDays: shelfLifeDays,
             available: available,
             lastAvailable: lastAvailable,

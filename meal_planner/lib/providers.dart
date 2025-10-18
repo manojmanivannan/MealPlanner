@@ -55,10 +55,9 @@ final recipeDetailProvider = FutureProvider.family<RecipeDetail, String>((ref, i
   final db = ref.read(databaseProvider);
   final recipe = await (db.select(db.recipes)..where((t) => t.id.equals(id))).getSingle();
   final usages = await db.getRecipeIngredientsByRecipe(id);
-  final ingIds = usages.map((u) => u.ingredientId).toSet();
-  final ingList = await (db.select(db.ingredients)..where((t) => t.id.isIn(ingIds.toList()))).get();
-  final ingMap = {for (final i in ingList) i.id: i};
-  final pairs = usages.map((u) => (usage: u, ingredient: ingMap[u.ingredientId])).toList();
+  final allIngredients = await ref.read(ingredientsProvider.future);
+  final ingMap = {for (final i in allIngredients) i.id.trim(): i};
+  final pairs = usages.map((u) => (usage: u, ingredient: ingMap[u.ingredientId.trim()])).toList();
   return RecipeDetail(recipe: recipe, ingredients: pairs);
 });
 

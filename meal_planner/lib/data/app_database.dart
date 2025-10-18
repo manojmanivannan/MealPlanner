@@ -10,6 +10,7 @@ part 'app_database.g.dart';
 class Ingredients extends Table {
   TextColumn get id => text()(); // CSV numeric id as string
   TextColumn get name => text()();
+  TextColumn get category => text().nullable()();
   IntColumn get shelfLifeDays => integer().nullable()();
   BoolColumn get available => boolean().withDefault(const Constant(false))();
   DateTimeColumn get lastAvailable => dateTime().nullable()();
