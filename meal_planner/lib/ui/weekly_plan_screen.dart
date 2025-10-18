@@ -14,10 +14,12 @@ String mealLabel(String meal) {
       return 'Breakfast';
     case 'lunch':
       return 'Lunch';
-    case 'snack':
-      return 'Snack';
     case 'dinner':
       return 'Dinner';
+    case 'snack':
+      return 'Snack';
+    case 'sides':
+      return 'Sides';
     default:
       return meal;
   }
@@ -49,6 +51,7 @@ class WeeklyPlanScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final planAsync = ref.watch(weeklyPlanViewProvider);
+    final pageController = PageController(initialPage: ref.watch(weeklyPlanPageIndexProvider));
 
     return Scaffold(
       appBar: AppBar(title: const Text('Meal Planner')),
@@ -60,8 +63,12 @@ class WeeklyPlanScreen extends ConsumerWidget {
               kToolbarHeight -
               MediaQuery.of(context).padding.vertical -
               24;
-          return PageView(
-            children: _days.map((day) {
+          return PageView.builder(
+            controller: pageController,
+            itemCount: _days.length,
+            onPageChanged: (index) => ref.read(weeklyPlanPageIndexProvider.notifier).state = index,
+            itemBuilder: (context, index) {
+              final day = _days[index];
               return Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 child: _DayColumn(
@@ -74,7 +81,7 @@ class WeeklyPlanScreen extends ConsumerWidget {
                   onShowRecipe: (recipe) => _showRecipeDetails(context, ref, recipe),
                 ),
               );
-            }).toList(),
+            },
           );
         },
       ),
@@ -103,75 +110,98 @@ class WeeklyPlanScreen extends ConsumerWidget {
                     final ingredients = data.ingredients;
                     return Stack(
                       children: [
-                        SingleChildScrollView(
+                        CustomScrollView(
                           controller: scrollController,
-                          padding: const EdgeInsets.all(16),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(r.name, style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w700)),
-                              const SizedBox(height: 8),
-                              Wrap(
-                                spacing: 8,
-                                runSpacing: 4,
-                                children: [
-                                  Chip(label: Text('Serves: ${r.serves?.toString() ?? '-'}')),
-                                  Chip(label: Text('Meal: ${r.mealType ?? '-'}')),
-                                  if (r.isVegetarian == true) const Chip(label: Text('Vegetarian')),
-                                ],
+                          slivers: [
+                            SliverPadding(
+                              padding: const EdgeInsets.all(16),
+                              sliver: SliverList(
+                                delegate: SliverChildListDelegate([
+                                  Text(r.name, style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w700)),
+                                  const SizedBox(height: 8),
+                                  Wrap(
+                                    spacing: 8,
+                                    runSpacing: 4,
+                                    children: [
+                                      Chip(label: Text('Serves: ${r.serves?.toString() ?? '-'}')),
+                                      Chip(label: Text('Meal: ${r.mealType ?? '-'}')),
+                                      if (r.isVegetarian == true) const Chip(label: Text('Vegetarian')),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 16),
+                                  Text('Instructions', style: Theme.of(context).textTheme.titleLarge),
+                                  const SizedBox(height: 6),
+                                  Text(r.instructions ?? '—'),
+                                  const SizedBox(height: 16),
+                                  Text('Ingredients', style: Theme.of(context).textTheme.titleLarge),
+                                  const SizedBox(height: 8),
+                                ]),
                               ),
-                              const SizedBox(height: 16),
-                              Text('Nutrition Information', style: Theme.of(context).textTheme.titleLarge),
-                              const SizedBox(height: 8),
-                              Wrap(
-                                spacing: 8,
-                                runSpacing: 4,
-                                children: [
-                                  Chip(
-                                    label: Text('Protein: ${r.protein?.toStringAsFixed(1) ?? '-'}g'),
-                                    backgroundColor: Colors.green[100],
-                                  ),
-                                  Chip(
-                                    label: Text('Carbs: ${r.carbs?.toStringAsFixed(1) ?? '-'}g'),
-                                    backgroundColor: Colors.orange[100],
-                                  ),
-                                  Chip(
-                                    label: Text('Fat: ${r.fat?.toStringAsFixed(1) ?? '-'}g'),
-                                    backgroundColor: Colors.red[100],
-                                  ),
-                                  Chip(
-                                    label: Text('Fiber: ${r.fiber?.toStringAsFixed(1) ?? '-'}g'),
-                                    backgroundColor: Colors.brown[100],
-                                  ),
-                                  Chip(
-                                    label: Text('Energy: ${r.energy?.toStringAsFixed(0) ?? '-'} kcal'),
-                                    backgroundColor: Colors.blue[100],
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 16),
-                              Text('Ingredients', style: Theme.of(context).textTheme.titleLarge),
-                              const SizedBox(height: 8),
-                              Wrap(
-                                spacing: 8,
-                                runSpacing: 4,
-                                children: ingredients.map((p) {
-                                  final ing = p.ingredient;
-                                  final u = p.usage;
-                                  final name = ing?.name ?? u.ingredientId;
-                                  final qty = u.quantity;
-                                  final unit = ing?.servingUnit ?? '';
-                                  return Chip(
-                                    label: Text(qty == null ? name : '$name ($qty $unit)'),
-                                  );
-                                }).toList(),
-                              ),
-                              const SizedBox(height: 16),
-                              Text('Instructions', style: Theme.of(context).textTheme.titleLarge),
-                              const SizedBox(height: 6),
-                              Text(r.instructions ?? '—'),
-                            ],
-                          ),
+                            ),
+                            SliverList.builder(
+                              itemCount: ingredients.length,
+                              itemBuilder: (context, index) {
+                                final p = ingredients[index];
+                                final ing = p.ingredient;
+                                final u = p.usage;
+                                final name = ing?.name ?? u.ingredientId;
+                                final qty = u.quantity;
+                                final unit = ing?.servingUnit ?? '';
+                                return ListTile(
+                                  title: Text(qty == null ? name : '$name ($qty $unit)'),
+                                );
+                              },
+                            ),
+                            SliverPadding(
+                              padding: const EdgeInsets.all(16),
+                              sliver: SliverList(delegate: SliverChildListDelegate([
+                                const SizedBox(height: 16),
+                                Text('Macronutrients', style: Theme.of(context).textTheme.titleLarge),
+                                const SizedBox(height: 8),
+                                Wrap(
+                                  spacing: 8,
+                                  runSpacing: 4,
+                                  children: [
+                                    Chip(
+                                      label: Text('Protein: ${r.protein?.toStringAsFixed(1) ?? '-'}g'),
+                                      backgroundColor: Colors.green[100],
+                                    ),
+                                    Chip(
+                                      label: Text('Carbs: ${r.carbs?.toStringAsFixed(1) ?? '-'}g'),
+                                      backgroundColor: Colors.orange[100],
+                                    ),
+                                    Chip(
+                                      label: Text('Fat: ${r.fat?.toStringAsFixed(1) ?? '-'}g'),
+                                      backgroundColor: Colors.red[100],
+                                    ),
+                                    Chip(
+                                      label: Text('Fiber: ${r.fiber?.toStringAsFixed(1) ?? '-'}g'),
+                                      backgroundColor: Colors.brown[100],
+                                    ),
+                                    Chip(
+                                      label: Text('Energy: ${r.energy?.toStringAsFixed(0) ?? '-'} kcal'),
+                                      backgroundColor: Colors.blue[100],
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 16),
+                                Text('Micronutrients', style: Theme.of(context).textTheme.titleLarge),
+                                const SizedBox(height: 8),
+                                Wrap(
+                                  spacing: 8,
+                                  runSpacing: 4,
+                                  children: [
+                                    Chip(label: Text('Iron: ${r.ironMg?.toStringAsFixed(1) ?? '-'}mg')),
+                                    Chip(label: Text('Magnesium: ${r.magnesiumMg?.toStringAsFixed(1) ?? '-'}mg')),
+                                    Chip(label: Text('Calcium: ${r.calciumMg?.toStringAsFixed(1) ?? '-'}mg')),
+                                    Chip(label: Text('Potassium: ${r.potassiumMg?.toStringAsFixed(1) ?? '-'}mg')),
+                                    Chip(label: Text('Sodium: ${r.sodiumMg?.toStringAsFixed(1) ?? '-'}mg')),
+                                    Chip(label: Text('Vitamin C: ${r.vitaminCMg?.toStringAsFixed(1) ?? '-'}mg')),
+                                  ],
+                                ),
+                              ])),
+                            ),
+                          ],
                         ),
                         Positioned(
                           top: 0,
@@ -204,6 +234,33 @@ class WeeklyPlanScreen extends ConsumerWidget {
     final existing = await db.getWeeklyPlanFor(day, mealType);
     final initiallySelected = existing.map((e) => e.recipeId).toSet();
 
+    // Group recipes by meal type
+    final groupedRecipes = <String, List<Recipe>>{};
+    for (final recipe in recipes) {
+      final type = recipe.mealType ?? 'Other';
+      (groupedRecipes[type] ??= []).add(recipe);
+    }
+
+    // Sort meal types according to custom order, then sort recipes within each group alphabetically
+    const mealOrder = ['pre_breakfast', 'breakfast', 'lunch', 'dinner', 'snack', 'sides'];
+    final sortedMealTypes = groupedRecipes.keys.toList()
+      ..sort((a, b) {
+        final indexA = mealOrder.indexOf(a);
+        final indexB = mealOrder.indexOf(b);
+        final effectiveIndexA = indexA == -1 ? mealOrder.length : indexA;
+        final effectiveIndexB = indexB == -1 ? mealOrder.length : indexB;
+
+        final comparison = effectiveIndexA.compareTo(effectiveIndexB);
+        if (comparison == 0) {
+          return a.compareTo(b);
+        }
+        return comparison;
+      });
+
+    for (final key in sortedMealTypes) {
+      groupedRecipes[key]!.sort((a, b) => a.name.compareTo(b.name));
+    }
+
     await showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
@@ -233,41 +290,67 @@ class WeeklyPlanScreen extends ConsumerWidget {
                   child: ValueListenableBuilder<Set<String>>(
                     valueListenable: selected,
                     builder: (_, set, __) {
-                      return ListView.separated(
+                      // Flatten the grouped and sorted recipes into a single list for the ListView
+                      final List<dynamic> items = [];
+                      for (final mealType in sortedMealTypes) {
+                        items.add(mealType); // Header
+                        items.addAll(groupedRecipes[mealType]!);
+                      }
+
+                      return ListView.builder(
                         shrinkWrap: true,
-                        itemCount: recipes.length,
-                        separatorBuilder: (_, __) => const Divider(height: 1),
+                        itemCount: items.length,
                         itemBuilder: (_, i) {
-                          final r = recipes[i];
-                          final checked = set.contains(r.id);
-                          return CheckboxListTile(
-                            value: checked,
-                            title: Text(r.name),
-                            controlAffinity: ListTileControlAffinity.leading,
-                            onChanged: (v) async {
-                              if (v == true) {
-                                // add
-                                await db.addWeeklyPlanItem(WeeklyPlanItemsCompanion.insert(
-                                  id: Uuid().v4(),
-                                  day: day,
-                                  mealType: mealType,
-                                  recipeId: r.id,
-                                ));
-                                set.add(r.id);
-                              } else {
-                                // remove
-                                await (db.delete(db.weeklyPlanItems)
-                                      ..where((t) =>
-                                          t.day.equals(day) &
-                                          t.mealType.equals(mealType) &
-                                          t.recipeId.equals(r.id)))
-                                    .go();
-                                set.remove(r.id);
-                              }
-                              selected.value = {...set};
-                              ref.invalidate(weeklyPlanViewProvider);
-                            },
-                          );
+                          final item = items[i];
+                          if (item is String) {
+                            // It's a meal type header
+                            return Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              child: Text(
+                                mealLabel(item),
+                                style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                              ),
+                            );
+                          } else {
+                            // It's a Recipe item
+                            final r = item as Recipe;
+                            final isLastOfKind = (i + 1 == items.length) || (items[i + 1] is String);
+                            final checked = set.contains(r.id);
+
+                            return Column(
+                              children: [
+                                CheckboxListTile(
+                                  value: checked,
+                                  title: Text(r.name),
+                                  controlAffinity: ListTileControlAffinity.leading,
+                                  onChanged: (v) async {
+                                    if (v == true) {
+                                      // add
+                                      await db.addWeeklyPlanItem(WeeklyPlanItemsCompanion.insert(
+                                        id: Uuid().v4(),
+                                        day: day,
+                                        mealType: mealType,
+                                        recipeId: r.id,
+                                      ));
+                                      set.add(r.id);
+                                    } else {
+                                      // remove
+                                      await (db.delete(db.weeklyPlanItems)
+                                            ..where((t) =>
+                                                t.day.equals(day) &
+                                                t.mealType.equals(mealType) &
+                                                t.recipeId.equals(r.id)))
+                                          .go();
+                                      set.remove(r.id);
+                                    }
+                                    selected.value = {...set};
+                                    ref.invalidate(weeklyPlanViewProvider);
+                                  },
+                                ),
+                                if (!isLastOfKind) const Divider(height: 1),
+                              ],
+                            );
+                          }
                         },
                       );
                     },
@@ -352,49 +435,43 @@ class _DayColumnState extends State<_DayColumn> with AutomaticKeepAliveClientMix
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(14),
-        child: SizedBox(
-          height: widget.height,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
+        child: CustomScrollView(
+          slivers: [
+            SliverToBoxAdapter(
+              child: Padding(
                 padding: const EdgeInsets.only(bottom: 10),
                 child: Text(
                   widget.day,
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
                 ),
               ),
-              const SizedBox(height: 4),
-              Expanded(
-                child: SingleChildScrollView(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      for (final meal in widget.meals) ...[
-                        _MealSection(
-                          title: mealLabel(meal),
-                          recipes: dayMeals[meal] ?? const [],
-                          color: _colorForMeal(meal, scheme),
-                          onEdit: () => widget.onChangeMeal(meal),
-                          onTap: () {
-                            final recipeList = dayMeals[meal];
-                            if (recipeList != null) {
-                              if (recipeList.length == 1) {
-                                widget.onShowRecipe(recipeList.first);
-                              } else if (recipeList.length > 1) {
-                                _showRecipeSelectionDialog(context, recipeList, widget.onShowRecipe);
-                              }
-                            }
-                          },
-                        ),
-                        const SizedBox(height: 12),
-                      ],
-                    ],
+            ),
+            SliverList.builder(
+              itemCount: widget.meals.length,
+              itemBuilder: (context, index) {
+                final meal = widget.meals[index];
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 12.0),
+                  child: _MealSection(
+                    title: mealLabel(meal),
+                    recipes: dayMeals[meal] ?? const [],
+                    color: _colorForMeal(meal, scheme),
+                    onEdit: () => widget.onChangeMeal(meal),
+                    onTap: () {
+                      final recipeList = dayMeals[meal];
+                      if (recipeList != null) {
+                        if (recipeList.length == 1) {
+                          widget.onShowRecipe(recipeList.first);
+                        } else if (recipeList.length > 1) {
+                          _showRecipeSelectionDialog(context, recipeList, widget.onShowRecipe);
+                        }
+                      }
+                    },
                   ),
-                ),
-              ),
-            ],
-          ),
+                );
+              },
+            ),
+          ],
         ),
       ),
     );

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../main.dart';
+import '../services/notification_scheduler_service.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -32,29 +33,37 @@ class _SettingsView extends ConsumerStatefulWidget {
 }
 
 class _SettingsViewState extends ConsumerState<_SettingsView> {
+  late bool _notificationsEnabled;
   late TimeOfDay _preBreakfastTime;
   late TimeOfDay _breakfastTime;
   late TimeOfDay _lunchTime;
   late TimeOfDay _snackTime;
   late TimeOfDay _dinnerTime;
-  late int _notificationLeadTime;
+  late int _notificationLeadTimeValue;
+  late String _notificationLeadTimeUnit;
   late TimeOfDay _nextDayPlanTime;
 
   @override
   void initState() {
     super.initState();
+    _notificationsEnabled = widget.prefs.getBool('notifications_enabled') ?? true;
     _preBreakfastTime = _getTime('pre_breakfast_time', const TimeOfDay(hour: 7, minute: 0));
     _breakfastTime = _getTime('breakfast_time', const TimeOfDay(hour: 9, minute: 0));
     _lunchTime = _getTime('lunch_time', const TimeOfDay(hour: 13, minute: 0));
     _snackTime = _getTime('snack_time', const TimeOfDay(hour: 17, minute: 0));
     _dinnerTime = _getTime('dinner_time', const TimeOfDay(hour: 20, minute: 0));
-    _notificationLeadTime = widget.prefs.getInt('notification_lead_time') ?? 15;
+    _notificationLeadTimeValue = widget.prefs.getInt('notification_lead_time_value') ?? 15;
+    _notificationLeadTimeUnit = widget.prefs.getString('notification_lead_time_unit') ?? 'minutes';
     _nextDayPlanTime = _getTime('next_day_plan_time', const TimeOfDay(hour: 21, minute: 0));
   }
 
   Future<void> _rescheduleNotifications() async {
-    final scheduler = await ref.read(notificationSchedulerServiceProvider.future);
-    await scheduler.rescheduleAllNotifications();
+    final scheduler = ref.read(notificationSchedulerServiceProvider);
+    if (_notificationsEnabled) {
+      await scheduler.rescheduleAllNotifications();
+    } else {
+      await scheduler.cancelAllNotifications();
+    }
   }
 
   TimeOfDay _getTime(String key, TimeOfDay defaultTime) {
@@ -84,45 +93,58 @@ class _SettingsViewState extends ConsumerState<_SettingsView> {
         Text('Meal Times', style: Theme.of(context).textTheme.titleLarge),
         const Divider(),
         _buildTimeSetting('Pre-Breakfast', _preBreakfastTime, (t) async {
-              await _setTime('pre_breakfast_time', t);
-              setState(() {
-                _preBreakfastTime = t;
-              });
-            }),
+          await _setTime('pre_breakfast_time', t);
+          setState(() {
+            _preBreakfastTime = t;
+          });
+        }),
         _buildTimeSetting('Breakfast', _breakfastTime, (t) async {
-              await _setTime('breakfast_time', t);
-              setState(() {
-                _breakfastTime = t;
-              });
-            }),
+          await _setTime('breakfast_time', t);
+          setState(() {
+            _breakfastTime = t;
+          });
+        }),
         _buildTimeSetting('Lunch', _lunchTime, (t) async {
-              await _setTime('lunch_time', t);
-              setState(() {
-                _lunchTime = t;
-              });
-            }),
+          await _setTime('lunch_time', t);
+          setState(() {
+            _lunchTime = t;
+          });
+        }),
         _buildTimeSetting('Snack', _snackTime, (t) async {
-              await _setTime('snack_time', t);
-              setState(() {
-                _snackTime = t;
-              });
-            }),
+          await _setTime('snack_time', t);
+          setState(() {
+            _snackTime = t;
+          });
+        }),
         _buildTimeSetting('Dinner', _dinnerTime, (t) async {
-              await _setTime('dinner_time', t);
-              setState(() {
-                _dinnerTime = t;
-              });
-            }),
+          await _setTime('dinner_time', t);
+          setState(() {
+            _dinnerTime = t;
+          });
+        }),
         const SizedBox(height: 24),
         Text('Notifications', style: Theme.of(context).textTheme.titleLarge),
         const Divider(),
-        _buildNotificationLeadTimeSetting(),
-        _buildTimeSetting('Next Day Meal Plan', _nextDayPlanTime, (t) async {
-              await _setTime('next_day_plan_time', t);
-              setState(() {
-                _nextDayPlanTime = t;
-              });
-            }),
+        SwitchListTile(
+          title: const Text('Enable Notifications'),
+          value: _notificationsEnabled,
+          onChanged: (value) async {
+            await widget.prefs.setBool('notifications_enabled', value);
+            await _rescheduleNotifications();
+            setState(() {
+              _notificationsEnabled = value;
+            });
+          },
+        ),
+        if (_notificationsEnabled) ...[
+          _buildNotificationLeadTimeSetting(),
+          _buildTimeSetting('Next Day Meal Plan', _nextDayPlanTime, (t) async {
+            await _setTime('next_day_plan_time', t);
+            setState(() {
+              _nextDayPlanTime = t;
+            });
+          }),
+        ],
       ],
     );
   }
@@ -137,24 +159,55 @@ class _SettingsViewState extends ConsumerState<_SettingsView> {
 
   Widget _buildNotificationLeadTimeSetting() {
     return ListTile(
-      title: const Text('Meal Notification Lead Time'),
-      trailing: DropdownButton<int>(
-        value: _notificationLeadTime,
-        items: [15, 30, 60, 120].map((mins) {
-          return DropdownMenuItem<int>(
-            value: mins,
-            child: Text('$mins minutes before'),
-          );
-        }).toList(),
-        onChanged: (value) async {
-          if (value != null) {
-            await widget.prefs.setInt('notification_lead_time', value);
-            await _rescheduleNotifications();
-            setState(() {
-              _notificationLeadTime = value;
-            });
-          }
-        },
+      title: const Text('Meal Notification'),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: 70,
+            child: TextField(
+              controller: TextEditingController(text: _notificationLeadTimeValue.toString()),
+              keyboardType: TextInputType.number,
+              textAlign: TextAlign.center,
+              onSubmitted: (value) async {
+                final intValue = int.tryParse(value);
+                if (intValue != null) {
+                  final clampedValue = _notificationLeadTimeUnit == 'minutes'
+                      ? (intValue.clamp(1, 60))
+                      : (intValue.clamp(1, 6));
+                  await widget.prefs.setInt('notification_lead_time_value', clampedValue);
+                  await _rescheduleNotifications();
+                  setState(() {
+                    _notificationLeadTimeValue = clampedValue;
+                  });
+                }
+              },
+            ),
+          ),
+          const SizedBox(width: 12),
+          DropdownButton<String>(
+            value: _notificationLeadTimeUnit,
+            items: ['minutes', 'hours'].map((unit) {
+              return DropdownMenuItem<String>(
+                value: unit,
+                child: Text(unit),
+              );
+            }).toList(),
+            onChanged: (value) async {
+              if (value != null) {
+                await widget.prefs.setString('notification_lead_time_unit', value);
+                // Reset value to a sensible default if unit changes
+                final clampedValue = value == 'minutes' ? 15 : 1;
+                await widget.prefs.setInt('notification_lead_time_value', clampedValue);
+                await _rescheduleNotifications();
+                setState(() {
+                  _notificationLeadTimeUnit = value;
+                  _notificationLeadTimeValue = clampedValue;
+                });
+              }
+            },
+          ),
+        ],
       ),
     );
   }

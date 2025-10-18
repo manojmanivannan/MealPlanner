@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:drift/drift.dart';
 import 'package:csv/csv.dart';
@@ -81,6 +82,9 @@ class SeedService {
   }
 
   Future<void> _seedRecipes() async {
+    final allIngredients = await db.getAllIngredients();
+    final ingredientMap = {for (var i in allIngredients) i.id: i};
+
     final csvStr = await rootBundle.loadString('assets/data/recipes.csv');
     final rows = const CsvToListConverter(eol: '\n', shouldParseNumbers: false).convert(csvStr);
     if (rows.isEmpty) return;
@@ -92,6 +96,66 @@ class SeedService {
       final name = _col(cols, idx, 'name');
       if (idStr.isEmpty || name.isEmpty) continue;
 
+      debugPrint('Seeding recipe: $name (ID: $idStr)');
+
+      // Calculate nutrients from ingredients
+      double totalEnergy = 0, totalProtein = 0, totalCarbs = 0, totalFat = 0, totalFiber = 0;
+      double totalIron = 0, totalMagnesium = 0, totalCalcium = 0, totalPotassium = 0, totalSodium = 0, totalVitaminC = 0;
+
+      final ingredientsJson = _col(cols, idx, 'ingredients');
+      if (ingredientsJson.isNotEmpty) {
+        try {
+          final List<dynamic> items = json.decode(ingredientsJson);
+          debugPrint('  Found ${items.length} ingredients for $name');
+          for (final item in items) {
+            final ingCsvId = (item['id']?.toString() ?? '').trim();
+            if (ingCsvId.isEmpty) {
+              debugPrint('  Skipping ingredient with empty ID.');
+              continue;
+            }
+
+            final quantity = (item['quantity'] as num?)?.toDouble() ?? 0;
+            debugPrint('  - Ingredient ID: $ingCsvId, Quantity: $quantity');
+
+            // Always add the ingredient to the recipe
+            await db.addRecipeIngredient(
+              RecipeIngredientsCompanion.insert(
+                id: _uuid.v4(),
+                recipeId: idStr,
+                ingredientId: ingCsvId,
+                quantity: quantity,
+                servingUnit: Value(item['serving_unit']?.toString()),
+              ),
+            );
+
+            // If nutrient data is available, add it to the total
+            final ingredient = ingredientMap[ingCsvId];
+            if (ingredient != null) {
+              if (ingredient.servingSize != null && ingredient.servingSize! > 0) {
+                final ratio = quantity / ingredient.servingSize!;
+                totalEnergy += (ingredient.energy ?? 0) * ratio;
+                totalProtein += (ingredient.protein ?? 0) * ratio;
+                totalCarbs += (ingredient.carbs ?? 0) * ratio;
+                totalFat += (ingredient.fat ?? 0) * ratio;
+                totalFiber += (ingredient.fiber ?? 0) * ratio;
+                totalIron += (ingredient.ironMg ?? 0) * ratio;
+                totalMagnesium += (ingredient.magnesiumMg ?? 0) * ratio;
+                totalCalcium += (ingredient.calciumMg ?? 0) * ratio;
+                totalPotassium += (ingredient.potassiumMg ?? 0) * ratio;
+                totalSodium += (ingredient.sodiumMg ?? 0) * ratio;
+                totalVitaminC += (ingredient.vitaminCMg ?? 0) * ratio;
+              } else {
+                debugPrint('  - WARNING: Ingredient \'$ingCsvId\' has no serving size, cannot calculate nutrients.');
+              }
+            } else {
+              debugPrint('  - WARNING: Ingredient \'$ingCsvId\' not found in the database.');
+            }
+          }
+        } catch (e) {
+          debugPrint('  - ERROR parsing ingredients for $name: $e');
+        }
+      }
+
       await db.upsertRecipe(
         RecipesCompanion.insert(
           id: idStr,
@@ -100,41 +164,19 @@ class SeedService {
           instructions: Value(_col(cols, idx, 'instructions')),
           mealType: Value(_col(cols, idx, 'meal_type')),
           isVegetarian: Value(_boolV(_col(cols, idx, 'is_vegetarian'))),
-          protein: _doubleV(_col(cols, idx, 'protein')),
-          carbs: _doubleV(_col(cols, idx, 'carbs')),
-          fat: _doubleV(_col(cols, idx, 'fat')),
-          fiber: _doubleV(_col(cols, idx, 'fiber')),
-          energy: _doubleV(_col(cols, idx, 'energy')),
-          ironMg: _doubleV(_col(cols, idx, 'iron_mg')),
-          magnesiumMg: _doubleV(_col(cols, idx, 'magnesium_mg')),
-          calciumMg: _doubleV(_col(cols, idx, 'calcium_mg')),
-          potassiumMg: _doubleV(_col(cols, idx, 'potassium_mg')),
-          sodiumMg: _doubleV(_col(cols, idx, 'sodium_mg')),
-          vitaminCMg: _doubleV(_col(cols, idx, 'vitamin_c_mg')),
+          energy: Value(totalEnergy),
+          protein: Value(totalProtein),
+          carbs: Value(totalCarbs),
+          fat: Value(totalFat),
+          fiber: Value(totalFiber),
+          ironMg: Value(totalIron),
+          magnesiumMg: Value(totalMagnesium),
+          calciumMg: Value(totalCalcium),
+          potassiumMg: Value(totalPotassium),
+          sodiumMg: Value(totalSodium),
+          vitaminCMg: Value(totalVitaminC),
         ),
       );
-
-      final ingredientsJson = _col(cols, idx, 'ingredients');
-      if (ingredientsJson.isNotEmpty) {
-        try {
-          final List<dynamic> items = json.decode(ingredientsJson);
-          for (final item in items) {
-            final ingCsvId = (item['id']?.toString() ?? '').trim();
-            if (ingCsvId.isEmpty) continue;
-            await db.addRecipeIngredient(
-              RecipeIngredientsCompanion.insert(
-                id: _uuid.v4(),
-                recipeId: idStr,
-                ingredientId: ingCsvId,
-                quantity: (item['quantity'] as num?)?.toDouble() ?? 0,
-                servingUnit: Value(item['serving_unit']?.toString()),
-              ),
-            );
-          }
-        } catch (_) {
-          // Ignore malformed JSON rows
-        }
-      }
     }
   }
 

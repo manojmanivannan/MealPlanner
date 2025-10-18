@@ -10,6 +10,26 @@ Color _colorFromString(String str) {
   return Colors.primaries[str.hashCode % Colors.primaries.length];
 }
 
+String _mealLabel(String meal) {
+  switch (meal) {
+    case 'pre_breakfast':
+      return 'Pre-Breakfast';
+    case 'breakfast':
+      return 'Breakfast';
+    case 'lunch':
+      return 'Lunch';
+    case 'snack':
+      return 'Snack';
+    case 'dinner':
+      return 'Dinner';
+    case 'uncategorized':
+      return 'Uncategorized';
+    default:
+      if (meal.isEmpty) return 'Other';
+      return meal[0].toUpperCase() + meal.substring(1);
+  }
+}
+
 class RecipesScreen extends ConsumerStatefulWidget {
   const RecipesScreen({super.key});
 
@@ -27,7 +47,7 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
   void initState() {
     super.initState();
     _searchController.addListener(() {
-      setState(() {});
+      ref.read(recipeSearchQueryProvider.notifier).state = _searchController.text;
     });
   }
 
@@ -69,8 +89,10 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final recipesAsync = ref.watch(recipesProvider);
+    final flatListAsync = ref.watch(filteredRecipesProvider);
     final db = ref.read(databaseProvider);
+    final allRecipes = ref.watch(recipesProvider);
+
     return Scaffold(
       appBar: AppBar(
         title: _isSearching
@@ -91,7 +113,7 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
                   tooltip: 'Delete Selected',
                   icon: const Icon(Icons.delete),
                   onPressed: () async {
-                    final items = await recipesAsync.value
+                    final items = await allRecipes.value
                         ?.where((r) => _selectedIds.contains(r.id))
                         .toList();
                     if (items != null && items.isNotEmpty) {
@@ -115,7 +137,10 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
                   onPressed: () {
                     setState(() {
                       _isSearching = !_isSearching;
-                      if (!_isSearching) _searchController.clear();
+                      if (!_isSearching) {
+                        _searchController.clear();
+                        ref.read(recipeSearchQueryProvider.notifier).state = '';
+                      }
                       _isSelectionMode = false;
                       _selectedIds.clear();
                     });
@@ -140,106 +165,72 @@ class _RecipesScreenState extends ConsumerState<RecipesScreen> {
                   ),
               ],
       ),
-      body: recipesAsync.when(
-        data: (items) {
-          final filteredItems = _searchController.text.isEmpty
-              ? items
-              : items
-                  .where((r) =>
-                      r.name.toLowerCase().contains(_searchController.text.toLowerCase()))
-                  .toList();
-
-          if (items.isEmpty) {
+      body: flatListAsync.when(
+        data: (flatList) {
+          if (ref.read(recipesProvider).value?.isEmpty ?? true) {
             return const Center(child: Text('No recipes yet. Tap + to add one!'));
           }
-
-          if (filteredItems.isEmpty && _searchController.text.isNotEmpty) {
+          if (flatList.isEmpty && _searchController.text.isNotEmpty) {
             return const Center(child: Text('No recipes found.'));
           }
-
-          final groupedRecipes = <String, List<Recipe>>{};
-          for (final recipe in filteredItems) {
-            final mealType = recipe.mealType?.isNotEmpty == true
-                ? recipe.mealType!.toLowerCase()
-                : 'uncategorized';
-            (groupedRecipes[mealType] ??= []).add(recipe);
-          }
-
-          final groupOrder = [
-            'pre breakfast',
-            'breakfast',
-            'lunch',
-            'snack',
-            'dinner',
-            'uncategorized'
-          ];
-
-          final sortedGroups = groupedRecipes.keys.toList()
-            ..sort((a, b) {
-              final indexA = groupOrder.indexOf(a);
-              final indexB = groupOrder.indexOf(b);
-              return indexA.compareTo(indexB);
-            });
-
-          groupedRecipes.forEach((key, value) {
-            value.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
-          });
-
           return ListView.builder(
-            itemCount: sortedGroups.length,
-            itemBuilder: (_, groupIndex) {
-              final groupName = sortedGroups[groupIndex];
-              final recipesInGroup = groupedRecipes[groupName]!;
-              return ExpansionTile(
-                title: Text(
-                  groupName.toUpperCase(),
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
+            itemCount: flatList.length,
+            itemBuilder: (_, index) {
+              final item = flatList[index];
+
+              if (item is String) {
+                // This is a header
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
+                  child: Text(
+                    _mealLabel(item),
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                  ),
+                );
+              }
+
+              final recipe = item as Recipe;
+              final color = _colorFromString(recipe.name);
+              return ListTile(
+                selected: _selectedIds.contains(recipe.id),
+                leading: CircleAvatar(
+                  backgroundColor: color,
+                  child: Text(recipe.name.substring(0, 1),
+                      style: const TextStyle(color: Colors.white)),
                 ),
-                initiallyExpanded: true,
-                children: recipesInGroup.map((recipe) {
-                  final color = _colorFromString(recipe.name);
-                  return ListTile(
-                    selected: _selectedIds.contains(recipe.id),
-                    leading: CircleAvatar(
-                      backgroundColor: color,
-                      child: Text(recipe.name.substring(0, 1),
-                          style: const TextStyle(color: Colors.white)),
-                    ),
-                    title: Text(recipe.name),
-                    subtitle: Text(
-                        'E: ${recipe.energy?.toStringAsFixed(0) ?? '?'}kcal | P: ${recipe.protein?.toStringAsFixed(1) ?? '?'}g | C: ${recipe.carbs?.toStringAsFixed(1) ?? '?'}g | F: ${recipe.fat?.toStringAsFixed(1) ?? '?'}g'),
-                    onTap: _isSelectionMode
-                        ? () => setState(() {
-                              if (_selectedIds.contains(recipe.id)) {
-                                _selectedIds.remove(recipe.id);
-                                if (_selectedIds.isEmpty) {
-                                  _isSelectionMode = false;
-                                }
-                              } else {
-                                _selectedIds.add(recipe.id);
-                              }
-                            })
-                        : () => Navigator.of(context).push(
-                              MaterialPageRoute(
-                                  builder: (_) =>
-                                      RecipeDetailScreen(recipeId: recipe.id)),
-                            ),
-                    onLongPress: !_isSelectionMode
-                        ? () => setState(() {
-                              _isSelectionMode = true;
-                              _selectedIds.add(recipe.id);
-                            })
-                        : null,
-                    trailing: _isSelectionMode
-                        ? Icon(_selectedIds.contains(recipe.id)
-                            ? Icons.check_circle
-                            : Icons.circle_outlined)
-                        : const Icon(Icons.chevron_right),
-                  );
-                }).toList(),
+                title: Text(recipe.name),
+                subtitle: Text(
+                    'E: ${recipe.energy?.toStringAsFixed(0) ?? '?'}kcal | P: ${recipe.protein?.toStringAsFixed(1) ?? '?'}g | C: ${recipe.carbs?.toStringAsFixed(1) ?? '?'}g | F: ${recipe.fat?.toStringAsFixed(1) ?? '?'}g'),
+                onTap: _isSelectionMode
+                    ? () => setState(() {
+                          if (_selectedIds.contains(recipe.id)) {
+                            _selectedIds.remove(recipe.id);
+                            if (_selectedIds.isEmpty) {
+                              _isSelectionMode = false;
+                            }
+                          } else {
+                            _selectedIds.add(recipe.id);
+                          }
+                        })
+                    : () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                              builder: (_) =>
+                                  RecipeDetailScreen(recipeId: recipe.id)),
+                        ),
+                onLongPress: !_isSelectionMode
+                    ? () => setState(() {
+                          _isSelectionMode = true;
+                          _selectedIds.add(recipe.id);
+                        })
+                    : null,
+                trailing: _isSelectionMode
+                    ? Icon(_selectedIds.contains(recipe.id)
+                        ? Icons.check_circle
+                        : Icons.circle_outlined)
+                    : const Icon(Icons.chevron_right),
               );
             },
           );

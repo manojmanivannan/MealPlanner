@@ -14,9 +14,9 @@ final seedProvider = Provider<SeedService>((ref) => SeedService(ref.read(databas
 final notificationServiceProvider = Provider<NotificationService>((ref) => NotificationService());
 final sharedPreferencesProvider = FutureProvider<SharedPreferences>((ref) async => await SharedPreferences.getInstance());
 
-final notificationSchedulerServiceProvider = FutureProvider<NotificationSchedulerService>((ref) async {
+final notificationSchedulerServiceProvider = Provider<NotificationSchedulerService>((ref) {
   final notificationService = ref.watch(notificationServiceProvider);
-  final prefs = await ref.watch(sharedPreferencesProvider.future);
+  final prefs = ref.watch(sharedPreferencesProvider).asData!.value;
   final db = ref.watch(databaseProvider);
   return NotificationSchedulerService(notificationService, prefs, db);
 });
@@ -39,8 +39,7 @@ class _AppInitializerState extends ConsumerState<AppInitializer> {
       await _requestPermissions();
       await ref.read(seedProvider).seedIfNeeded();
       await ref.read(notificationServiceProvider).init();
-      final scheduler = await ref.read(notificationSchedulerServiceProvider.future);
-      await scheduler.rescheduleAllNotifications();
+      // No need to await the scheduler, it will be ready when needed.
       if (mounted) setState(() => _ready = true);
     });
   }
@@ -57,7 +56,20 @@ class _AppInitializerState extends ConsumerState<AppInitializer> {
   @override
   Widget build(BuildContext context) {
     if (!_ready) {
-      return const MaterialApp(home: Scaffold(body: Center(child: CircularProgressIndicator())));
+      return const MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(height: 16),
+                Text('Loading Recipes and Ingredients....'),
+              ],
+            ),
+          ),
+        ),
+      );
     }
     return widget.child as MaterialApp; // child is the MaterialApp
   }

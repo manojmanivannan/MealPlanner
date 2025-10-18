@@ -46,6 +46,12 @@ class _IngredientEditFormState extends ConsumerState<_IngredientEditForm> {
   late TextEditingController _carbsController;
   late TextEditingController _fatController;
   late TextEditingController _servingSizeController;
+  late TextEditingController _ironController;
+  late TextEditingController _magnesiumController;
+  late TextEditingController _calciumController;
+  late TextEditingController _potassiumController;
+  late TextEditingController _sodiumController;
+  late TextEditingController _vitaminCController;
   String? _selectedServingUnit;
 
   @override
@@ -57,6 +63,12 @@ class _IngredientEditFormState extends ConsumerState<_IngredientEditForm> {
     _carbsController = TextEditingController(text: widget.ingredient.carbs?.toString());
     _fatController = TextEditingController(text: widget.ingredient.fat?.toString());
     _servingSizeController = TextEditingController(text: widget.ingredient.servingSize?.toString());
+    _ironController = TextEditingController(text: widget.ingredient.ironMg?.toString());
+    _magnesiumController = TextEditingController(text: widget.ingredient.magnesiumMg?.toString());
+    _calciumController = TextEditingController(text: widget.ingredient.calciumMg?.toString());
+    _potassiumController = TextEditingController(text: widget.ingredient.potassiumMg?.toString());
+    _sodiumController = TextEditingController(text: widget.ingredient.sodiumMg?.toString());
+    _vitaminCController = TextEditingController(text: widget.ingredient.vitaminCMg?.toString());
     _selectedServingUnit = widget.ingredient.servingUnit;
 
     _servingSizeController.addListener(() => setState(() {}));
@@ -85,6 +97,12 @@ class _IngredientEditFormState extends ConsumerState<_IngredientEditForm> {
           protein: d.Value(double.tryParse(_proteinController.text)),
           carbs: d.Value(double.tryParse(_carbsController.text)),
           fat: d.Value(double.tryParse(_fatController.text)),
+          ironMg: d.Value(double.tryParse(_ironController.text)),
+          magnesiumMg: d.Value(double.tryParse(_magnesiumController.text)),
+          calciumMg: d.Value(double.tryParse(_calciumController.text)),
+          potassiumMg: d.Value(double.tryParse(_potassiumController.text)),
+          sodiumMg: d.Value(double.tryParse(_sodiumController.text)),
+          vitaminCMg: d.Value(double.tryParse(_vitaminCController.text)),
         ),
       );
       ref.invalidate(ingredientsProvider);
@@ -152,6 +170,44 @@ class _IngredientEditFormState extends ConsumerState<_IngredientEditForm> {
               TextFormField(
                 controller: _fatController,
                 decoration: InputDecoration(labelText: 'Fat (${_getUnitLabel('g')})', border: OutlineInputBorder()),
+                keyboardType: TextInputType.number,
+              ),
+              const SizedBox(height: 12),
+              Text('Micronutrients', style: Theme.of(context).textTheme.titleLarge),
+              const Divider(),
+              TextFormField(
+                controller: _ironController,
+                decoration: InputDecoration(labelText: 'Iron (${_getUnitLabel('mg')})', border: OutlineInputBorder()),
+                keyboardType: TextInputType.number,
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _magnesiumController,
+                decoration: InputDecoration(labelText: 'Magnesium (${_getUnitLabel('mg')})', border: OutlineInputBorder()),
+                keyboardType: TextInputType.number,
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _calciumController,
+                decoration: InputDecoration(labelText: 'Calcium (${_getUnitLabel('mg')})', border: OutlineInputBorder()),
+                keyboardType: TextInputType.number,
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _potassiumController,
+                decoration: InputDecoration(labelText: 'Potassium (${_getUnitLabel('mg')})', border: OutlineInputBorder()),
+                keyboardType: TextInputType.number,
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _sodiumController,
+                decoration: InputDecoration(labelText: 'Sodium (${_getUnitLabel('mg')})', border: OutlineInputBorder()),
+                keyboardType: TextInputType.number,
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _vitaminCController,
+                decoration: InputDecoration(labelText: 'Vitamin C (${_getUnitLabel('mg')})', border: OutlineInputBorder()),
                 keyboardType: TextInputType.number,
               ),
             ],

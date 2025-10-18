@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'data/app_database.dart';
@@ -59,4 +60,67 @@ final recipeDetailProvider = FutureProvider.family<RecipeDetail, String>((ref, i
   final ingMap = {for (final i in ingList) i.id: i};
   final pairs = usages.map((u) => (usage: u, ingredient: ingMap[u.ingredientId])).toList();
   return RecipeDetail(recipe: recipe, ingredients: pairs);
+});
+
+// Search query provider
+final recipeSearchQueryProvider = StateProvider<String>((ref) => '');
+
+// Filtered and grouped recipes provider
+final filteredRecipesProvider = Provider<AsyncValue<List<dynamic>>>((ref) {
+  final recipesAsync = ref.watch(recipesProvider);
+  final query = ref.watch(recipeSearchQueryProvider);
+
+  return recipesAsync.when(
+    data: (items) {
+      final filteredItems = query.isEmpty
+          ? items
+          : items.where((r) => r.name.toLowerCase().contains(query.toLowerCase())).toList();
+
+      if (items.isEmpty) {
+        return const AsyncData([]);
+      }
+
+      if (filteredItems.isEmpty && query.isNotEmpty) {
+        return const AsyncData([]);
+      }
+
+      final groupedRecipes = <String, List<Recipe>>{};
+      for (final recipe in filteredItems) {
+        final mealType = recipe.mealType?.isNotEmpty == true ? recipe.mealType!.toLowerCase() : 'uncategorized';
+        (groupedRecipes[mealType] ??= []).add(recipe);
+      }
+
+      const groupOrder = ['pre_breakfast', 'breakfast', 'lunch', 'dinner', 'snack', 'uncategorized'];
+      final sortedGroups = groupedRecipes.keys.toList()
+        ..sort((a, b) {
+          final indexA = groupOrder.indexOf(a);
+          final indexB = groupOrder.indexOf(b);
+          final effectiveIndexA = indexA == -1 ? groupOrder.length : indexA;
+          final effectiveIndexB = indexB == -1 ? groupOrder.length : indexB;
+          return effectiveIndexA.compareTo(effectiveIndexB);
+        });
+
+      groupedRecipes.forEach((key, value) {
+        value.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+      });
+
+      final List<dynamic> flatList = [];
+      for (final groupName in sortedGroups) {
+        if (groupedRecipes[groupName]!.isNotEmpty) {
+          flatList.add(groupName);
+          flatList.addAll(groupedRecipes[groupName]!);
+        }
+      }
+      return AsyncData(flatList);
+    },
+    loading: () => const AsyncValue.loading(),
+    error: (e, st) => AsyncValue.error(e, st),
+  );
+});
+
+// The index of the page to show in the weekly plan.
+final weeklyPlanPageIndexProvider = StateProvider<int>((ref) {
+  // Monday is 1, Sunday is 7. We want 0-indexed.
+  // This will make it default to the current day of the week.
+  return DateTime.now().weekday - 1;
 });

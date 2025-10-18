@@ -17,12 +17,24 @@ class _CalculatedNutrients {
   final double protein;
   final double carbs;
   final double fat;
+  final double ironMg;
+  final double magnesiumMg;
+  final double calciumMg;
+  final double potassiumMg;
+  final double sodiumMg;
+  final double vitaminCMg;
 
   _CalculatedNutrients({
     this.energy = 0.0,
     this.protein = 0.0,
     this.carbs = 0.0,
     this.fat = 0.0,
+    this.ironMg = 0.0,
+    this.magnesiumMg = 0.0,
+    this.calciumMg = 0.0,
+    this.potassiumMg = 0.0,
+    this.sodiumMg = 0.0,
+    this.vitaminCMg = 0.0,
   });
 }
 
@@ -66,6 +78,12 @@ class _RecipeEditScreenState extends ConsumerState<RecipeEditScreen> {
           protein: d.Value(nutrients.protein),
           carbs: d.Value(nutrients.carbs),
           fat: d.Value(nutrients.fat),
+          ironMg: d.Value(nutrients.ironMg),
+          magnesiumMg: d.Value(nutrients.magnesiumMg),
+          calciumMg: d.Value(nutrients.calciumMg),
+          potassiumMg: d.Value(nutrients.potassiumMg),
+          sodiumMg: d.Value(nutrients.sodiumMg),
+          vitaminCMg: d.Value(nutrients.vitaminCMg),
         ),
       );
       ref.invalidate(recipesProvider);
@@ -81,6 +99,12 @@ class _RecipeEditScreenState extends ConsumerState<RecipeEditScreen> {
     double totalProtein = 0.0;
     double totalCarbs = 0.0;
     double totalFat = 0.0;
+    double totalIron = 0.0;
+    double totalMagnesium = 0.0;
+    double totalCalcium = 0.0;
+    double totalPotassium = 0.0;
+    double totalSodium = 0.0;
+    double totalVitaminC = 0.0;
 
     for (final item in ingredients) {
       final ingredient = item.ingredient;
@@ -92,6 +116,12 @@ class _RecipeEditScreenState extends ConsumerState<RecipeEditScreen> {
         totalProtein += (ingredient.protein ?? 0) * ratio;
         totalCarbs += (ingredient.carbs ?? 0) * ratio;
         totalFat += (ingredient.fat ?? 0) * ratio;
+        totalIron += (ingredient.ironMg ?? 0) * ratio;
+        totalMagnesium += (ingredient.magnesiumMg ?? 0) * ratio;
+        totalCalcium += (ingredient.calciumMg ?? 0) * ratio;
+        totalPotassium += (ingredient.potassiumMg ?? 0) * ratio;
+        totalSodium += (ingredient.sodiumMg ?? 0) * ratio;
+        totalVitaminC += (ingredient.vitaminCMg ?? 0) * ratio;
       }
     }
 
@@ -100,6 +130,12 @@ class _RecipeEditScreenState extends ConsumerState<RecipeEditScreen> {
       protein: totalProtein,
       carbs: totalCarbs,
       fat: totalFat,
+      ironMg: totalIron,
+      magnesiumMg: totalMagnesium,
+      calciumMg: totalCalcium,
+      potassiumMg: totalPotassium,
+      sodiumMg: totalSodium,
+      vitaminCMg: totalVitaminC,
     );
   }
 
@@ -131,6 +167,42 @@ class _RecipeEditScreenState extends ConsumerState<RecipeEditScreen> {
     );
   }
 
+  Widget _buildMicroNutrientInfo(_CalculatedNutrients nutrients) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: Column(
+          children: [
+            ListTile(
+              title: const Text('Iron'),
+              trailing: Text('${nutrients.ironMg.toStringAsFixed(1)} mg'),
+            ),
+            ListTile(
+              title: const Text('Magnesium'),
+              trailing: Text('${nutrients.magnesiumMg.toStringAsFixed(1)} mg'),
+            ),
+            ListTile(
+              title: const Text('Calcium'),
+              trailing: Text('${nutrients.calciumMg.toStringAsFixed(1)} mg'),
+            ),
+            ListTile(
+              title: const Text('Potassium'),
+              trailing: Text('${nutrients.potassiumMg.toStringAsFixed(1)} mg'),
+            ),
+            ListTile(
+              title: const Text('Sodium'),
+              trailing: Text('${nutrients.sodiumMg.toStringAsFixed(1)} mg'),
+            ),
+            ListTile(
+              title: const Text('Vitamin C'),
+              trailing: Text('${nutrients.vitaminCMg.toStringAsFixed(1)} mg'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final recipeAsync = ref.watch(recipeDetailProvider(widget.recipeId));
@@ -152,62 +224,76 @@ class _RecipeEditScreenState extends ConsumerState<RecipeEditScreen> {
           final nutrients = _calculateNutrients(data.ingredients);
           return Form(
             key: _formKey,
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  TextFormField(
-                    controller: _nameController,
-                    decoration: const InputDecoration(labelText: 'Recipe Name', border: OutlineInputBorder()),
-                    validator: (value) => (value?.isEmpty ?? true) ? 'Please enter a name' : null,
-                  ),
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    controller: _servesController,
-                    decoration: const InputDecoration(labelText: 'Serves', border: OutlineInputBorder()),
-                    keyboardType: TextInputType.number,
-                  ),
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    controller: _instructionsController,
-                    decoration: const InputDecoration(labelText: 'Instructions', border: OutlineInputBorder()),
-                    maxLines: 5,
-                  ),
-                  const SizedBox(height: 24),
-                  Text('Nutritional Information', style: Theme.of(context).textTheme.titleLarge),
-                  const Divider(),
-                  _buildNutrientInfo(nutrients),
-                  const SizedBox(height: 24),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text('Ingredients', style: Theme.of(context).textTheme.titleLarge),
-                      IconButton(
-                        icon: const Icon(Icons.add),
-                        onPressed: () => _addIngredient(context, ref),
+            child: CustomScrollView(
+              slivers: [
+                SliverPadding(
+                  padding: const EdgeInsets.all(16.0),
+                  sliver: SliverList(
+                    delegate: SliverChildListDelegate([
+                      TextFormField(
+                        controller: _nameController,
+                        decoration: const InputDecoration(labelText: 'Recipe Name', border: OutlineInputBorder()),
+                        validator: (value) => (value?.isEmpty ?? true) ? 'Please enter a name' : null,
                       ),
-                    ],
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: _servesController,
+                        decoration: const InputDecoration(labelText: 'Serves', border: OutlineInputBorder()),
+                        keyboardType: TextInputType.number,
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: _instructionsController,
+                        decoration: const InputDecoration(labelText: 'Instructions', border: OutlineInputBorder()),
+                        maxLines: 5,
+                      ),
+                      const SizedBox(height: 24),
+                      Text('Nutritional Information', style: Theme.of(context).textTheme.titleLarge),
+                      const Divider(),
+                      _buildNutrientInfo(nutrients),
+                      const SizedBox(height: 24),
+                      Text('Micronutrients', style: Theme.of(context).textTheme.titleLarge),
+                      const Divider(),
+                      _buildMicroNutrientInfo(nutrients),
+                      const SizedBox(height: 24),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text('Ingredients', style: Theme.of(context).textTheme.titleLarge),
+                          IconButton(
+                            icon: const Icon(Icons.add),
+                            onPressed: () => _addIngredient(context, ref),
+                          ),
+                        ],
+                      ),
+                      const Divider(),
+                    ]),
                   ),
-                  const Divider(),
-                  ...data.ingredients.map((item) {
-                    final color = _colorFromString(item.ingredient?.name ?? '');
-                    return ListTile(
-                      leading: CircleAvatar(
-                        backgroundColor: color,
-                        child: Text((item.ingredient?.name ?? '?').substring(0, 1), style: const TextStyle(color: Colors.white)),
-                      ),
-                      title: Text(item.ingredient?.name ?? 'Unknown Ingredient'),
-                      subtitle: Text('${item.usage.quantity} ${item.ingredient?.servingUnit ?? ''}'),
-                      trailing: IconButton(
-                        icon: Icon(Icons.delete, color: Theme.of(context).colorScheme.error),
-                        onPressed: () => _removeIngredient(ref, item.usage.id),
-                      ),
-                      onTap: () => _editIngredientUsage(context, ref, item.usage, item.ingredient),
-                    );
-                  }),
-                ],
-              ),
+                ),
+                SliverList(
+                  delegate: SliverChildBuilderDelegate(
+                    (context, index) {
+                      final item = data.ingredients[index];
+                      final color = _colorFromString(item.ingredient?.name ?? '');
+                      return ListTile(
+                        leading: CircleAvatar(
+                          backgroundColor: color,
+                          child: Text((item.ingredient?.name ?? '?').substring(0, 1),
+                              style: const TextStyle(color: Colors.white)),
+                        ),
+                        title: Text(item.ingredient?.name ?? 'Unknown Ingredient'),
+                        subtitle: Text('${item.usage.quantity} ${item.ingredient?.servingUnit ?? ''}'),
+                        trailing: IconButton(
+                          icon: Icon(Icons.delete, color: Theme.of(context).colorScheme.error),
+                          onPressed: () => _removeIngredient(ref, item.usage.id),
+                        ),
+                        onTap: () => _editIngredientUsage(context, ref, item.usage, item.ingredient),
+                      );
+                    },
+                    childCount: data.ingredients.length,
+                  ),
+                ),
+              ],
             ),
           );
         },
@@ -367,6 +453,13 @@ class _IngredientSelectionScreenState extends State<_IngredientSelectionScreen> 
       final letter = ing.name.substring(0, 1).toUpperCase();
       (grouped[letter] ??= []).add(ing);
     }
+    final sortedKeys = grouped.keys.toList()..sort();
+
+    final flatList = [];
+    for (var key in sortedKeys) {
+      flatList.add(key);
+      flatList.addAll(grouped[key]!);
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -387,19 +480,19 @@ class _IngredientSelectionScreenState extends State<_IngredientSelectionScreen> 
           ),
           Expanded(
             child: ListView.builder(
-              itemCount: grouped.length,
+              itemCount: flatList.length,
               itemBuilder: (context, index) {
-                final letter = grouped.keys.elementAt(index);
-                final ingredientsInGroup = grouped[letter]!;
-                return ExpansionTile(
-                  title: Text(letter, style: Theme.of(context).textTheme.titleLarge),
-                  initiallyExpanded: true,
-                  children: ingredientsInGroup.map((ing) {
-                    return ListTile(
-                      title: Text(ing.name),
-                      onTap: () => Navigator.of(context).pop(ing),
-                    );
-                  }).toList(),
+                final item = flatList[index];
+                if (item is String) {
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                    child: Text(item, style: Theme.of(context).textTheme.titleLarge),
+                  );
+                }
+                final ing = item as Ingredient;
+                return ListTile(
+                  title: Text(ing.name),
+                  onTap: () => Navigator.of(context).pop(ing),
                 );
               },
             ),
