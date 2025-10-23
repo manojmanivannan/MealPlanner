@@ -3,7 +3,14 @@ from fastapi import Depends, HTTPException, Response, status, Query
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import flag_modified
 from typing import List
-from models import Recipe, Ingredient, ServingUnits, User
+from models import (
+    Recipe,
+    Ingredient,
+    ServingSize,
+    ServingUnits,
+    User,
+    IngredientCategory,
+)
 from schemas import IngredientSchema
 import datetime
 from typing import Optional
@@ -13,6 +20,7 @@ from sqlalchemy.exc import IntegrityError
 from database import get_db
 from routers.auth_router import get_current_user
 import logging
+
 logger = logging.getLogger("uvicorn")
 logger.setLevel(logging.DEBUG)
 
@@ -21,10 +29,16 @@ ing_router = APIRouter(prefix="/ingredients", tags=["Ingredients"])
 
 ## Ingredients
 @ing_router.get("", response_model=List[IngredientSchema])
-def get_ingredients_list(sort: Optional[str] = None, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def get_ingredients_list(
+    sort: Optional[str] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     # Show user's ingredients and global stock (user_id is NULL)
-    query = db.query(Ingredient).filter((Ingredient.user_id == current_user.id) | (Ingredient.user_id == None))
-    
+    query = db.query(Ingredient).filter(
+        (Ingredient.user_id == current_user.id) | (Ingredient.user_id == None)
+    )
+
     # Safe sorting
     if sort and hasattr(Ingredient, sort):
         query = query.order_by(getattr(Ingredient, sort))
@@ -32,7 +46,7 @@ def get_ingredients_list(sort: Optional[str] = None, db: Session = Depends(get_d
         query = query.order_by(Ingredient.available.desc(), Ingredient.name)
 
     db_ingredients = query.all()
-    
+
     # Add remaining shelf life calculation
     now = datetime.datetime.utcnow()
     result = []
@@ -44,8 +58,9 @@ def get_ingredients_list(sort: Optional[str] = None, db: Session = Depends(get_d
         else:
             ing_schema.remaining_shelf_life = ing.shelf_life
         result.append(ing_schema)
-        
+
     return result
+
 
 @ing_router.put("/{ingredient_id}", response_model=IngredientSchema)
 def update_ingredient(
@@ -56,7 +71,7 @@ def update_ingredient(
     available: Optional[bool] = None,
     shelf_life: Optional[int] = None,
     serving_unit: Optional[ServingUnits] = None,
-    serving_size: Optional[float] = None,
+    serving_size: Optional[ServingSize] = None,
     energy: Optional[float] = None,
     protein: Optional[float] = None,
     carbs: Optional[float] = None,
@@ -67,56 +82,78 @@ def update_ingredient(
     calcium_mg: Optional[float] = None,
     potassium_mg: Optional[float] = None,
     sodium_mg: Optional[float] = None,
-    vitamin_c_mg: Optional[float] = None
-    ):
+    vitamin_c_mg: Optional[float] = None,
+    category: Optional[IngredientCategory] = None,
+):
     """
     Updates one or more fields of a specific ingredient.
     """
-    
+
     # 1. Fetch the existing ingredient from the database
-    db_ingredient = db.query(Ingredient).filter(Ingredient.id == ingredient_id, Ingredient.user_id == current_user.id).first()
-    
+    db_ingredient = (
+        db.query(Ingredient)
+        .filter(Ingredient.id == ingredient_id, Ingredient.user_id == current_user.id)
+        .first()
+    )
 
     # 2. If it doesn't exist, return a 404 error
     if not db_ingredient:
         raise HTTPException(status_code=404, detail="Ingredient not found")
 
     logger.info(f"Updating ingredient ID: {ingredient_id}: {db_ingredient.name}")
-    
+
     # if we updating the availability status ignore updating recipes
     logger.debug(f"Available {available}, Ingredient {db_ingredient.available}")
     if available != None or available is not db_ingredient.available:
         # Get the new values from the request payload
         update_data = {}
         if name is not None:
-            update_data['name'] = name
+            update_data["name"] = name
         if serving_unit is not None:
-            update_data['serving_unit'] = getattr(serving_unit, 'value', serving_unit)
+            update_data["serving_unit"] = getattr(serving_unit, "value", serving_unit)
         if serving_size is not None:
-            update_data['serving_size'] = serving_size
+            update_data["serving_size"] = serving_size
 
         # 2. Check if name or unit, which are stored in recipes, have changed
-        should_sync_recipes = ('name' in update_data) or ('serving_unit' in update_data)
+        should_sync_recipes = ("name" in update_data) or ("serving_unit" in update_data)
 
         if should_sync_recipes:
             # Find all recipes containing the old ingredient name
             # Note: This query might need to be adapted based on your exact JSON structure
-            recipes_to_update = db.query(Recipe).filter(
+            recipes_to_update = (
+                db.query(Recipe)
+                .filter(
                     ((Recipe.user_id == current_user.id) | (Recipe.user_id == None))
-                ).all()
+                )
+                .all()
+            )
             logger.info(f"Recipes to update: {[r.name for r in recipes_to_update]}")
             for recipe in recipes_to_update:
                 # Create a new list for ingredients to avoid mutation issues
                 new_ingredients_list = []
                 for ingredient_in_recipe in recipe.ingredients:
-                    if name.lower() == ingredient_in_recipe['name'].lower():
-                        ingredient_in_recipe['name'] = update_data["name"]
-                        ingredient_in_recipe['serving_unit'] = update_data['serving_unit']
-                        logger.info(f"{db_ingredient.serving_unit} ==> {update_data['serving_unit']}")
-                        multiply_factor = 0.01 if (db_ingredient.serving_unit in ['g','ml']  and update_data['serving_unit'] in ['nos','tbsp','tsp','cup']) else 100
-                        ingredient_in_recipe['quantity'] = ingredient_in_recipe['quantity']*multiply_factor
+                    if name.lower() == ingredient_in_recipe["name"].lower():
+                        ingredient_in_recipe["name"] = update_data["name"]
+                        ingredient_in_recipe["serving_unit"] = update_data[
+                            "serving_unit"
+                        ]
+                        logger.info(
+                            f"{db_ingredient.serving_unit} ==> {update_data['serving_unit']}"
+                        )
+                        multiply_factor = (
+                            0.01
+                            if (
+                                db_ingredient.serving_unit in ["g", "ml"]
+                                and update_data["serving_unit"]
+                                in ["nos", "tbsp", "tsp", "cup"]
+                            )
+                            else 100
+                        )
+                        ingredient_in_recipe["quantity"] = (
+                            ingredient_in_recipe["quantity"] * multiply_factor
+                        )
                     new_ingredients_list.append(ingredient_in_recipe)
-                
+
                 # Re-assign the list to the recipe object
                 recipe.ingredients = new_ingredients_list
 
@@ -135,7 +172,7 @@ def update_ingredient(
     if shelf_life is not None:
         db_ingredient.shelf_life = shelf_life
     if serving_unit is not None:
-        db_ingredient.serving_unit = getattr(serving_unit, 'value', serving_unit)
+        db_ingredient.serving_unit = getattr(serving_unit, "value", serving_unit)
     if serving_size is not None:
         db_ingredient.serving_size = serving_size
     if energy is not None:
@@ -160,33 +197,54 @@ def update_ingredient(
         db_ingredient.sodium_mg = sodium_mg
     if vitamin_c_mg is not None:
         db_ingredient.vitamin_c_mg = vitamin_c_mg
-    
+    if category is not None:
+        db_ingredient.category = category
 
     try:
         # 4. Commit the changes to the database
         db.commit()
         # 5. Refresh the instance to get the updated data
         db.refresh(db_ingredient)
-    except IntegrityError: # Catch errors like duplicate names
+    except IntegrityError:  # Catch errors like duplicate names
         db.rollback()
         raise HTTPException(status_code=409, detail="Ingredient name already exists.")
-    
+
     return db_ingredient
 
+
 @ing_router.post("", response_model=IngredientSchema, status_code=201)
-def add_ingredient(name: str = Query(...),
-                   shelf_life: str = Query(),
-                   serving_unit: str = Query(),
-                   db: Session = Depends(get_db),
-                   current_user: User = Depends(get_current_user)):
+def add_ingredient(
+    name: str = Query(...),
+    shelf_life: str = Query(),
+    serving_unit: ServingUnits = Query(),
+    serving_size: ServingSize = Query(),
+    energy: Optional[float] = Query(None),
+    protein: Optional[float] = Query(None),
+    carbs: Optional[float] = Query(None),
+    fat: Optional[float] = Query(None),
+    fiber: Optional[float] = Query(None),
+    iron_mg: Optional[float] = Query(None),
+    magnesium_mg: Optional[float] = Query(None),
+    calcium_mg: Optional[float] = Query(None),
+    potassium_mg: Optional[float] = Query(None),
+    sodium_mg: Optional[float] = Query(None),
+    vitamin_c_mg: Optional[float] = Query(None),
+    category: IngredientCategory = Query(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     logger.info(f"Adding new ingredient: {name}")
 
     # Check if ingredient already exists to provide a clear error
-    existing_ingredient = db.query(Ingredient).filter(Ingredient.user_id == current_user.id, Ingredient.name == name).first()
+    existing_ingredient = (
+        db.query(Ingredient)
+        .filter(Ingredient.user_id == current_user.id, Ingredient.name == name)
+        .first()
+    )
     if existing_ingredient:
         raise HTTPException(
-            status_code=409, # 409 Conflict is a good status code for this
-            detail="Ingredient with this name already exists."
+            status_code=409,  # 409 Conflict is a good status code for this
+            detail="Ingredient with this name already exists.",
         )
 
     # Manually create the ORM model from the query parameters
@@ -195,32 +253,66 @@ def add_ingredient(name: str = Query(...),
         name=name,
         shelf_life=shelf_life,
         serving_unit=serving_unit,
-        serving_size=100 if serving_unit in ['g','ml'] else 1,
-        available=False # Set default value
+        serving_size=(
+            ServingSize.HUNDRED.value
+            if serving_unit in ["g", "ml"]
+            else ServingSize.ONE.value
+        ),
+        energy=energy if energy is not None else 0.0,
+        protein=protein if protein is not None else 0.0,
+        carbs=carbs if carbs is not None else 0.0,
+        fat=fat if fat is not None else 0.0,
+        fiber=fiber if fiber is not None else 0.0,
+        iron_mg=iron_mg if iron_mg is not None else 0.0,
+        magnesium_mg=magnesium_mg if magnesium_mg is not None else 0.0,
+        calcium_mg=calcium_mg if calcium_mg is not None else 0.0,
+        potassium_mg=potassium_mg if potassium_mg is not None else 0.0,
+        sodium_mg=sodium_mg if sodium_mg is not None else 0.0,
+        vitamin_c_mg=vitamin_c_mg if vitamin_c_mg is not None else 0.0,
+        category=category,
+        available=False,  # Set default value
     )
     db.add(new_ingredient)
     db.commit()
     db.refresh(new_ingredient)
     return new_ingredient
 
+
 @ing_router.delete("/{ingredient_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_ingredient(ingredient_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def delete_ingredient(
+    ingredient_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
     logger.info(f"Deleting ingredient with ID: {ingredient_id}")
 
     # 1. Find the ingredient by its ID.
-    db_ingredient = db.query(Ingredient).filter(Ingredient.id == ingredient_id, Ingredient.user_id == current_user.id).first()
-    all_recipes = db.query(Recipe).filter((Recipe.user_id == current_user.id) | (Recipe.user_id == None)).all()
-    
+    db_ingredient = (
+        db.query(Ingredient)
+        .filter(Ingredient.id == ingredient_id, Ingredient.user_id == current_user.id)
+        .first()
+    )
+    all_recipes = (
+        db.query(Recipe)
+        .filter((Recipe.user_id == current_user.id) | (Recipe.user_id == None))
+        .all()
+    )
+
     recipes_using_ingredient_list = []
-    
+
     # find all recipes that are using this ingredient
     for recipe in all_recipes:
         for ingredient in recipe.ingredients:
-            if ingredient['name'] == db_ingredient.name:
+            if ingredient["name"] == db_ingredient.name:
                 recipes_using_ingredient_list.append(recipe.name)
     if recipes_using_ingredient_list:
-        raise HTTPException(status_code=405, detail="Recipes:"+", ".join(recipes_using_ingredient_list)+" are using this ingredient")
-    
+        raise HTTPException(
+            status_code=405,
+            detail="Recipes:"
+            + ", ".join(recipes_using_ingredient_list)
+            + " are using this ingredient",
+        )
+
     # 2. If the ingredient doesn't exist, raise a 404 error.
     if not db_ingredient:
         logger.warning(f"Ingredient with ID {ingredient_id} not found for deletion.")
@@ -229,8 +321,7 @@ def delete_ingredient(ingredient_id: int, db: Session = Depends(get_db), current
     # 3. If found, delete it and commit the change.
     db.delete(db_ingredient)
     db.commit()
-    
+
     logger.info(f"Successfully deleted ingredient with ID: {ingredient_id}")
     # 4. Return a 204 No Content response.
     return Response(status_code=status.HTTP_204_NO_CONTENT)
-

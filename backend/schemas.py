@@ -1,5 +1,11 @@
 from pydantic import BaseModel, ConfigDict, EmailStr
-from models import RecipeMealType, ServingUnits, DaysOfWeek
+from models import (
+    IngredientCategory,
+    RecipeMealType,
+    ServingSize,
+    ServingUnits,
+    DaysOfWeek,
+)
 from typing import List, Optional
 import datetime
 
@@ -10,23 +16,27 @@ class UserCreateSchema(BaseModel):
     email: EmailStr
     password: str
 
+
 class UserSchema(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: int
     email: EmailStr
 
+
 class TokenSchema(BaseModel):
     access_token: str
     token_type: str = "bearer"
+
 
 class IngredientItemSchema(BaseModel):
     name: str
     quantity: float
     serving_unit: ServingUnits
 
+
 class RecipeSchema(BaseModel):
-    model_config = ConfigDict(from_attributes=True) # Replaces orm_mode=True
-    
+    model_config = ConfigDict(from_attributes=True)  # Replaces orm_mode=True
+
     id: int
     name: str
     serves: int
@@ -40,6 +50,7 @@ class RecipeSchema(BaseModel):
     fiber: float
     energy: float
 
+
 class RecipeCreateUpdateSchema(BaseModel):
     name: str
     serves: int
@@ -48,14 +59,16 @@ class RecipeCreateUpdateSchema(BaseModel):
     meal_type: RecipeMealType
     is_vegetarian: bool
 
+
 class PlanSlotSchema(BaseModel):
     day: DaysOfWeek
     meal_type: RecipeMealType
     recipe_ids: Optional[List[int]] = []
 
+
 class IngredientSchema(BaseModel):
     model_config = ConfigDict(from_attributes=True)
-    
+
     id: int
     # user_id not exposed to client
     name: str
@@ -63,7 +76,7 @@ class IngredientSchema(BaseModel):
     shelf_life: Optional[int]
     last_available: Optional[datetime.datetime]
     serving_unit: ServingUnits
-    serving_size: float
+    serving_size: ServingSize
     energy: float
     protein: float
     carbs: float
@@ -75,14 +88,16 @@ class IngredientSchema(BaseModel):
     potassium_mg: float
     sodium_mg: float
     vitamin_c_mg: float
+    category: Optional[IngredientCategory] = None
     remaining_shelf_life: Optional[int] = None
+
 
 class IngredientUpdateSchema(BaseModel):
     available: Optional[bool] = None
     shelf_life: Optional[int] = None
     name: Optional[str] = None
     serving_unit: Optional[ServingUnits] = None
-    serving_size: Optional[float] = None
+    serving_size: Optional[ServingSize] = None
     energy: Optional[float] = None
     protein: Optional[float] = None
     carbs: Optional[float] = None
@@ -94,9 +109,12 @@ class IngredientUpdateSchema(BaseModel):
     potassium_mg: Optional[float] = None
     sodium_mg: Optional[float] = None
     vitamin_c_mg: Optional[float] = None
+    category: Optional[IngredientCategory] = None
+
 
 class HealthCheckSchema(BaseModel):
     status: str = "OK"
+
 
 class ShoppingListItemSchema(BaseModel):
     quantity: float

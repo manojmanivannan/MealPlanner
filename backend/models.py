@@ -20,6 +20,7 @@ from sqlalchemy.dialects.postgresql import JSONB, ARRAY
 from sqlalchemy.sql import func
 from database import Base
 
+
 # --- Enums for Meal Types ---
 # Using Python's Enum class makes choices explicit and type-safe
 class RecipeMealType(str, enum.Enum):
@@ -40,6 +41,12 @@ class ServingUnits(str, enum.Enum):
     TEASPOON = "tsp"
     NOS = "nos"
 
+
+class ServingSize(int, enum.Enum):
+    ONE = 1
+    HUNDRED = 100
+
+
 class DaysOfWeek(str, enum.Enum):
     MONDAY = "Monday"
     TUESDAY = "Tuesday"
@@ -48,8 +55,27 @@ class DaysOfWeek(str, enum.Enum):
     FRIDAY = "Friday"
     SATURDAY = "Saturday"
     SUNDAY = "Sunday"
-    
+
+
+class IngredientCategory(str, enum.Enum):
+    vegetables = "vegetables"
+    sweeteners = "sweeteners"
+    spices_and_herbs = "spices_and_herbs"
+    salt_and_minerals = "salt_and_minerals"
+    pulses_and_legumes = "pulses_and_legumes"
+    other_miscellaneous = "other_miscellaneous"
+    oils_and_fats = "oils_and_fats"
+    nuts_and_seeds = "nuts_and_seeds"
+    grains_and_cereals = "grains_and_cereals"
+    fruits = "fruits"
+    dairy_and_alternatives = "dairy_and_alternatives"
+    condiments_and_sauces = "condiments_and_sauces"
+    beverages_and_infusions = "beverages_and_infusions"
+    animal_products_meat_poultry_seafood = "animal_products_meat_poultry_seafood"
+
+
 # --- ORM Models ---
+
 
 class User(Base):
     __tablename__ = "users"
@@ -61,6 +87,7 @@ class User(Base):
 
     def __repr__(self):
         return f"<User(email='{self.email}')>"
+
 
 class Ingredient(Base):
     __tablename__ = "ingredients"
@@ -85,10 +112,18 @@ class Ingredient(Base):
     potassium_mg = Column(Numeric(10, 2), default=0.0)
     sodium_mg = Column(Numeric(10, 2), default=0.0)
     vitamin_c_mg = Column(Numeric(10, 2), default=0.0)
+    category = Column(
+        Enum(IngredientCategory, name="ingredient_category_enum"), nullable=False
+    )
 
     __table_args__ = (
-        UniqueConstraint('user_id', 'name', name='uniq_user_ingredient_name'),
-        Index('uniq_global_ingredient_name', 'name', unique=True, postgresql_where=sa_text('user_id IS NULL')),
+        UniqueConstraint("user_id", "name", name="uniq_user_ingredient_name"),
+        Index(
+            "uniq_global_ingredient_name",
+            "name",
+            unique=True,
+            postgresql_where=sa_text("user_id IS NULL"),
+        ),
     )
 
     def __repr__(self):
@@ -103,9 +138,13 @@ class Recipe(Base):
     serves = Column(Integer, default=2)
     ingredients = Column(JSONB, nullable=False)
     instructions = Column(Text, nullable=False)
-    meal_type = Column(Enum(RecipeMealType, name="recipe_meal_type_enum"), nullable=False)
+    meal_type = Column(
+        Enum(RecipeMealType, name="recipe_meal_type_enum"), nullable=False
+    )
     is_vegetarian = Column(Boolean, default=True)
-    user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=True)  # null => global recipe
+    user_id = Column(
+        Integer, ForeignKey("users.id"), index=True, nullable=True
+    )  # null => global recipe
     protein = Column(Numeric(10, 2), default=0.0)
     carbs = Column(Numeric(10, 2), default=0.0)
     fat = Column(Numeric(10, 2), default=0.0)
@@ -118,7 +157,6 @@ class Recipe(Base):
     potassium_mg = Column(Numeric(10, 2), default=0.0)
     sodium_mg = Column(Numeric(10, 2), default=0.0)
     vitamin_c_mg = Column(Numeric(10, 2), default=0.0)
-
 
     def __repr__(self):
         return f"<Recipe(name='{self.name}')>"
@@ -135,18 +173,20 @@ class WeeklyPlan(Base):
 
     # Define the unique constraint directly in the model
     __table_args__ = (
-        UniqueConstraint('user_id', 'day', 'meal_type', name='unique_user_day_meal'),
+        UniqueConstraint("user_id", "day", "meal_type", name="unique_user_day_meal"),
     )
 
     def __repr__(self):
         return f"<WeeklyPlan(day='{self.day}', meal_type='{self.meal_type.value}')>"
+
 
 # --- DDL for Triggers (Advanced SQLAlchemy) ---
 # This is the modern way to handle raw SQL triggers.
 # The trigger logic is attached to the table metadata.
 
 # 1. Nutrition Calculation Trigger for Recipes
-calculate_nutrition_func = DDL("""
+calculate_nutrition_func = DDL(
+    """
     CREATE OR REPLACE FUNCTION calculate_recipe_nutrients()
     RETURNS TRIGGER AS $$
     DECLARE
@@ -202,23 +242,27 @@ calculate_nutrition_func = DDL("""
         RETURN NEW;
     END;
     $$ LANGUAGE plpgsql;
-""")
+"""
+)
 
-create_nutrition_trigger = DDL("""
+create_nutrition_trigger = DDL(
+    """
     CREATE TRIGGER trg_update_recipe_nutrients
     BEFORE INSERT OR UPDATE ON recipes
     FOR EACH ROW EXECUTE FUNCTION calculate_recipe_nutrients();
-""")
+"""
+)
 
 # Associate the function and trigger with the Recipe table
-event.listen(Recipe.__table__, 'before_create', calculate_nutrition_func)
-event.listen(Recipe.__table__, 'after_create', create_nutrition_trigger)
+event.listen(Recipe.__table__, "before_create", calculate_nutrition_func)
+event.listen(Recipe.__table__, "after_create", create_nutrition_trigger)
 
 
 # 2. Foreign Key Check Trigger for WeeklyPlan
 # NOTE: A many-to-many table is often a better design than ARRAY of foreign keys,
 # but this preserves your original structure.
-check_recipe_ids_func = DDL("""
+check_recipe_ids_func = DDL(
+    """
     CREATE OR REPLACE FUNCTION check_recipe_ids_exist()
     RETURNS trigger AS $$
     DECLARE
@@ -234,14 +278,17 @@ check_recipe_ids_func = DDL("""
         RETURN NEW;
     END;
     $$ LANGUAGE plpgsql;
-""")
+"""
+)
 
-create_recipe_ids_trigger = DDL("""
+create_recipe_ids_trigger = DDL(
+    """
     CREATE CONSTRAINT TRIGGER trg_check_recipe_ids_exist
     AFTER INSERT OR UPDATE ON weekly_plan
     DEFERRABLE INITIALLY DEFERRED
     FOR EACH ROW EXECUTE FUNCTION check_recipe_ids_exist();
-""")
+"""
+)
 
-event.listen(WeeklyPlan.__table__, 'before_create', check_recipe_ids_func)
-event.listen(WeeklyPlan.__table__, 'after_create', create_recipe_ids_trigger)
+event.listen(WeeklyPlan.__table__, "before_create", check_recipe_ids_func)
+event.listen(WeeklyPlan.__table__, "after_create", create_recipe_ids_trigger)

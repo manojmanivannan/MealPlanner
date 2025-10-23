@@ -99,7 +99,7 @@ services:
       - POSTGRES_DB=$POSTGRES_DB
       - PGUSER=postgres
     volumes:
-      - ./postgres-data:/var/lib/postgresql/data
+      - ./postgres-data:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready", "-d", "recipes", "-U", "postgres"]
       interval: 10s
