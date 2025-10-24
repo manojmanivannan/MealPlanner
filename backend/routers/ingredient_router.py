@@ -2,7 +2,7 @@ from fastapi import APIRouter
 from fastapi import Depends, HTTPException, Response, status, Query
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import flag_modified
-from typing import List
+from typing import List, Dict, Union
 from models import (
     Recipe,
     Ingredient,
@@ -28,9 +28,10 @@ ing_router = APIRouter(prefix="/ingredients", tags=["Ingredients"])
 
 
 ## Ingredients
-@ing_router.get("", response_model=List[IngredientSchema])
+@ing_router.get("", response_model=List[Union[IngredientSchema, Dict]])
 def get_ingredients_list(
     sort: Optional[str] = None,
+    search: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -38,6 +39,10 @@ def get_ingredients_list(
     query = db.query(Ingredient).filter(
         (Ingredient.user_id == current_user.id) | (Ingredient.user_id == None)
     )
+
+    # Apply search filter if provided
+    if search:
+        query = query.filter(Ingredient.name.ilike(f"%{search}%"))
 
     # Safe sorting
     if sort and hasattr(Ingredient, sort):
@@ -47,6 +52,11 @@ def get_ingredients_list(
 
     db_ingredients = query.all()
 
+    if not db_ingredients:
+        if search:
+            return [{"message": f"No ingredients match your search: {search}"}]
+        else:
+            return [{"message": "No ingredients found"}]
     # Add remaining shelf life calculation
     now = datetime.datetime.utcnow()
     result = []

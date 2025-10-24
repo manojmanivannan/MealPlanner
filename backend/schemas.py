@@ -29,6 +29,8 @@ class TokenSchema(BaseModel):
 
 
 class IngredientItemSchema(BaseModel):
+    # optional id
+    id: Optional[int] = None
     name: str
     quantity: float
     serving_unit: ServingUnits
