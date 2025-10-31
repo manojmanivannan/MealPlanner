@@ -15,7 +15,11 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     text as sa_text,
+    func,
 )
+from sqlalchemy.orm import relationship
+from sqlalchemy.dialects.postgresql import JSONB, ARRAY, UUID
+import uuid
 from sqlalchemy.dialects.postgresql import JSONB, ARRAY
 from sqlalchemy.sql import func
 from database import Base
@@ -54,7 +58,7 @@ class DaysOfWeek(str, enum.Enum):
 class User(Base):
     __tablename__ = "users"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     email = Column(String(255), unique=True, nullable=False)
     password_hash = Column(String(255), nullable=False)
     created_at = Column(TIMESTAMP, server_default=func.now())
@@ -62,11 +66,16 @@ class User(Base):
     def __repr__(self):
         return f"<User(email='{self.email}')>"
 
+    # Relationships
+    ingredients = relationship("Ingredient", back_populates="user")
+    recipes = relationship("Recipe", back_populates="user")
+    weekly_plans = relationship("WeeklyPlan", back_populates="user")
+
 class Ingredient(Base):
     __tablename__ = "ingredients"
 
     id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), index=True, nullable=True)
     name = Column(String(255), nullable=False)
     shelf_life = Column(Integer, default=None)
     available = Column(Boolean, default=False)
@@ -94,6 +103,7 @@ class Ingredient(Base):
     def __repr__(self):
         return f"<Ingredient(user_id='{self.user_id}', name='{self.name}')>"
 
+    user = relationship("User", back_populates="ingredients")
 
 class Recipe(Base):
     __tablename__ = "recipes"
@@ -105,7 +115,7 @@ class Recipe(Base):
     instructions = Column(Text, nullable=False)
     meal_type = Column(Enum(RecipeMealType, name="recipe_meal_type_enum"), nullable=False)
     is_vegetarian = Column(Boolean, default=True)
-    user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=True)  # null => global recipe
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), index=True, nullable=True)  # null => global recipe
     protein = Column(Numeric(10, 2), default=0.0)
     carbs = Column(Numeric(10, 2), default=0.0)
     fat = Column(Numeric(10, 2), default=0.0)
@@ -123,12 +133,13 @@ class Recipe(Base):
     def __repr__(self):
         return f"<Recipe(name='{self.name}')>"
 
+    user = relationship("User", back_populates="recipes")
 
 class WeeklyPlan(Base):
     __tablename__ = "weekly_plan"
 
     id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), index=True, nullable=False)
     day = Column(String(16), nullable=False)
     meal_type = Column(Enum(RecipeMealType, name="plan_meal_type_enum"), nullable=False)
     recipe_ids = Column(ARRAY(Integer))
@@ -141,6 +152,7 @@ class WeeklyPlan(Base):
     def __repr__(self):
         return f"<WeeklyPlan(day='{self.day}', meal_type='{self.meal_type.value}')>"
 
+    user = relationship("User", back_populates="weekly_plans")
 # --- DDL for Triggers (Advanced SQLAlchemy) ---
 # This is the modern way to handle raw SQL triggers.
 # The trigger logic is attached to the table metadata.
