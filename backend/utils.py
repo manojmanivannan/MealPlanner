@@ -7,6 +7,86 @@ from pylatex.utils import NoEscape, bold
 from pylatex.table import Tabularx
 from fastapi import HTTPException
 
+# Email sending utility (Flask-Mail)
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+
+
+import logging
+import asyncio
+
+
+logger = logging.getLogger("mealplanner.email")
+logging.basicConfig(level=logging.DEBUG)
+
+
+async def send_email(to_email: str, subject: str, body: str) -> None:
+    """
+    Async send email using SMTP. Logs debug info for troubleshooting.
+    """
+    smtp_server = os.environ.get("SMTP_SERVER", "smtp.gmail.com")
+    smtp_port = int(os.environ.get("SMTP_PORT", 587))
+    smtp_user = os.environ.get("SMTP_USER")
+    smtp_password = os.environ.get("SMTP_PASSWORD")
+    from_email = os.environ.get("FROM_EMAIL") or smtp_user
+    logger.debug(
+        f"Preparing to send email: to={to_email}, subject={subject}, smtp_server={smtp_server}, smtp_port={smtp_port}, smtp_user={smtp_user}, from_email={from_email}"
+    )
+    if not smtp_user or not smtp_password or not from_email:
+        logger.error("SMTP credentials not configured.")
+        raise HTTPException(status_code=500, detail="SMTP credentials not configured.")
+    msg = MIMEMultipart()
+    msg["From"] = str(from_email)
+    msg["To"] = to_email
+    msg["Subject"] = subject
+    msg.attach(MIMEText(body, "plain"))
+    try:
+        loop = asyncio.get_event_loop()
+        await loop.run_in_executor(
+            None,
+            lambda: _send_smtp(
+                smtp_server,
+                smtp_port,
+                smtp_user,
+                smtp_password,
+                from_email,
+                to_email,
+                msg,
+            ),
+        )
+        logger.info(f"Email sent to {to_email}")
+    except Exception as e:
+        logger.error(f"Error sending email: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to send email: {e}")
+
+
+def _send_smtp(
+    smtp_server, smtp_port, smtp_user, smtp_password, from_email, to_email, msg
+):
+    import logging
+    import smtplib
+
+    logger = logging.getLogger("mealplanner.email")
+    logger.debug(f"Connecting to SMTP server {smtp_server}:{smtp_port}")
+    if int(smtp_port) == 465:
+
+        logger.debug("Using SMTP_SSL for port 465")
+        with smtplib.SMTP_SSL(smtp_server, smtp_port) as server:
+            logger.debug("Connected via SMTP_SSL")
+            server.login(smtp_user, smtp_password)
+            logger.debug("Logged in to SMTP server")
+            server.sendmail(str(from_email), to_email, msg.as_string())
+            logger.debug(f"Sent email to {to_email}")
+    else:
+        with smtplib.SMTP(smtp_server, smtp_port) as server:
+            logger.debug("Connected via SMTP (STARTTLS)")
+            server.starttls()
+            server.login(smtp_user, smtp_password)
+            logger.debug("Logged in to SMTP server")
+            server.sendmail(str(from_email), to_email, msg.as_string())
+            logger.debug(f"Sent email to {to_email}")
+
 
 def create_pdf_in_memory(plan: dict) -> bytes:
     """
