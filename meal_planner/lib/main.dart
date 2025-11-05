@@ -19,9 +19,9 @@ final notificationServiceProvider = Provider<NotificationService>((ref) {
 });
 final sharedPreferencesProvider = FutureProvider<SharedPreferences>((ref) async => await SharedPreferences.getInstance());
 
-final notificationSchedulerServiceProvider = Provider<NotificationSchedulerService>((ref) {
+final notificationSchedulerServiceProvider = FutureProvider<NotificationSchedulerService>((ref) async {
   final notificationService = ref.watch(notificationServiceProvider);
-  final prefs = ref.watch(sharedPreferencesProvider).asData!.value;
+  final prefs = await ref.watch(sharedPreferencesProvider.future);
   final db = ref.watch(databaseProvider);
   return NotificationSchedulerService(notificationService, prefs, db);
 });
@@ -36,17 +36,20 @@ class AppInitializer extends ConsumerStatefulWidget {
   ConsumerState<AppInitializer> createState() => _AppInitializerState();
 }
 
-class _AppInitializerState extends ConsumerState<AppInitializer> {
+class _AppInitializerState extends ConsumerState<AppInitializer> with WidgetsBindingObserver {
   StreamSubscription<String?>? _notificationSubscription;
   bool _ready = false;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     Future(() async {
       await _requestPermissions();
       await ref.read(seedProvider).seedIfNeeded();
       await ref.read(notificationServiceProvider).init();
+      final scheduler = await ref.read(notificationSchedulerServiceProvider.future);
+      await scheduler.rescheduleAllNotifications();
       _listenForNotifications();
       if (mounted) setState(() => _ready = true);
     });
@@ -55,25 +58,31 @@ class _AppInitializerState extends ConsumerState<AppInitializer> {
   @override
   void dispose() {
     _notificationSubscription?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      ref.read(notificationSchedulerServiceProvider.future).then((scheduler) {
+        scheduler.rescheduleAllNotifications();
+      });
+    }
   }
 
   void _listenForNotifications() {
     final notificationService = ref.read(notificationServiceProvider);
     _notificationSubscription = notificationService.onNotificationTapped.listen((payload) {
       if (payload == 'plan') {
-        appShellKey.currentState?.goToTab(0); // Go to the plan page
+        appShellKey.currentState?.goToTab(0);
       }
     });
   }
 
   Future<void> _requestPermissions() async {
-    if (await Permission.scheduleExactAlarm.isDenied) {
-      await Permission.scheduleExactAlarm.request();
-    }
-    if (await Permission.notification.isDenied) {
-      await Permission.notification.request();
-    }
+    await Permission.notification.request();
+    await Permission.scheduleExactAlarm.request();
   }
 
   @override
@@ -94,7 +103,7 @@ class _AppInitializerState extends ConsumerState<AppInitializer> {
         ),
       );
     }
-    return widget.child as MaterialApp; // child is the MaterialApp
+    return widget.child as MaterialApp;
   }
 }
 

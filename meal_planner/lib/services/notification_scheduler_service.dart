@@ -41,7 +41,7 @@ class NotificationSchedulerService {
 
     await _notificationService.showNotification(
       id: 999, // A unique ID for test notifications
-      title: 'Upcoming Meal: ${nextMeal.key.replaceAll('_', ' ')}',
+      title: 'Time for ${nextMeal.key.replaceAll('_', ' ')}',
       body: body,
       payload: 'plan',
     );
@@ -53,13 +53,6 @@ class NotificationSchedulerService {
     if (!notificationsEnabled) return;
 
     final now = DateTime.now();
-    final leadTimeValue = _prefs.getInt('notification_lead_time_value') ?? 15;
-    final leadTimeUnit = _prefs.getString('notification_lead_time_unit') ?? 'minutes';
-
-    final leadTime = leadTimeUnit == 'minutes'
-        ? Duration(minutes: leadTimeValue)
-        : Duration(hours: leadTimeValue);
-
     final mealTypes = ['pre_breakfast', 'breakfast', 'lunch', 'snack', 'dinner'];
 
     // Schedule all meal notifications
@@ -68,11 +61,9 @@ class NotificationSchedulerService {
       final mealTime = _getTime('${mealType}_time', const TimeOfDay(hour: 12, minute: 0));
 
       var mealDateTime = DateTime(now.year, now.month, now.day, mealTime.hour, mealTime.minute);
-      var notificationTime = mealDateTime.subtract(leadTime);
 
-      // If the calculated notification time is in the past, schedule it for the next day.
-      if (notificationTime.isBefore(now)) {
-        notificationTime = notificationTime.add(const Duration(days: 1));
+      // If the meal time for today has already passed, schedule it for tomorrow.
+      if (mealDateTime.isBefore(now)) {
         mealDateTime = mealDateTime.add(const Duration(days: 1));
       }
 
@@ -83,42 +74,14 @@ class NotificationSchedulerService {
         final recipeNames = await Future.wait(mealsOnThatDay.map((e) => _db.getRecipeName(e.recipeId)));
         final body = recipeNames.join(', ');
 
-        await _notificationService.scheduleNotification(
+        await _notificationService.scheduleDailyRepeatingNotification(
           id: i, // Meal notifications use IDs 0-4
-          title: 'Upcoming Meal: ${mealType.replaceAll('_', ' ')}',
+          title: 'Time for ${mealType.replaceAll('_', ' ')}',
           body: body,
-          scheduledDate: notificationTime,
+          scheduledDate: mealDateTime,
           payload: 'plan',
         );
       }
-    }
-
-    // Schedule the summary notification for the next day's plan.
-    final mealPlanTime = _getTime('next_day_plan_time', const TimeOfDay(hour: 21, minute: 0));
-    var summaryNotificationTime = DateTime(now.year, now.month, now.day, mealPlanTime.hour, mealPlanTime.minute);
-
-    if (summaryNotificationTime.isBefore(now)) {
-      summaryNotificationTime = summaryNotificationTime.add(const Duration(days: 1));
-    }
-
-    final tomorrow = DateTime.now().add(const Duration(days: 1));
-    final dayOfWeek = DateFormat('EEEE').format(tomorrow);
-    final allMealsForTomorrow = <WeeklyPlanItem>[];
-    for (final mealType in mealTypes) {
-      allMealsForTomorrow.addAll(await _db.getWeeklyPlanFor(dayOfWeek, mealType));
-    }
-
-    if (allMealsForTomorrow.isNotEmpty) {
-      final body = allMealsForTomorrow.length == 1
-          ? "1 meal planned"
-          : "${allMealsForTomorrow.length} meals planned";
-      await _notificationService.scheduleNotification(
-        id: 101, // Summary notification uses ID 101
-        title: "Tomorrow's Meal Plan",
-        body: body,
-        scheduledDate: summaryNotificationTime,
-        payload: 'plan',
-      );
     }
   }
 
