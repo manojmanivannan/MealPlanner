@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -11,7 +12,11 @@ import 'ui/shell.dart';
 
 final databaseProvider = Provider<AppDatabase>((ref) => AppDatabase());
 final seedProvider = Provider<SeedService>((ref) => SeedService(ref.read(databaseProvider)));
-final notificationServiceProvider = Provider<NotificationService>((ref) => NotificationService());
+final notificationServiceProvider = Provider<NotificationService>((ref) {
+  final service = NotificationService();
+  ref.onDispose(service.dispose);
+  return service;
+});
 final sharedPreferencesProvider = FutureProvider<SharedPreferences>((ref) async => await SharedPreferences.getInstance());
 
 final notificationSchedulerServiceProvider = Provider<NotificationSchedulerService>((ref) {
@@ -20,6 +25,8 @@ final notificationSchedulerServiceProvider = Provider<NotificationSchedulerServi
   final db = ref.watch(databaseProvider);
   return NotificationSchedulerService(notificationService, prefs, db);
 });
+
+final GlobalKey<AppShellState> appShellKey = GlobalKey<AppShellState>();
 
 class AppInitializer extends ConsumerStatefulWidget {
   const AppInitializer({super.key, required this.child});
@@ -30,6 +37,7 @@ class AppInitializer extends ConsumerStatefulWidget {
 }
 
 class _AppInitializerState extends ConsumerState<AppInitializer> {
+  StreamSubscription<String?>? _notificationSubscription;
   bool _ready = false;
 
   @override
@@ -39,8 +47,23 @@ class _AppInitializerState extends ConsumerState<AppInitializer> {
       await _requestPermissions();
       await ref.read(seedProvider).seedIfNeeded();
       await ref.read(notificationServiceProvider).init();
-      // No need to await the scheduler, it will be ready when needed.
+      _listenForNotifications();
       if (mounted) setState(() => _ready = true);
+    });
+  }
+
+  @override
+  void dispose() {
+    _notificationSubscription?.cancel();
+    super.dispose();
+  }
+
+  void _listenForNotifications() {
+    final notificationService = ref.read(notificationServiceProvider);
+    _notificationSubscription = notificationService.onNotificationTapped.listen((payload) {
+      if (payload == 'plan') {
+        appShellKey.currentState?.goToTab(0); // Go to the plan page
+      }
     });
   }
 
@@ -105,7 +128,7 @@ class MealPlannerApp extends StatelessWidget {
           ),
           useMaterial3: true,
         ),
-        home: const AppShell(),
+        home: AppShell(key: appShellKey),
       ),
     );
   }

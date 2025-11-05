@@ -15,6 +15,38 @@ class NotificationSchedulerService {
     await _notificationService.cancelAllNotifications();
   }
 
+  Future<void> sendTestNotification() async {
+    final now = DateTime.now();
+    final mealTypes = ['pre_breakfast', 'breakfast', 'lunch', 'snack', 'dinner'];
+    final mealTimes = mealTypes.map((mealType) {
+      final time = _getTime('${mealType}_time', const TimeOfDay(hour: 12, minute: 0));
+      return MapEntry(mealType, DateTime(now.year, now.month, now.day, time.hour, time.minute));
+    }).toList();
+
+    mealTimes.sort((a, b) => a.value.compareTo(b.value));
+
+    // Find the next meal time
+    var nextMealIndex = mealTimes.indexWhere((element) => element.value.isAfter(now));
+    if (nextMealIndex == -1) {
+      // If no meal is upcoming today, pick the first one for tomorrow
+      nextMealIndex = 0;
+    }
+
+    final nextMeal = mealTimes[nextMealIndex];
+    final dayToScheduleFor = DateFormat('EEEE').format(nextMeal.value);
+    final mealsOnThatDay = await _db.getWeeklyPlanFor(dayToScheduleFor, nextMeal.key);
+
+    final recipeNames = await Future.wait(mealsOnThatDay.map((e) => _db.getRecipeName(e.recipeId)));
+    final body = recipeNames.isNotEmpty ? recipeNames.join(', ') : "No meals planned for this time.";
+
+    await _notificationService.showNotification(
+      id: 999, // A unique ID for test notifications
+      title: 'Upcoming Meal: ${nextMeal.key.replaceAll('_', ' ')}',
+      body: body,
+      payload: 'plan',
+    );
+  }
+
   Future<void> rescheduleAllNotifications() async {
     await cancelAllNotifications();
     final notificationsEnabled = _prefs.getBool('notifications_enabled') ?? true;
@@ -35,22 +67,28 @@ class NotificationSchedulerService {
       final mealType = mealTypes[i];
       final mealTime = _getTime('${mealType}_time', const TimeOfDay(hour: 12, minute: 0));
 
-      var notificationTime = DateTime(now.year, now.month, now.day, mealTime.hour, mealTime.minute)
-          .subtract(leadTime);
+      var mealDateTime = DateTime(now.year, now.month, now.day, mealTime.hour, mealTime.minute);
+      var notificationTime = mealDateTime.subtract(leadTime);
 
+      // If the calculated notification time is in the past, schedule it for the next day.
       if (notificationTime.isBefore(now)) {
         notificationTime = notificationTime.add(const Duration(days: 1));
+        mealDateTime = mealDateTime.add(const Duration(days: 1));
       }
 
-      final dayToScheduleFor = DateFormat('EEEE').format(notificationTime);
+      final dayToScheduleFor = DateFormat('EEEE').format(mealDateTime);
       final mealsOnThatDay = await _db.getWeeklyPlanFor(dayToScheduleFor, mealType);
 
       if (mealsOnThatDay.isNotEmpty) {
+        final recipeNames = await Future.wait(mealsOnThatDay.map((e) => _db.getRecipeName(e.recipeId)));
+        final body = recipeNames.join(', ');
+
         await _notificationService.scheduleNotification(
           id: i, // Meal notifications use IDs 0-4
-          title: 'Upcoming Meal: $mealType',
-          body: 'Time for your scheduled meal.',
+          title: 'Upcoming Meal: ${mealType.replaceAll('_', ' ')}',
+          body: body,
           scheduledDate: notificationTime,
+          payload: 'plan',
         );
       }
     }
@@ -79,6 +117,7 @@ class NotificationSchedulerService {
         title: "Tomorrow's Meal Plan",
         body: body,
         scheduledDate: summaryNotificationTime,
+        payload: 'plan',
       );
     }
   }

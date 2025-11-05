@@ -52,6 +52,7 @@ class _RecipeEditScreenState extends ConsumerState<RecipeEditScreen> {
   late TextEditingController _nameController;
   late TextEditingController _servesController;
   late TextEditingController _instructionsController;
+  String? _mealType;
 
   @override
   void initState() {
@@ -60,6 +61,7 @@ class _RecipeEditScreenState extends ConsumerState<RecipeEditScreen> {
     _nameController = TextEditingController(text: recipe?.name ?? '');
     _servesController = TextEditingController(text: recipe?.serves?.toString() ?? '1');
     _instructionsController = TextEditingController(text: recipe?.instructions ?? '');
+    _mealType = recipe?.mealType;
   }
 
   Future<void> _save() async {
@@ -74,6 +76,7 @@ class _RecipeEditScreenState extends ConsumerState<RecipeEditScreen> {
           name: d.Value(_nameController.text),
           serves: d.Value(int.tryParse(_servesController.text) ?? 1),
           instructions: d.Value(_instructionsController.text),
+          mealType: d.Value(_mealType),
           energy: d.Value(nutrients.energy),
           protein: d.Value(nutrients.protein),
           carbs: d.Value(nutrients.carbs),
@@ -140,66 +143,70 @@ class _RecipeEditScreenState extends ConsumerState<RecipeEditScreen> {
   }
 
   Widget _buildNutrientInfo(_CalculatedNutrients nutrients) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: Column(
-          children: [
-            ListTile(
-              title: const Text('Energy'),
-              trailing: Text('${nutrients.energy.toStringAsFixed(1)} kcal'),
-            ),
-            ListTile(
-              title: const Text('Protein'),
-              trailing: Text('${nutrients.protein.toStringAsFixed(1)} g'),
-            ),
-            ListTile(
-              title: const Text('Carbohydrates'),
-              trailing: Text('${nutrients.carbs.toStringAsFixed(1)} g'),
-            ),
-            ListTile(
-              title: const Text('Fat'),
-              trailing: Text('${nutrients.fat.toStringAsFixed(1)} g'),
-            ),
-          ],
+    return Wrap(
+      spacing: 8.0,
+      runSpacing: 4.0,
+      children: [
+        _NutrientBubble(
+          label: 'Energy',
+          value: '${nutrients.energy.toStringAsFixed(1)} kcal',
+          color: Colors.blue[100]!,
         ),
-      ),
+        _NutrientBubble(
+          label: 'Protein',
+          value: '${nutrients.protein.toStringAsFixed(1)} g',
+          color: Colors.green[100]!,
+        ),
+        _NutrientBubble(
+          label: 'Carbs',
+          value: '${nutrients.carbs.toStringAsFixed(1)} g',
+          color: Colors.orange[100]!,
+        ),
+        _NutrientBubble(
+          label: 'Fat',
+          value: '${nutrients.fat.toStringAsFixed(1)} g',
+          color: Colors.red[100]!,
+        ),
+      ],
     );
   }
 
   Widget _buildMicroNutrientInfo(_CalculatedNutrients nutrients) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: Column(
-          children: [
-            ListTile(
-              title: const Text('Iron'),
-              trailing: Text('${nutrients.ironMg.toStringAsFixed(1)} mg'),
-            ),
-            ListTile(
-              title: const Text('Magnesium'),
-              trailing: Text('${nutrients.magnesiumMg.toStringAsFixed(1)} mg'),
-            ),
-            ListTile(
-              title: const Text('Calcium'),
-              trailing: Text('${nutrients.calciumMg.toStringAsFixed(1)} mg'),
-            ),
-            ListTile(
-              title: const Text('Potassium'),
-              trailing: Text('${nutrients.potassiumMg.toStringAsFixed(1)} mg'),
-            ),
-            ListTile(
-              title: const Text('Sodium'),
-              trailing: Text('${nutrients.sodiumMg.toStringAsFixed(1)} mg'),
-            ),
-            ListTile(
-              title: const Text('Vitamin C'),
-              trailing: Text('${nutrients.vitaminCMg.toStringAsFixed(1)} mg'),
-            ),
-          ],
+    return Wrap(
+      spacing: 8.0,
+      runSpacing: 4.0,
+      children: [
+        _NutrientBubble(
+          label: 'Iron',
+          value: '${nutrients.ironMg.toStringAsFixed(1)} mg',
+          color: Colors.grey[300]!,
         ),
-      ),
+        _NutrientBubble(
+          label: 'Magnesium',
+          value: '${nutrients.magnesiumMg.toStringAsFixed(1)} mg',
+          color: Colors.purple[100]!,
+        ),
+        _NutrientBubble(
+          label: 'Calcium',
+          value: '${nutrients.calciumMg.toStringAsFixed(1)} mg',
+          color: Colors.blueGrey[100]!,
+        ),
+        _NutrientBubble(
+          label: 'Potassium',
+          value: '${nutrients.potassiumMg.toStringAsFixed(1)} mg',
+          color: Colors.lightGreen[200]!,
+        ),
+        _NutrientBubble(
+          label: 'Sodium',
+          value: '${nutrients.sodiumMg.toStringAsFixed(1)} mg',
+          color: Colors.pink[100]!,
+        ),
+        _NutrientBubble(
+          label: 'Vitamin C',
+          value: '${nutrients.vitaminCMg.toStringAsFixed(1)} mg',
+          color: Colors.yellow[200]!,
+        ),
+      ],
     );
   }
 
@@ -240,6 +247,23 @@ class _RecipeEditScreenState extends ConsumerState<RecipeEditScreen> {
                         controller: _servesController,
                         decoration: const InputDecoration(labelText: 'Serves', border: OutlineInputBorder()),
                         keyboardType: TextInputType.number,
+                      ),
+                      const SizedBox(height: 12),
+                      DropdownButtonFormField<String>(
+                        value: _mealType,
+                        decoration: const InputDecoration(labelText: 'Meal Type', border: OutlineInputBorder()),
+                        items: const [
+                          DropdownMenuItem(value: 'pre_breakfast', child: Text('Pre-Breakfast')),
+                          DropdownMenuItem(value: 'breakfast', child: Text('Breakfast')),
+                          DropdownMenuItem(value: 'lunch', child: Text('Lunch')),
+                          DropdownMenuItem(value: 'dinner', child: Text('Dinner')),
+                          DropdownMenuItem(value: 'snack', child: Text('Snack')),
+                        ],
+                        onChanged: (value) {
+                          setState(() {
+                            _mealType = value;
+                          });
+                        },
                       ),
                       const SizedBox(height: 12),
                       TextFormField(
@@ -304,8 +328,10 @@ class _RecipeEditScreenState extends ConsumerState<RecipeEditScreen> {
   Future<void> _addIngredient(BuildContext context, WidgetRef ref) async {
     final db = ref.read(databaseProvider);
     final allIngredients = await db.getAllIngredients();
+    final recipeData = await ref.read(recipeDetailProvider(widget.recipeId).future);
+    final currentIngredientIds = recipeData.ingredients.map((e) => e.ingredient?.id).toSet();
 
-    final selectedIngredient = await Navigator.of(context).push<Ingredient>(
+    final result = await Navigator.of(context).push<dynamic>(
       MaterialPageRoute(
         builder: (ctx) {
           return _IngredientSelectionScreen(ingredients: allIngredients);
@@ -313,13 +339,37 @@ class _RecipeEditScreenState extends ConsumerState<RecipeEditScreen> {
       ),
     );
 
+    Ingredient? selectedIngredient;
+    if (result is Ingredient) {
+      selectedIngredient = result;
+    } else if (result is String) {
+      final newIngredientId = await Navigator.of(context).push<String>(
+        MaterialPageRoute(
+          builder: (_) => IngredientEditScreen(ingredientName: result),
+        ),
+      );
+
+      if (newIngredientId != null) {
+        selectedIngredient = await (db.select(db.ingredients)..where((t) => t.id.equals(newIngredientId))).getSingle();
+      }
+    }
+
     if (selectedIngredient != null) {
+      if (currentIngredientIds.contains(selectedIngredient.id)) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Ingredient already in recipe')),
+          );
+        }
+        return;
+      }
+
       final quantityController = TextEditingController();
 
       final confirmed = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
-          title: Text('Add ${selectedIngredient.name}'),
+          title: Text('Add ${selectedIngredient!.name}'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -415,6 +465,28 @@ class _RecipeEditScreenState extends ConsumerState<RecipeEditScreen> {
   }
 }
 
+class _NutrientBubble extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color color;
+
+  const _NutrientBubble({required this.label, required this.value, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Chip(
+      backgroundColor: color,
+      label: Text.rich(
+        TextSpan(
+          text: '$label: ',
+          style: const TextStyle(fontWeight: FontWeight.bold),
+          children: [TextSpan(text: value, style: const TextStyle(fontWeight: FontWeight.normal))],
+        ),
+      ),
+    );
+  }
+}
+
 class _IngredientSelectionScreen extends StatefulWidget {
   final List<Ingredient> ingredients;
 
@@ -461,6 +533,10 @@ class _IngredientSelectionScreenState extends State<_IngredientSelectionScreen> 
       flatList.addAll(grouped[key]!);
     }
 
+    if (_searchTerm.isNotEmpty && filteredIngredients.isEmpty) {
+      flatList.add('Create "$_searchTerm"');
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Select Ingredient'),
@@ -484,6 +560,12 @@ class _IngredientSelectionScreenState extends State<_IngredientSelectionScreen> 
               itemBuilder: (context, index) {
                 final item = flatList[index];
                 if (item is String) {
+                  if (item.startsWith('Create')) {
+                    return ListTile(
+                      title: Text(item),
+                      onTap: () => Navigator.of(context).pop(_searchTerm),
+                    );
+                  }
                   return Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
                     child: Text(item, style: Theme.of(context).textTheme.titleLarge),

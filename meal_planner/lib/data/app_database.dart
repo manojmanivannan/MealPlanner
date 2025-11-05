@@ -103,8 +103,18 @@ class AppDatabase extends _$AppDatabase {
           ..where((ri) => ri.recipeId.equalsExp(r.id) & ri.ingredientId.equals(ingredientId))
       ))).get();
 
+  Future<List<Recipe>> getRecipesUsingIngredients(List<String> ingredientIds) =>
+      (select(recipes)..where((r) => existsQuery(
+        select(recipeIngredients)
+          ..where((ri) => ri.recipeId.equalsExp(r.id) & ri.ingredientId.isIn(ingredientIds))
+      ))).get();
+
   // Recipes helpers
   Future<List<Recipe>> getAllRecipes() => select(recipes).get();
+  Future<String> getRecipeName(String recipeId) async {
+    final recipe = await (select(recipes)..where((tbl) => tbl.id.equals(recipeId))).getSingle();
+    return recipe.name;
+  }
   Future<void> upsertRecipe(RecipesCompanion data) => into(recipes).insertOnConflictUpdate(data);
   Future<void> deleteRecipe(String id) => transaction(() async {
         await (delete(recipeIngredients)..where((tbl) => tbl.recipeId.equals(id))).go();
@@ -123,6 +133,9 @@ class AppDatabase extends _$AppDatabase {
   Future<List<RecipeIngredient>> getRecipeIngredientsByRecipe(String recipeId) => (select(recipeIngredients)..where((t) => t.recipeId.equals(recipeId))).get();
   Future<void> deleteRecipeIngredient(String id) async {
     await (delete(recipeIngredients)..where((t) => t.id.equals(id))).go();
+  }
+  Future<void> removeIngredientsFromRecipes(List<String> ingredientIds) async {
+    await (delete(recipeIngredients)..where((t) => t.ingredientId.isIn(ingredientIds))).go();
   }
   Future<void> upsertRecipeIngredient(RecipeIngredientsCompanion data) => into(recipeIngredients).insertOnConflictUpdate(data);
 

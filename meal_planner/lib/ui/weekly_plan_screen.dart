@@ -386,9 +386,7 @@ class _DayColumn extends StatefulWidget {
   State<_DayColumn> createState() => _DayColumnState();
 }
 
-class _DayColumnState extends State<_DayColumn> with AutomaticKeepAliveClientMixin {
-  @override
-  bool get wantKeepAlive => true;
+class _DayColumnState extends State<_DayColumn> {
 
   Future<void> _showRecipeSelectionDialog(
       BuildContext context, List<Recipe> recipes, void Function(Recipe recipe) onShowRecipe) async {
@@ -428,7 +426,6 @@ class _DayColumnState extends State<_DayColumn> with AutomaticKeepAliveClientMix
 
   @override
   Widget build(BuildContext context) {
-    super.build(context);
     final dayMeals = widget.view[widget.day] ?? const {};
     final scheme = Theme.of(context).colorScheme;
 
@@ -437,12 +434,15 @@ class _DayColumnState extends State<_DayColumn> with AutomaticKeepAliveClientMix
         padding: const EdgeInsets.all(14),
         child: CustomScrollView(
           slivers: [
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.only(bottom: 10),
+            SliverPersistentHeader(
+              pinned: true,
+              delegate: _SliverHeaderDelegate(
                 child: Text(
                   widget.day,
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        backgroundColor: Theme.of(context).colorScheme.surface,
+                      ),
                 ),
               ),
             ),
@@ -477,6 +477,31 @@ class _DayColumnState extends State<_DayColumn> with AutomaticKeepAliveClientMix
     );
   }
 }
+
+class _SliverHeaderDelegate extends SliverPersistentHeaderDelegate {
+  _SliverHeaderDelegate({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+    return Container(
+      color: Theme.of(context).colorScheme.surface,
+      child: child,
+      alignment: Alignment.centerLeft,
+    );
+  }
+
+  @override
+  double get maxExtent => 40;
+
+  @override
+  double get minExtent => 40;
+
+  @override
+  bool shouldRebuild(covariant SliverPersistentHeaderDelegate oldDelegate) => false;
+}
+
 
 class _MealSection extends StatelessWidget {
   const _MealSection(

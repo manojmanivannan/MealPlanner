@@ -144,6 +144,20 @@ class _SettingsViewState extends ConsumerState<_SettingsView> {
               _nextDayPlanTime = t;
             });
           }),
+          const SizedBox(height: 20),
+          ElevatedButton(
+            onPressed: () async {
+              final scheduler = ref.read(notificationSchedulerServiceProvider);
+              await scheduler.sendTestNotification();
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Test notification sent!'),
+                  duration: Duration(seconds: 2),
+                ),
+              );
+            },
+            child: const Text('Test Notification'),
+          ),
         ],
       ],
     );

@@ -8,11 +8,17 @@ class AppShell extends StatefulWidget {
   const AppShell({super.key});
 
   @override
-  State<AppShell> createState() => _AppShellState();
+  State<AppShell> createState() => AppShellState();
 }
 
-class _AppShellState extends State<AppShell> {
+class AppShellState extends State<AppShell> {
   int _index = 0;
+
+  void goToTab(int index) {
+    setState(() {
+      _index = index;
+    });
+  }
 
   static const _pages = [
     WeeklyPlanScreen(),

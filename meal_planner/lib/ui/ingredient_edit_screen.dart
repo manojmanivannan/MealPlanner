@@ -1,31 +1,37 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:drift/drift.dart' as d;
+import 'package:uuid/uuid.dart';
 
 import '../data/app_database.dart';
 import '../providers.dart';
 import 'form_fields.dart';
 
 class IngredientEditScreen extends ConsumerWidget {
-  final String ingredientId;
+  final String? ingredientId;
+  final String? ingredientName;
 
-  const IngredientEditScreen({super.key, required this.ingredientId});
+  const IngredientEditScreen({super.key, this.ingredientId, this.ingredientName});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final ingredientAsync = ref.watch(ingredientDetailProvider(ingredientId));
+    final ingredientAsync = ingredientId != null ? ref.watch(ingredientDetailProvider(ingredientId!)) : null;
 
-    return ingredientAsync.when(
-      loading: () => Scaffold(
-        appBar: AppBar(title: const Text('Edit Ingredient')),
-        body: const Center(child: CircularProgressIndicator()),
-      ),
-      error: (e, st) => Scaffold(
-        appBar: AppBar(title: const Text('Edit Ingredient')),
-        body: Center(child: Text('Error: $e')),
-      ),
-      data: (ingredient) => _IngredientEditForm(ingredient: ingredient),
-    );
+    if (ingredientId != null && ingredientAsync != null) {
+      return ingredientAsync.when(
+        loading: () => Scaffold(
+          appBar: AppBar(title: const Text('Edit Ingredient')),
+          body: const Center(child: CircularProgressIndicator()),
+        ),
+        error: (e, st) => Scaffold(
+          appBar: AppBar(title: const Text('Edit Ingredient')),
+          body: Center(child: Text('Error: $e')),
+        ),
+        data: (ingredient) => _IngredientEditForm(ingredient: ingredient),
+      );
+    } else {
+      return _IngredientEditForm(ingredient: Ingredient(id: const Uuid().v4(), name: ingredientName ?? '', available: false));
+    }
   }
 }
 
@@ -53,6 +59,9 @@ class _IngredientEditFormState extends ConsumerState<_IngredientEditForm> {
   late TextEditingController _sodiumController;
   late TextEditingController _vitaminCController;
   String? _selectedServingUnit;
+  String? _selectedCategory;
+  bool _isIngredientInUse = false;
+  List<Recipe> _linkedRecipes = [];
 
   @override
   void initState() {
@@ -70,9 +79,23 @@ class _IngredientEditFormState extends ConsumerState<_IngredientEditForm> {
     _sodiumController = TextEditingController(text: widget.ingredient.sodiumMg?.toString());
     _vitaminCController = TextEditingController(text: widget.ingredient.vitaminCMg?.toString());
     _selectedServingUnit = widget.ingredient.servingUnit;
+    _selectedCategory = widget.ingredient.category;
+
+    if (widget.ingredient.id.isNotEmpty) {
+      _checkIngredientUsage();
+    }
 
     _servingSizeController.addListener(() => setState(() {}));
     // No need to add listener for dropdown, onChanged does it.
+  }
+
+  Future<void> _checkIngredientUsage() async {
+    final db = ref.read(databaseProvider);
+    final recipes = await db.getRecipesUsingIngredient(widget.ingredient.id);
+    setState(() {
+      _isIngredientInUse = recipes.isNotEmpty;
+      _linkedRecipes = recipes;
+    });
   }
 
   String _getUnitLabel(String baseUnit) {
@@ -87,10 +110,13 @@ class _IngredientEditFormState extends ConsumerState<_IngredientEditForm> {
   Future<void> _save() async {
     if (_formKey.currentState!.validate()) {
       final db = ref.read(databaseProvider);
+      final ingredientId = widget.ingredient.id;
+
       await db.upsertIngredient(
         IngredientsCompanion(
-          id: d.Value(widget.ingredient.id),
+          id: d.Value(ingredientId),
           name: d.Value(_nameController.text),
+          category: d.Value(_selectedCategory),
           servingSize: d.Value(double.tryParse(_servingSizeController.text)),
           servingUnit: d.Value(_selectedServingUnit),
           energy: d.Value(double.tryParse(_energyController.text)),
@@ -106,9 +132,12 @@ class _IngredientEditFormState extends ConsumerState<_IngredientEditForm> {
         ),
       );
       ref.invalidate(ingredientsProvider);
-      ref.invalidate(ingredientDetailProvider(widget.ingredient.id));
+      if (widget.ingredient.id.isNotEmpty) {
+        ref.invalidate(ingredientDetailProvider(widget.ingredient.id));
+      }
+
       if (mounted) {
-        Navigator.of(context).pop();
+        Navigator.of(context).pop(ingredientId);
       }
     }
   }
@@ -117,7 +146,7 @@ class _IngredientEditFormState extends ConsumerState<_IngredientEditForm> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Edit Ingredient'),
+        title: Text(widget.ingredient.id.isEmpty ? 'Create Ingredient' : 'Edit Ingredient'),
         actions: [
           IconButton(
             icon: const Icon(Icons.check),
@@ -138,15 +167,21 @@ class _IngredientEditFormState extends ConsumerState<_IngredientEditForm> {
                 validator: (value) => (value?.isEmpty ?? true) ? 'Please enter a name' : null,
               ),
               const SizedBox(height: 12),
+              IngredientCategoryDropdown(
+                selectedValue: _selectedCategory,
+                onChanged: (value) => setState(() => _selectedCategory = value),
+              ),
+              const SizedBox(height: 12),
               TextFormField(
                 controller: _servingSizeController,
-                decoration: const InputDecoration(labelText: 'Serving Size', border: OutlineInputBorder()),
+                decoration: InputDecoration(labelText: 'Serving Size', border: OutlineInputBorder(), enabled: !_isIngredientInUse),
                 keyboardType: TextInputType.number,
+                enabled: !_isIngredientInUse,
               ),
               const SizedBox(height: 12),
               ServingUnitDropdown(
                 selectedValue: _selectedServingUnit,
-                onChanged: (value) => setState(() => _selectedServingUnit = value),
+                onChanged: _isIngredientInUse ? null : (value) => setState(() => _selectedServingUnit = value),
               ),
               const SizedBox(height: 12),
               TextFormField(
@@ -210,6 +245,28 @@ class _IngredientEditFormState extends ConsumerState<_IngredientEditForm> {
                 decoration: InputDecoration(labelText: 'Vitamin C (${_getUnitLabel('mg')})', border: OutlineInputBorder()),
                 keyboardType: TextInputType.number,
               ),
+              if (_linkedRecipes.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 24.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Used in Recipes', style: Theme.of(context).textTheme.titleLarge),
+                      const Divider(),
+                      ListView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: _linkedRecipes.length,
+                        itemBuilder: (context, index) {
+                          final recipe = _linkedRecipes[index];
+                          return ListTile(
+                            title: Text(recipe.name),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                ),
             ],
           ),
         ),

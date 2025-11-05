@@ -18,48 +18,61 @@ class IngredientsScreen extends ConsumerStatefulWidget {
 class _IngredientsScreenState extends ConsumerState<IngredientsScreen> {
   final Set<String> _selectedIds = {};
   bool _isSelectionMode = false;
+  bool _isSearching = false;
   IngredientGrouping _grouping = IngredientGrouping.alphabetically;
+  final _searchController = TextEditingController();
+  String _searchTerm = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _searchController.addListener(() => setState(() => _searchTerm = _searchController.text));
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   Future<void> _deleteIngredients(List<Ingredient> ingredients) async {
     final ingredientRepo = ref.read(ingredientRepoProvider);
-    if (ingredients.length == 1) {
-      final ingredient = ingredients.first;
-      final linkedRecipes =
-          await ingredientRepo.getRecipesUsingIngredient(ingredient.id);
-      if (linkedRecipes.isNotEmpty) {
-        if (!mounted) return;
-        final shouldDelete = await showDialog<bool>(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('Delete Ingredient?'),
-            content: Text(
-                'This ingredient is used in ${linkedRecipes.length} recipe(s). Deleting it will also delete those recipes. Are you sure you want to continue?'),
-            actions: [
-              TextButton(
-                child: const Text('Cancel'),
-                onPressed: () => Navigator.pop(context, false),
-              ),
-              TextButton(
-                child: const Text('Delete'),
-                onPressed: () => Navigator.pop(context, true),
-              ),
-            ],
-          ),
-        );
-        if (shouldDelete != true) return;
+    final recipeRepo = ref.read(recipeRepoProvider);
+    final ingredientIds = ingredients.map((i) => i.id).toList();
 
-        // Delete recipes first, then ingredient
-        final recipeRepo = ref.read(recipeRepoProvider);
-        await recipeRepo.deleteMany(linkedRecipes.map((r) => r.id).toList());
-      }
+    final linkedRecipes = await ingredientRepo.getRecipesUsingIngredients(ingredientIds);
+
+    if (linkedRecipes.isNotEmpty) {
+      if (!mounted) return;
+      final shouldDelete = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Delete Ingredient(s)?'),
+          content: Text(
+              'One or more ingredients are used in ${linkedRecipes.length} recipe(s). Deleting them will remove them from those recipes. Are you sure you want to continue?'),
+          actions: [
+            TextButton(
+              child: const Text('Cancel'),
+              onPressed: () => Navigator.pop(context, false),
+            ),
+            TextButton(
+              child: const Text('Delete'),
+              onPressed: () => Navigator.pop(context, true),
+            ),
+          ],
+        ),
+      );
+      if (shouldDelete != true) return;
+
+      await recipeRepo.removeIngredients(ingredientIds);
     } else {
       if (!mounted) return;
       final shouldDelete = await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
-          title: const Text('Delete Ingredients?'),
+          title: const Text('Delete Ingredient(s)?'),
           content: Text(
-              'Are you sure you want to delete ${ingredients.length} ingredients? This action cannot be undone.'),
+              'Are you sure you want to delete ${ingredients.length} ingredient(s)? This action cannot be undone.'),
           actions: [
             TextButton(
               child: const Text('Cancel'),
@@ -75,7 +88,7 @@ class _IngredientsScreenState extends ConsumerState<IngredientsScreen> {
       if (shouldDelete != true) return;
     }
 
-    await ingredientRepo.deleteMany(ingredients.map((i) => i.id).toList());
+    await ingredientRepo.deleteMany(ingredientIds);
     ref.invalidate(ingredientsProvider);
     setState(() {
       _selectedIds.clear();
@@ -89,9 +102,20 @@ class _IngredientsScreenState extends ConsumerState<IngredientsScreen> {
     final db = ref.read(databaseProvider);
     return Scaffold(
       appBar: AppBar(
-        title: Text(_isSelectionMode
-            ? '${_selectedIds.length} selected'
-            : 'Ingredients'),
+        title: _isSearching
+            ? TextField(
+                controller: _searchController,
+                autofocus: true,
+                decoration: InputDecoration(
+                  hintText: 'Search ingredients...',
+                  border: InputBorder.none,
+                  hintStyle: TextStyle(color: Colors.black.withOpacity(0.5)),
+                ),
+                style: const TextStyle(color: Colors.black),
+              )
+            : Text(_isSelectionMode
+                ? '${_selectedIds.length} selected'
+                : 'Ingredients'),
         actions: [
           if (_isSelectionMode) ...[
             IconButton(
@@ -115,46 +139,68 @@ class _IngredientsScreenState extends ConsumerState<IngredientsScreen> {
               }),
             ),
           ] else ...[
-            PopupMenuButton<IngredientGrouping>(
-              onSelected: (IngredientGrouping result) {
+            IconButton(
+              icon: Icon(_isSearching ? Icons.close : Icons.search),
+              tooltip: _isSearching ? 'Close Search' : 'Search',
+              onPressed: () {
                 setState(() {
-                  _grouping = result;
+                  _isSearching = !_isSearching;
+                  if (!_isSearching) {
+                    _searchController.clear();
+                  }
+                  _isSelectionMode = false;
+                  _selectedIds.clear();
                 });
               },
-              itemBuilder: (BuildContext context) =>
-                  <PopupMenuEntry<IngredientGrouping>>[
-                const PopupMenuItem<IngredientGrouping>(
-                  value: IngredientGrouping.alphabetically,
-                  child: Text('Alphabetically'),
-                ),
-                const PopupMenuItem<IngredientGrouping>(
-                  value: IngredientGrouping.byCategory,
-                  child: Text('By Category'),
-                ),
-              ],
             ),
-            IconButton(
-              tooltip: 'Add Ingredient',
-              icon: const Icon(Icons.add),
-              onPressed: () async {
-                final id = const Uuid().v4();
-                await db.upsertIngredient(
-                    IngredientsCompanion.insert(id: id, name: 'New Ingredient'));
-                ref.invalidate(ingredientsProvider);
-                if (context.mounted) {
-                  Navigator.of(context).push(MaterialPageRoute(
-                      builder: (_) => IngredientEditScreen(ingredientId: id)));
-                }
-              },
-            ),
+            if (!_isSearching)
+              PopupMenuButton<IngredientGrouping>(
+                onSelected: (IngredientGrouping result) {
+                  setState(() {
+                    _grouping = result;
+                  });
+                },
+                itemBuilder: (BuildContext context) =>
+                    <PopupMenuEntry<IngredientGrouping>>[
+                  const PopupMenuItem<IngredientGrouping>(
+                    value: IngredientGrouping.alphabetically,
+                    child: Text('Alphabetically'),
+                  ),
+                  const PopupMenuItem<IngredientGrouping>(
+                    value: IngredientGrouping.byCategory,
+                    child: Text('By Category'),
+                  ),
+                ],
+              ),
+            if (!_isSearching)
+              IconButton(
+                tooltip: 'Add Ingredient',
+                icon: const Icon(Icons.add),
+                onPressed: () async {
+                  final id = const Uuid().v4();
+                  await db.upsertIngredient(
+                      IngredientsCompanion.insert(id: id, name: 'New Ingredient'));
+                  ref.invalidate(ingredientsProvider);
+                  if (context.mounted) {
+                    Navigator.of(context).push(MaterialPageRoute(
+                        builder: (_) => IngredientEditScreen(ingredientId: id)));
+                  }
+                },
+              ),
           ]
         ],
       ),
       body: ingredientsAsync.when(
         data: (items) {
+          final filteredItems = items
+              .where((item) =>
+                  _searchTerm.isEmpty ||
+                  item.name.toLowerCase().contains(_searchTerm.toLowerCase()))
+              .toList();
+
           if (_grouping == IngredientGrouping.byCategory) {
             final grouped = groupBy<Ingredient, String>(
-              items,
+              filteredItems,
               (item) => item.category ?? 'Uncategorized',
             );
             final sortedKeys = grouped.keys.toList()..sort();
@@ -163,6 +209,7 @@ class _IngredientsScreenState extends ConsumerState<IngredientsScreen> {
               itemBuilder: (context, index) {
                 final category = sortedKeys[index];
                 final ingredients = grouped[category]!;
+                ingredients.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -218,36 +265,37 @@ class _IngredientsScreenState extends ConsumerState<IngredientsScreen> {
               },
             );
           } else {
+            filteredItems.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
             return ListView.separated(
-              itemCount: items.length,
+              itemCount: filteredItems.length,
               separatorBuilder: (_, __) => const Divider(height: 1),
               itemBuilder: (_, i) => ListTile(
-                selected: _selectedIds.contains(items[i].id),
-                title: Text(items[i].name),
+                selected: _selectedIds.contains(filteredItems[i].id),
+                title: Text(filteredItems[i].name),
                 onTap: _isSelectionMode
                     ? () => setState(() {
-                          if (_selectedIds.contains(items[i].id)) {
-                            _selectedIds.remove(items[i].id);
+                          if (_selectedIds.contains(filteredItems[i].id)) {
+                            _selectedIds.remove(filteredItems[i].id);
                             if (_selectedIds.isEmpty) {
                               _isSelectionMode = false;
                             }
                           } else {
-                            _selectedIds.add(items[i].id);
+                            _selectedIds.add(filteredItems[i].id);
                           }
                         })
                     : () => Navigator.of(context).push(
                           MaterialPageRoute(
                               builder: (_) =>
-                                  IngredientEditScreen(ingredientId: items[i].id)),
+                                  IngredientEditScreen(ingredientId: filteredItems[i].id)),
                         ),
                 onLongPress: !_isSelectionMode
                     ? () => setState(() {
                           _isSelectionMode = true;
-                          _selectedIds.add(items[i].id);
+                          _selectedIds.add(filteredItems[i].id);
                         })
                     : null,
                 trailing: _isSelectionMode
-                    ? Icon(_selectedIds.contains(items[i].id)
+                    ? Icon(_selectedIds.contains(filteredItems[i].id)
                         ? Icons.check_circle
                         : Icons.circle_outlined)
                     : const Icon(Icons.chevron_right),

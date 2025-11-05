@@ -8,4 +8,5 @@ class RecipeRepository {
   Future<List<RecipeIngredient>> getIngredients(String recipeId) => db.getRecipeIngredientsByRecipe(recipeId);
   Future<void> delete(String id) => db.deleteRecipe(id);
   Future<void> deleteMany(List<String> ids) => db.deleteRecipes(ids);
+  Future<void> removeIngredients(List<String> ingredientIds) => db.removeIngredientsFromRecipes(ingredientIds);
 }
