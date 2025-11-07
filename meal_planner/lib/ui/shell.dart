@@ -3,6 +3,7 @@ import 'ingredients_screen.dart';
 import 'recipes_screen.dart';
 import 'weekly_plan_screen.dart';
 import 'settings_screen.dart';
+import 'banner_ad_widget.dart';
 
 class AppShell extends StatefulWidget {
   const AppShell({super.key});
@@ -30,7 +31,12 @@ class AppShellState extends State<AppShell> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: _pages[_index],
+      body: Column(
+        children: [
+          Expanded(child: _pages[_index]),
+          const BannerAdWidget(),
+        ],
+      ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,
         destinations: const [

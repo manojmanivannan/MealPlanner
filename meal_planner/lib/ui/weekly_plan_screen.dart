@@ -429,51 +429,45 @@ class _DayColumnState extends State<_DayColumn> {
     final dayMeals = widget.view[widget.day] ?? const {};
     final scheme = Theme.of(context).colorScheme;
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: CustomScrollView(
-          slivers: [
-            SliverPersistentHeader(
-              pinned: true,
-              delegate: _SliverHeaderDelegate(
-                child: Text(
-                  widget.day,
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.w700,
-                        backgroundColor: Theme.of(context).colorScheme.surface,
-                      ),
-                ),
-              ),
-            ),
-            SliverList.builder(
-              itemCount: widget.meals.length,
-              itemBuilder: (context, index) {
-                final meal = widget.meals[index];
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 12.0),
-                  child: _MealSection(
-                    title: mealLabel(meal),
-                    recipes: dayMeals[meal] ?? const [],
-                    color: _colorForMeal(meal, scheme),
-                    onEdit: () => widget.onChangeMeal(meal),
-                    onTap: () {
-                      final recipeList = dayMeals[meal];
-                      if (recipeList != null) {
-                        if (recipeList.length == 1) {
-                          widget.onShowRecipe(recipeList.first);
-                        } else if (recipeList.length > 1) {
-                          _showRecipeSelectionDialog(context, recipeList, widget.onShowRecipe);
-                        }
-                      }
-                    },
+    return CustomScrollView(
+      slivers: [
+        SliverPersistentHeader(
+          pinned: true,
+          delegate: _SliverHeaderDelegate(
+            child: Text(
+              widget.day,
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
                   ),
-                );
-              },
             ),
-          ],
+          ),
         ),
-      ),
+        SliverList.builder(
+          itemCount: widget.meals.length,
+          itemBuilder: (context, index) {
+            final meal = widget.meals[index];
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12.0),
+              child: _MealSection(
+                title: mealLabel(meal),
+                recipes: dayMeals[meal] ?? const [],
+                color: _colorForMeal(meal, scheme),
+                onEdit: () => widget.onChangeMeal(meal),
+                onTap: () {
+                  final recipeList = dayMeals[meal];
+                  if (recipeList != null) {
+                    if (recipeList.length == 1) {
+                      widget.onShowRecipe(recipeList.first);
+                    } else if (recipeList.length > 1) {
+                      _showRecipeSelectionDialog(context, recipeList, widget.onShowRecipe);
+                    }
+                  }
+                },
+              ),
+            );
+          },
+        ),
+      ],
     );
   }
 }
@@ -486,17 +480,18 @@ class _SliverHeaderDelegate extends SliverPersistentHeaderDelegate {
   @override
   Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
     return Container(
-      color: Theme.of(context).colorScheme.surface,
-      child: child,
+      color: Theme.of(context).scaffoldBackgroundColor,
+      padding: const EdgeInsets.symmetric(horizontal: 14.0),
       alignment: Alignment.centerLeft,
+      child: child,
     );
   }
 
   @override
-  double get maxExtent => 40;
+  double get maxExtent => 50;
 
   @override
-  double get minExtent => 40;
+  double get minExtent => 50;
 
   @override
   bool shouldRebuild(covariant SliverPersistentHeaderDelegate oldDelegate) => false;
