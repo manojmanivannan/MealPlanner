@@ -245,6 +245,11 @@ def add_ingredient(
 ):
     logger.info(f"Adding new ingredient: {name}")
 
+    # name could be URI encoded, decode it
+    from urllib.parse import unquote
+
+    name = unquote(name)
+
     # Check if ingredient already exists to provide a clear error
     existing_ingredient = (
         db.query(Ingredient)

@@ -11,12 +11,12 @@ id,day,meal_type,recipe_ids
 10,Monday,dinner,{16}
 11,Tuesday,pre_breakfast,{64}
 12,Tuesday,breakfast,{68}
-13,Tuesday,lunch,{65}
+13,Tuesday,lunch,"{65,98}"
 14,Tuesday,snack,{}
 15,Tuesday,dinner,{74}
 16,Wednesday,pre_breakfast,{64}
 17,Wednesday,breakfast,{92}
-18,Wednesday,lunch,{91}
+18,Wednesday,lunch,"{91,99}"
 19,Wednesday,snack,{}
 20,Wednesday,dinner,{88}
 21,Thursday,pre_breakfast,{54}
