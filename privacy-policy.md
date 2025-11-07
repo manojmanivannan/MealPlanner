@@ -21,4 +21,4 @@ We respect your privacy. This app **does not collect any personal information**,
 - This policy may be updated occasionally. Please check this page for the latest information.
 
 **Contact Us**  
-For any questions regarding this privacy policy, please contact me (ManojManivannan)[ragamanoj+play@gmail.com].
+For any questions regarding this privacy policy, please contact me [ManojManivannan](ragamanoj+play@gmail.com).
