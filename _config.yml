@@ -1,3 +1,8 @@
 title: MealPlanner
 description: A simple open-source tool to plan your meals.
 theme: minima   # GitHub Pages supports a few built-in themes
+header-links:
+  - title: Home
+    url: /
+  - title: Privacy Policy
+    url: /privacy-policy/
