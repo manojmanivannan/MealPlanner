@@ -1,7 +1,7 @@
 ---
 layout: page
 title: "Privacy Policy"
-permalink: [/privacy-policy/](https://manojmanivannan.github.io/privacy-policy/)
+permalink: [/privacy-policy/](https://manojmanivannan.github.io/MealPlanner/privacy-policy)
 ---
 
 ## Privacy Policy
