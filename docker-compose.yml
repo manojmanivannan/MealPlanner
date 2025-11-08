@@ -62,6 +62,9 @@ services:
       tailscale-nginx:
         condition: service_started
     network_mode: service:tailscale-nginx
+    # When using caddy disable network_mode and enable networks below
+    #networks:
+    #  - web
     restart: unless-stopped
 
   # --- COMMON SERVICES (Always run) ---
@@ -91,6 +94,9 @@ services:
         - action: sync
           path: ./backend/
           target: /app
+    #Enable below when using Caddy
+    #networks:
+    #  - web
   db:
     image: postgres:latest
     environment:
@@ -107,6 +113,10 @@ services:
       retries: 5
       start_period: 10s
     restart: unless-stopped
+
+    #Enable below when using Caddy
+    #networks:
+    #  - web
 
 # Using Caddy for automatic HTTPS in production instead of tailscale
 # disable tailscale-nginx
