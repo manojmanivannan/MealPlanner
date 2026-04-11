@@ -29,9 +29,11 @@ services:
 
   # Tailscale service to provide secure access to nginx-prod
   tailscale-nginx:
+
     profiles:
       - prod
     image: tailscale/tailscale:latest
+    pull_policy: always
     hostname: meal_planner
     environment:
       - TS_AUTHKEY=$TS_AUTHKEY
@@ -92,7 +94,7 @@ services:
           path: ./backend/
           target: /app
   db:
-    image: postgres:latest
+    image: postgres:17.9
     environment:
       - POSTGRES_USER=$POSTGRES_USER
       - POSTGRES_PASSWORD=$POSTGRES_PASSWORD
