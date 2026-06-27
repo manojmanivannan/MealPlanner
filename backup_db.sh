@@ -21,7 +21,7 @@ for TABLE in $TABLES_TO_BACKUP; do
     fi
 
     # Run COPY with the filtered columns
-    docker exec -t $CONTAINER_NAME psql -U $DB_USER -d $DB_NAME -c \
+    docker exec  $CONTAINER_NAME psql -U $DB_USER -d $DB_NAME -c \
     "COPY (SELECT $COLUMNS FROM $TABLE ORDER BY id) TO STDOUT WITH CSV HEADER" \
     > "./backend/data/${TABLE}.csv"
 
