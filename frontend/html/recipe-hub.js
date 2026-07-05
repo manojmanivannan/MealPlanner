@@ -24,7 +24,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let activeCategory = '🍳 Breakfast';
     let vegFilter = 'both';
     let searchTerm = '';
-    let onlyAvailable = false;
+    let onlyAvailable = localStorage.getItem('onlyAvailable') === 'true';
 
     const mealTypeMap = {
         '☕ Pre-Breakfast': ['pre_breakfast'],
@@ -184,6 +184,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         document.getElementById('toggle-available-only').addEventListener('change', (e) => {
             onlyAvailable = e.target.checked;
+            localStorage.setItem('onlyAvailable', onlyAvailable);
             fetchRecipes();
         });
 
