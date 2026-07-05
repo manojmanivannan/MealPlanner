@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta, timezone
 import os
 from typing import Optional
+import logging
 
 import jwt
 from fastapi import APIRouter, Depends, HTTPException, status, Header
@@ -11,6 +12,10 @@ from sqlalchemy.orm import Session
 from database import get_db
 from models import User, Recipe, Ingredient
 from schemas import UserCreateSchema, UserSchema, TokenSchema
+
+logger = logging.getLogger("uvicorn")
+logger.setLevel(logging.DEBUG)
+
 
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -66,7 +71,34 @@ def get_current_user(
     user = db.query(User).filter(User.id == user_id).first()
     if user is None:
         raise credentials_exception
+
+    # Auto-expire ingredients
+    try:
+        now = datetime.now(timezone.utc)
+        expired_ingredients = (
+            db.query(Ingredient)
+            .filter(
+                Ingredient.user_id == user.id,
+                Ingredient.available == True,
+                Ingredient.shelf_life.isnot(None),
+                Ingredient.last_available.isnot(None),
+            )
+            .all()
+        )
+        updated = False
+        for ing in expired_ingredients:
+            days_passed = (now.date() - ing.last_available.date()).days
+            if days_passed >= ing.shelf_life:
+                ing.available = False
+                updated = True
+        if updated:
+            db.commit()
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error checking/updating expired ingredients: {e}")
+
     return user
+
 
 
 auth_router = APIRouter(prefix="/auth", tags=["Auth"])
