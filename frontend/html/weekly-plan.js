@@ -106,11 +106,20 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                 ` : '';
 
+                const buttonsHTML = recipeIds.length ? `
+                    <div class="flex items-center space-x-1">
+                        <button class="text-[10px] px-1.5 py-0.5 rounded font-semibold transition bg-orange-100 text-orange-700 hover:bg-orange-200" type="button" onclick="window.selectRecipeForSlot('${day}','${meal}')">Change</button>
+                        <button class="text-[10px] px-1.5 py-0.5 rounded font-semibold transition bg-red-100 text-red-700 hover:bg-red-200" type="button" onclick="window.clearRecipeForSlot('${day}','${meal}')">Clear</button>
+                    </div>
+                ` : `
+                    <button class="text-[10px] px-1.5 py-0.5 rounded font-semibold transition bg-green-100 text-green-700 hover:bg-green-200" type="button" onclick="window.selectRecipeForSlot('${day}','${meal}')">Add</button>
+                `;
+
                 return `
                     <div class="mb-2">
                         <div class="flex items-center justify-between">
                             <span class="font-medium text-xs text-stone-500 capitalize">${meal.replace('_', '-')}</span>
-                            <button class="text-xs px-2 py-1 rounded font-semibold transition ${recipeIds.length ? 'bg-orange-100 text-orange-700 hover:bg-orange-200' : 'bg-green-100 text-green-700 hover:bg-green-200'}" type="button" onclick="window.selectRecipeForSlot('${day}','${meal}')">${recipeIds.length ? 'Change' : 'Add'}</button>
+                            ${buttonsHTML}
                         </div>
                         <div class="ml-2 recipe-names-container">
                             ${recipeNameSpans || '<span class="text-stone-400">No recipe</span>'}
@@ -234,6 +243,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     window.assignRecipeToSlot = (day, meal, recipeIds) => {
         saveWeeklyPlanSlot(day, meal, recipeIds);
+    };
+
+    window.clearRecipeForSlot = (day, meal) => {
+        saveWeeklyPlanSlot(day, meal, []);
     };
 
     window.showRecipeDetails = (id) => {

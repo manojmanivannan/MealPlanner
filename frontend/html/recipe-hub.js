@@ -24,6 +24,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let activeCategory = '🍳 Breakfast';
     let vegFilter = 'both';
     let searchTerm = '';
+    let onlyAvailable = false;
 
     const mealTypeMap = {
         '☕ Pre-Breakfast': ['pre_breakfast'],
@@ -109,12 +110,20 @@ document.addEventListener('DOMContentLoaded', () => {
                     <button id="add-recipe-btn" class="clay-btn px-4 py-2">Add Recipe</button>
                     <input type="search" id="recipe-search-input" placeholder="🔍 Find a recipe..." class="clay-input px-3 py-2" value="${searchTerm}" autocomplete="off">
                 </div>
-                <div id="veg-filter-dropdown-container" class="flex items-center space-x-2">
+                <div id="veg-filter-dropdown-container" class="flex items-center space-x-4">
                     <select id="veg-filter-dropdown" class="clay-input px-2 py-1 rounded border border-stone-300 text-sm">
                         <option value="both" ${vegFilter === 'both' ? 'selected' : ''}>All Diets</option>
                         <option value="veg" ${vegFilter === 'veg' ? 'selected' : ''}>Vegetarian</option>
                         <option value="nonveg" ${vegFilter === 'nonveg' ? 'selected' : ''}>Non-Vegetarian</option>
                     </select>
+                    <label class="flex items-center cursor-pointer">
+                        <span class="mr-2 text-sm clay-label">Available ingredients only</span>
+                        <span class="relative inline-flex items-center w-12 h-6">
+                            <input type="checkbox" id="toggle-available-only" class="sr-only peer" ${onlyAvailable ? 'checked' : ''}>
+                            <span class="w-12 h-6 bg-pastel-blue clay-section rounded-full peer peer-checked:bg-pastel-mint transition-colors duration-200"></span>
+                            <span class="absolute left-0 top-0 h-6 w-6 bg-white border border-transparent rounded-full shadow transform transition-transform duration-200 peer-checked:translate-x-6"></span>
+                        </span>
+                    </label>
                 </div>
             </div>
             <div id="recipe-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -173,6 +182,11 @@ document.addEventListener('DOMContentLoaded', () => {
             renderRecipes();
         });
 
+        document.getElementById('toggle-available-only').addEventListener('change', (e) => {
+            onlyAvailable = e.target.checked;
+            fetchRecipes();
+        });
+
         // --- CHANGE 3: Search input now calls the new lightweight filter function ---
         document.getElementById('recipe-search-input').addEventListener('input', (e) => {
             searchTerm = e.target.value;
@@ -191,7 +205,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function fetchRecipes() {
         try {
-            const response = await fetch(`${API_BASE}/recipes`, { headers: authHeaders() });
+            const response = await fetch(`${API_BASE}/recipes?only_available=${onlyAvailable}`, { headers: authHeaders() });
             if (handleAuthError(response)) return;
             recipes = await response.json();
             renderRecipes(); // Initial render

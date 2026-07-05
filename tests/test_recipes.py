@@ -90,3 +90,79 @@ def test_recipe_unauthorized(test_client: TestClient):
     assert resp.status_code == 401
 
 
+def test_recipes_by_availability(test_client: TestClient, auth_headers):
+    # 1. Create two ingredients: Tomato (available) and Spinach (unavailable)
+    r_tom = test_client.post(
+        "/ingredients",
+        params={"name": "Tomato", "shelf_life": 5, "serving_unit": "g"},
+        headers=auth_headers,
+    )
+    assert r_tom.status_code == 201
+    tom_id = r_tom.json()["id"]
+
+    # Mark Tomato as available
+    test_client.put(
+        f"/ingredients/{tom_id}",
+        params={"available": True},
+        headers=auth_headers,
+    )
+
+    # Spinach is by default available=False
+    r_spin = test_client.post(
+        "/ingredients",
+        params={"name": "Spinach", "shelf_life": 5, "serving_unit": "g"},
+        headers=auth_headers,
+    )
+    assert r_spin.status_code == 201
+    spin_id = r_spin.json()["id"]
+    test_client.put(
+        f"/ingredients/{spin_id}",
+        params={"available": False},
+        headers=auth_headers,
+    )
+
+    # 2. Create recipe: "Tomato Soup" (only uses Tomato)
+    recipe_payload_tom = {
+        "name": "Tomato Soup",
+        "serves": 2,
+        "ingredients": [
+            {"name": "Tomato", "quantity": 100, "serving_unit": "g"},
+        ],
+        "instructions": "Mix Tomato and boil",
+        "meal_type": "lunch",
+        "is_vegetarian": True,
+    }
+    resp1 = test_client.post("/recipes", json=recipe_payload_tom, headers=auth_headers)
+    assert resp1.status_code == 201
+
+    # 3. Create recipe: "Spinach Salad" (uses Spinach and Tomato)
+    recipe_payload_spin = {
+        "name": "Spinach Salad",
+        "serves": 2,
+        "ingredients": [
+            {"name": "Tomato", "quantity": 50, "serving_unit": "g"},
+            {"name": "Spinach", "quantity": 100, "serving_unit": "g"},
+        ],
+        "instructions": "Mix Spinach and Tomato",
+        "meal_type": "lunch",
+        "is_vegetarian": True,
+    }
+    resp2 = test_client.post("/recipes", json=recipe_payload_spin, headers=auth_headers)
+    assert resp2.status_code == 201
+
+    # 4. List recipes: default should return both Tomato Soup and Spinach Salad
+    list_all = test_client.get("/recipes", headers=auth_headers)
+    assert list_all.status_code == 200
+    all_names = [r["name"] for r in list_all.json()]
+    assert "Tomato Soup" in all_names
+    assert "Spinach Salad" in all_names
+
+    # 5. List recipes with only_available=True: should only return Tomato Soup
+    list_avail = test_client.get("/recipes?only_available=true", headers=auth_headers)
+    assert list_avail.status_code == 200
+    avail_names = [r["name"] for r in list_avail.json()]
+    assert "Tomato Soup" in avail_names
+    assert "Spinach Salad" not in avail_names
+
+
+
