@@ -1,0 +1,74 @@
+/*
+ * MealPlanner — app stylesheet (T2 build scaffold)
+ * ------------------------------------------------------------------
+ * Compiled by Vite + @tailwindcss/vite. This single file replaces the
+ * runtime Tailwind CDN (https://cdn.tailwindcss.com) and the ~230-line
+ * <style> block that was copy-pasted into every page.
+ *
+ * Layering:
+ *   1. Tailwind v4 — utilities + base + theme (@import "tailwindcss").
+ *   2. T1 design tokens (../design/tokens.css) — the canonical source of
+ *      truth for the light/dark theme CSS variables.
+ *   3. Legacy clay card styles (./legacy.css) — centralized here from the
+ *      old per-page <style> blocks so page-content JS that injects
+ *      .meal-card / .clay-* markup still renders. T3 (component catalog)
+ *      replaces these with token-driven component classes.
+ *   4. @theme inline — maps the T1 semantic tokens onto Tailwind utility
+ *      namespaces (bg-surface, text-primary, text-accent, border-line,
+ *      font-sans, rounded-*, …). `inline` makes each utility resolve the
+ *      T1 variable directly (e.g. .bg-surface { background: var(--bg-surface) }),
+ *      so the utilities respond to the runtime light/dark switch in
+ *      tokens.css rather than copying a static value.
+ */
+@import "tailwindcss";
+@import "../design/tokens.css";
+@import "./legacy.css";
+
+@theme inline {
+  /* Surfaces */
+  --color-canvas:         var(--bg-canvas);
+  --color-surface:        var(--bg-surface);
+  --color-surface-raised: var(--bg-surface-raised);
+  --color-subtle:         var(--bg-subtle);
+  --color-sunken:         var(--bg-sunken);
+
+  /* Borders (named "line" so the utility reads border-line, not border-border-default) */
+  --color-line-subtle: var(--border-subtle);
+  --color-line:        var(--border-default);
+  --color-line-strong: var(--border-strong);
+
+  /* Text */
+  --color-primary:   var(--text-primary);
+  --color-secondary: var(--text-secondary);
+  --color-muted:     var(--text-muted);
+
+  /* Brand accent */
+  --color-accent:        var(--accent);
+  --color-accent-hover:  var(--accent-hover);
+  --color-accent-active: var(--accent-active);
+  --color-accent-subtle: var(--accent-subtle);
+  --color-accent-fg:     var(--accent-fg);
+
+  /* Fonts */
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+
+  /* Radius */
+  --radius-xs:   var(--radius-xs);
+  --radius-sm:   var(--radius-sm);
+  --radius-md:   var(--radius-md);
+  --radius-lg:   var(--radius-lg);
+  --radius-xl:   var(--radius-xl);
+  --radius-2xl:  var(--radius-2xl);
+  --radius-pill: var(--radius-pill);
+}
+
+/* Base layout — sticky footer (supersedes the old per-page body/main flex rules). */
+body {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+main {
+  flex: 1 0 auto;
+}

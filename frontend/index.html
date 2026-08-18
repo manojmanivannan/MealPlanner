@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meal Planner</title>
+    <link rel="icon" type="image/x-icon" href="/meal_logo.ico">
+    <meta name="application-name" content="Meal Planner">
+</head>
+<body class="min-h-screen flex flex-col bg-canvas text-primary font-sans">
+    <!-- Shared nav header + auth bootstrap injected here by src/layout.js -->
+    <div id="app-header"></div>
+
+    <main class="container mx-auto px-6 py-12 flex-1">
+        <section>
+            <h3 class="text-2xl md:text-3xl font-bold clay-title mb-2 text-center">Interactive Weekly Planner</h3>
+            <p class="max-w-3xl mx-auto text-lg text-secondary mt-2 text-center mb-10">
+                Plan for the week &amp; Marco nutrients for one person.
+            </p>
+            <div class="text-center mb-4">
+                <button id="export-pdf-btn" class="clay-btn">Export as PDF</button>
+            </div>
+            <div id="meal-plan-grid" class="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 clay-section p-6"></div>
+        </section>
+    </main>
+
+    <footer class="bg-sunken text-secondary py-8 text-center">
+        <p>Your journey to healthy, convenient eating starts now.</p>
+    </footer>
+
+    <script type="module" src="/src/pages/weekly-planner.js"></script>
+</body>
+</html>
