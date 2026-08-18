@@ -6,13 +6,20 @@ import tailwindcss from '@tailwindcss/vite'
 // One HTML entry per page; add converted pages to `input` as they migrate.
 // See docs/adr/0002-build-scaffold-and-shared-layout.md.
 export default defineConfig({
+  // Multi-page app: serve each .html directly, no SPA history fallback.
+  appType: 'mpa',
   plugins: [tailwindcss()],
   server: {
     port: 5173,
     proxy: {
-      // Mirror nginx.conf: /api -> backend:5000. Lets `npm run dev` talk to a
-      // local FastAPI backend without a separate proxy.
-      '/api': { target: 'http://localhost:5000', changeOrigin: true },
+      // Mirror nginx.conf's `location /api/ { proxy_pass http://backend:5000/; }`:
+      // the FastAPI routers mount at /auth, /recipes, /weekly-plan, /ingredients
+      // (no /api prefix), so the /api prefix must be stripped here too.
+      '/api': {
+        target: 'http://localhost:5000',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, ''),
+      },
     },
   },
   build: {
@@ -20,6 +27,9 @@ export default defineConfig({
     rollupOptions: {
       input: {
         index: fileURLToPath(new URL('./index.html', import.meta.url)),
+        'recipe-hub': fileURLToPath(new URL('./recipe-hub.html', import.meta.url)),
+        ingredients: fileURLToPath(new URL('./ingredients.html', import.meta.url)),
+        welcome: fileURLToPath(new URL('./welcome.html', import.meta.url)),
       },
     },
   },

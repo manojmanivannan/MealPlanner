@@ -1,19 +1,12 @@
 /*
- * Weekly Planner page entry (T2 demo page).
+ * Weekly Planner page entry.
  *
- * Imports the self-hosted Inter weights + the compiled stylesheet, mounts
- * the shared layout (header + auth), then runs the existing weekly-plan
- * logic and the PDF-export handler. This is the single place that wires
- * the page into the new Vite build; the page-content logic stays in the
- * shared frontend/html/weekly-plan.js (also used by the legacy CDN page).
+ * Boots the shared stylesheet/fonts + the shared header/auth layout, then
+ * runs the existing weekly-plan grid logic and the PDF-export handler.
+ * The page-content logic stays single-sourced in frontend/html/weekly-plan.js
+ * (also used by the legacy CDN page).
  */
-import '@fontsource/inter/400.css'
-import '@fontsource/inter/500.css'
-import '@fontsource/inter/600.css'
-import '@fontsource/inter/700.css'
-
-import '../styles.css'
-import { mountLayout } from '../layout.js'
+import { mountLayout } from '../bootstrap.js'
 
 // Shared nav header + auth bootstrap (replaces the per-page header/auth IIFE).
 mountLayout({ activeNav: 'planner' })

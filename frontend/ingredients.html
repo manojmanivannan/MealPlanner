@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ingredients List</title>
+    <link rel="icon" type="image/x-icon" href="/meal_logo.ico">
+    <meta name="application-name" content="Meal Planner">
+</head>
+<body class="min-h-screen flex flex-col bg-canvas text-primary font-sans">
+    <!-- Shared nav header + auth bootstrap injected here by src/layout.js -->
+    <div id="app-header"></div>
+
+    <main class="container mx-auto px-6 py-12 flex-1">
+        <section>
+            <h3 class="text-2xl md:text-3xl font-bold clay-title mb-2 text-center">Ingredient List</h3>
+            <p class="max-w-3xl mx-auto text-lg text-secondary mt-2 text-center mb-10">
+                Ingredients that are required for creating your recipes
+            </p>
+            <div id="ingredient-list-container" class="bg-surface p-6 rounded-xl shadow-md border border-line clay-section"></div>
+        </section>
+    </main>
+
+    <footer class="bg-sunken text-secondary py-8 text-center">
+        <p>Manage your ingredients efficiently.</p>
+    </footer>
+
+    <script type="module" src="/src/pages/ingredients.js"></script>
+</body>
+</html>
