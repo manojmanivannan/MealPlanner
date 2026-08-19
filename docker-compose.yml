@@ -32,6 +32,7 @@ services:
     profiles:
       - prod
     image: tailscale/tailscale:latest
+    pull_policy: always
     hostname: meal_planner
     environment:
       - TS_AUTHKEY=$TS_AUTHKEY
@@ -98,7 +99,7 @@ services:
     #networks:
     #  - web
   db:
-    image: postgres:17
+    image: postgres:17.9
     environment:
       - POSTGRES_USER=$POSTGRES_USER
       - POSTGRES_PASSWORD=$POSTGRES_PASSWORD
