@@ -9,11 +9,15 @@
  *   1. Tailwind v4 — utilities + base + theme (@import "tailwindcss").
  *   2. T1 design tokens (../design/tokens.css) — the canonical source of
  *      truth for the light/dark theme CSS variables.
- *   3. Legacy clay card styles (./legacy.css) — centralized here from the
+ *   3. T3 component primitives (../design/components.css) — the restyled
+ *      token-driven classes (.mp-btn, .mp-card, .mp-input, .mp-modal-*,
+ *      .mp-tabs, .mp-badge, .mp-toast, .mp-state). Wrapped in
+ *      `@layer components` so utilities win when both apply.
+ *   4. Legacy clay card styles (./legacy.css) — centralized here from the
  *      old per-page <style> blocks so page-content JS that injects
- *      .meal-card / .clay-* markup still renders. T3 (component catalog)
- *      replaces these with token-driven component classes.
- *   4. @theme inline — maps the T1 semantic tokens onto Tailwind utility
+ *      .meal-card / .clay-* markup still renders. T4–T7 replace these with
+ *      the T3 component classes; this ticket keeps them for continuity.
+ *   5. @theme inline — maps the T1 semantic tokens onto Tailwind utility
  *      namespaces (bg-surface, text-primary, text-accent, border-line,
  *      font-sans, rounded-*, …). `inline` makes each utility resolve the
  *      T1 variable directly (e.g. .bg-surface { background: var(--bg-surface) }),
@@ -22,6 +26,7 @@
  */
 @import "tailwindcss";
 @import "../design/tokens.css";
+@import "../design/components.css";
 @import "./legacy.css";
 
 @theme inline {
