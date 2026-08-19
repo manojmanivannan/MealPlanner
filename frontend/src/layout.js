@@ -17,6 +17,7 @@ const NAV = [
   { key: 'planner',     label: 'Weekly Planner', href: 'index.html' },
   { key: 'recipes',     label: 'Recipe Hub',      href: 'recipe-hub.html' },
   { key: 'ingredients', label: 'Ingredients',     href: 'ingredients.html' },
+  { key: 'shopping',    label: 'Shopping List',    href: 'shopping-list.html' },
 ]
 
 function headerHTML(activeNav) {

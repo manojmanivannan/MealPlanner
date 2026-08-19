@@ -29,6 +29,7 @@ export default defineConfig({
         index: fileURLToPath(new URL('./index.html', import.meta.url)),
         'recipe-hub': fileURLToPath(new URL('./recipe-hub.html', import.meta.url)),
         ingredients: fileURLToPath(new URL('./ingredients.html', import.meta.url)),
+        'shopping-list': fileURLToPath(new URL('./shopping-list.html', import.meta.url)),
         welcome: fileURLToPath(new URL('./welcome.html', import.meta.url)),
         // T3 — the component catalog (design artifact; not part of the nav).
         catalog: fileURLToPath(new URL('./catalog.html', import.meta.url)),
