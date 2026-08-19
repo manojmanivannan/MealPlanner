@@ -16,7 +16,7 @@ services:
     depends_on:
       backend:
         condition: service_healthy
-    
+
     restart: unless-stopped
     develop:
       watch:
@@ -98,7 +98,7 @@ services:
     #networks:
     #  - web
   db:
-    image: postgres:latest
+    image: postgres:17
     environment:
       - POSTGRES_USER=$POSTGRES_USER
       - POSTGRES_PASSWORD=$POSTGRES_PASSWORD
