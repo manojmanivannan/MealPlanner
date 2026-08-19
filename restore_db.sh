@@ -1,6 +1,6 @@
 #!/bin/bash
 # Restore PostgreSQL database tables from CSV files into a Docker Compose service
-# Usage: ./restore_db.sh 
+# Usage: ./restore_db.sh
 
 set -e
 
@@ -15,7 +15,7 @@ TABLES_TO_RESTORE="ingredients recipes weekly_plan"
 
 # for each table in the list, perform a restore
 for TABLE in $TABLES_TO_RESTORE; do
-    CSV_FILE="./backend/${TABLE}.csv"
+    CSV_FILE="./backend/data/${TABLE}.csv"
 
     if [ ! -f "$CSV_FILE" ]; then
         echo "Error: Backup file $CSV_FILE not found. Skipping restore for table $TABLE."
@@ -23,7 +23,7 @@ for TABLE in $TABLES_TO_RESTORE; do
     fi
 
     echo "Restoring table $TABLE from $CSV_FILE..."
-    
+
     # 1. Clear existing data from the table. TRUNCATE is used as it's fast.
     # The CASCADE option will also clear any dependent data in other tables.
     echo "  -> Truncating table $TABLE..."
@@ -33,10 +33,22 @@ for TABLE in $TABLES_TO_RESTORE; do
     echo "  -> Resetting sequences for table $TABLE..."
     docker exec -t $CONTAINER_NAME psql -U $DB_USER -d $DB_NAME -c "SELECT pg_catalog.setval(pg_get_serial_sequence('$TABLE', 'id'), 1, false);"
 
+    # The CSV has no user_id column. Every restored row is owned by the demo
+    # user (id 1), so temporarily default user_id to 1 during the COPY. This also
+    # satisfies the NOT NULL user_id on weekly_plan. The default is dropped
+    # afterwards so the schema matches models.py again.
+    echo "  -> Binding restored rows to user_id = 1..."
+    docker exec -t $CONTAINER_NAME psql -U $DB_USER -d $DB_NAME -c "ALTER TABLE $TABLE ALTER COLUMN user_id SET DEFAULT 1;"
+
     # 2. Copy data from the CSV file into the table.
-    # The command tells psql to expect CSV format and to treat the first line as a header to be ignored.
+    # Use an explicit column list (all columns except user_id, in table order) so
+    # COPY maps the CSV positionally; the header row is skipped, not mapped by name.
+    COLUMNS=$(docker exec $CONTAINER_NAME psql -U $DB_USER -d $DB_NAME -Atc "SELECT string_agg(quote_ident(column_name), ', ' ORDER BY ordinal_position) FROM information_schema.columns WHERE table_name = '$TABLE' AND column_name <> 'user_id'")
     echo "  -> Copying data from $CSV_FILE to table $TABLE..."
-    cat "$CSV_FILE" | docker exec -i $CONTAINER_NAME psql -U $DB_USER -d $DB_NAME -c "COPY $TABLE FROM STDIN WITH (FORMAT csv, HEADER true)"
+    cat "$CSV_FILE" | docker exec -i $CONTAINER_NAME psql -U $DB_USER -d $DB_NAME -c "COPY $TABLE ($COLUMNS) FROM STDIN WITH (FORMAT csv, HEADER true)"
+
+    # Drop the temporary default so the schema matches models.py again.
+    docker exec -t $CONTAINER_NAME psql -U $DB_USER -d $DB_NAME -c "ALTER TABLE $TABLE ALTER COLUMN user_id DROP DEFAULT;"
 
     echo "Restore completed for table $TABLE"
 done
