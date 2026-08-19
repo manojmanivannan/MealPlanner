@@ -16,7 +16,7 @@ services:
     depends_on:
       backend:
         condition: service_healthy
-    
+
     restart: unless-stopped
     develop:
       watch:
@@ -29,7 +29,6 @@ services:
 
   # Tailscale service to provide secure access to nginx-prod
   tailscale-nginx:
-
     profiles:
       - prod
     image: tailscale/tailscale:latest

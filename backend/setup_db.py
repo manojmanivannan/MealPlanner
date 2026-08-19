@@ -124,7 +124,17 @@ def load_data_from_csv(
                 }
                 stmt = stmt.on_conflict_do_update(index_elements=['user_id','name'], set_=update_dict)
             elif model == Recipe:
-                stmt = stmt.on_conflict_do_nothing(index_elements=['id'])
+                # Upsert on (user_id, name) so re-seeding is idempotent and a
+                # duplicate recipe name can never coexist for one user. The
+                # nutrition trigger recomputes protein/carbs/energy on update.
+                update_dict = {
+                    col.name: stmt.excluded[col.name]
+                    for col in model.__table__.columns
+                    if not col.primary_key and col.name not in ('name', 'user_id')
+                }
+                stmt = stmt.on_conflict_do_update(
+                    index_elements=['user_id', 'name'], set_=update_dict
+                )
             elif model == WeeklyPlan:
                 # Upsert per user/week slot
                 stmt = stmt.on_conflict_do_update(
@@ -259,6 +269,29 @@ def setup_database() -> None:
                         SELECT 1 FROM pg_constraint WHERE conname = 'unique_user_day_meal'
                     ) THEN
                         ALTER TABLE weekly_plan ADD CONSTRAINT unique_user_day_meal UNIQUE (user_id, day, meal_type);
+                    END IF;
+                END$$;
+            """))
+            # Recipe names must be unique per user; global recipes (user_id NULL)
+            # are deduped by name via a partial unique index. Mirrors the
+            # ingredient constraints above and prevents the duplicate-recipe
+            # seed bug from recurring.
+            conn.execute(sa_text("""
+                DO $$
+                BEGIN
+                    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'uniq_user_recipe_name') THEN
+                        ALTER TABLE recipes ADD CONSTRAINT uniq_user_recipe_name UNIQUE (user_id, name);
+                    END IF;
+                END$$;
+            """))
+            conn.execute(sa_text("""
+                DO $$
+                BEGIN
+                    IF NOT EXISTS (
+                        SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+                        WHERE c.relname = 'uniq_global_recipe_name' AND n.nspname = 'public'
+                    ) THEN
+                        CREATE UNIQUE INDEX uniq_global_recipe_name ON recipes(name) WHERE user_id IS NULL;
                     END IF;
                 END$$;
             """))

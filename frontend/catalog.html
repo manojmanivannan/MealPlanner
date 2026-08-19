@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Component Catalog • Meal Planner</title>
+    <link rel="icon" type="image/x-icon" href="/meal_logo.ico">
+    <meta name="application-name" content="Meal Planner">
+    <meta name="description" content="T3 component catalog — restyled primitives + states + auth form showcase.">
+</head>
+<body class="min-h-screen bg-canvas text-primary font-sans">
+<div class="max-w-5xl mx-auto px-4 py-10 sm:py-12">
+
+  <!-- ============================ HEADER ============================ -->
+  <header class="flex flex-wrap items-baseline justify-between gap-3 mb-10">
+    <div>
+      <p class="text-xs font-semibold uppercase tracking-wide text-muted">T3 · Component catalog</p>
+      <h1 class="text-h1 font-bold text-primary tracking-tight mt-1">Restyled primitives &amp; states</h1>
+      <p class="text-secondary text-lg mt-2 max-w-2xl">Every primitive on the T1 tokens, on the T2 build. The react-to surface for the locked component decisions — buttons, cards, inputs, modals, tabs, badges, toasts, the empty/loading/error states, and the restyled auth screen as the form showcase.</p>
+    </div>
+    <div class="flex bg-subtle border border-line rounded-pill p-[3px] gap-0.5" role="group" aria-label="Theme" id="theme-toggle">
+      <button data-set="light" aria-pressed="true" class="px-3 py-1 text-sm font-medium text-secondary rounded-pill focus-ring">Light</button>
+      <button data-set="system" aria-pressed="false" class="px-3 py-1 text-sm font-medium text-secondary rounded-pill focus-ring">System</button>
+      <button data-set="dark" aria-pressed="false" class="px-3 py-1 text-sm font-medium text-secondary rounded-pill focus-ring">Dark</button>
+    </div>
+  </header>
+
+  <!-- ============================ BUTTONS ============================ -->
+  <section class="mb-12">
+    <p class="text-xs font-semibold uppercase tracking-wide text-muted">01 · Buttons</p>
+    <h2 class="text-h2 font-semibold text-primary tracking-snug mt-1 mb-1">Primary · secondary · ghost · danger</h2>
+    <p class="text-secondary mb-5 max-w-2xl">Four variants, three sizes, and the full state set. The loading state is <code class="font-mono text-sm">aria-busy</code> + a spinner; disabled dims and removes pointer interaction.</p>
+
+    <div class="mp-card elevate">
+      <p class="mp-card-subtitle mb-3">Variants</p>
+      <div class="flex flex-wrap items-center gap-3 mb-6">
+        <button class="mp-btn mp-btn-primary focus-ring">Add recipe</button>
+        <button class="mp-btn mp-btn-secondary focus-ring">Cancel</button>
+        <button class="mp-btn mp-btn-ghost focus-ring">Filters</button>
+        <button class="mp-btn mp-btn-danger focus-ring">Delete</button>
+        <button class="mp-btn mp-btn-danger-outline focus-ring">Remove</button>
+      </div>
+
+      <p class="mp-card-subtitle mb-3">Sizes</p>
+      <div class="flex flex-wrap items-center gap-3 mb-6">
+        <button class="mp-btn mp-btn-primary mp-btn-sm focus-ring">Small</button>
+        <button class="mp-btn mp-btn-primary focus-ring">Default</button>
+        <button class="mp-btn mp-btn-primary mp-btn-lg focus-ring">Large</button>
+      </div>
+
+      <p class="mp-card-subtitle mb-3">States</p>
+      <div class="flex flex-wrap items-center gap-3 mb-6">
+        <button class="mp-btn mp-btn-primary focus-ring">Default</button>
+        <button class="mp-btn mp-btn-secondary" data-loading="true" aria-busy="true" disabled>Loading</button>
+        <button class="mp-btn mp-btn-primary" disabled>Disabled</button>
+        <button class="mp-btn mp-btn-secondary" disabled>Disabled</button>
+        <button class="mp-btn mp-btn-ghost mp-btn-icon focus-ring" aria-label="More options">
+          <svg viewBox="0 0 20 20" width="18" height="18" fill="currentColor" aria-hidden="true"><circle cx="4" cy="10" r="1.6"/><circle cx="10" cy="10" r="1.6"/><circle cx="16" cy="10" r="1.6"/></svg>
+        </button>
+      </div>
+
+      <p class="mp-card-subtitle mb-3">Block (full-width)</p>
+      <div class="max-w-xs">
+        <button class="mp-btn mp-btn-primary mp-btn-block focus-ring">Continue</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================ CARDS ============================ -->
+  <section class="mb-12">
+    <p class="text-xs font-semibold uppercase tracking-wide text-muted">02 · Cards</p>
+    <h2 class="text-h2 font-semibold text-primary tracking-snug mt-1 mb-1">Neutral surface + day accent</h2>
+    <p class="text-secondary mb-5 max-w-2xl">Cards stay neutral; the day shows up as a top edge or a left bar — never a full-card fill. Interactive cards lift on hover.</p>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <article class="mp-card">
+        <div class="mp-card-header"><h3 class="mp-card-title">Neutral card</h3></div>
+        <p class="mp-card-body">Flat with a hairline border — the default resting state.</p>
+      </article>
+      <article class="mp-card elevate">
+        <div class="mp-card-header"><h3 class="mp-card-title">Raised card</h3><span class="mp-badge mp-badge-accent">New</span></div>
+        <p class="mp-card-body">The single subtle shadow tier, for emphasis.</p>
+      </article>
+      <article class="mp-card interactive focus-ring" tabindex="0" role="button">
+        <div class="mp-card-header"><h3 class="mp-card-title">Interactive</h3></div>
+        <p class="mp-card-body">Hover lifts; keyboard-focusable. Clickable meal/recipe cards.</p>
+      </article>
+
+      <article class="mp-card mp-card-day" style="--day-color:var(--day-mon)">
+        <div class="mp-card-header"><span class="flex items-center gap-2"><span class="day-dot"></span><h3 class="mp-card-title">Monday</h3></span></div>
+        <p class="mp-card-body">Top-edge day accent — the day color is the border, not the background.</p>
+      </article>
+      <article class="mp-card mp-card-day-bar" style="--day-color:var(--day-thu)">
+        <div class="mp-card-header"><span class="flex items-center gap-2"><span class="day-dot"></span><h3 class="mp-card-title">Thursday</h3></span></div>
+        <p class="mp-card-body">Left-bar day accent — the meal-strip pattern from the weekly planner.</p>
+      </article>
+      <article class="mp-card" style="--day-color:var(--day-sat)">
+        <div class="mp-card-header"><span class="flex items-center gap-2"><span class="day-dot"></span><h3 class="mp-card-title">Saturday</h3></span><span class="mp-badge mp-badge-day-soft" style="--day-soft:var(--day-sat-soft)">3 meals</span></div>
+        <p class="mp-card-body">Dot in the header + soft-tint badge count. Surface stays quiet.</p>
+      </article>
+    </div>
+  </section>
+
+  <!-- ============================ FORM CONTROLS ============================ -->
+  <section class="mb-12">
+    <p class="text-xs font-semibold uppercase tracking-wide text-muted">03 · Inputs · selects · checkboxes</p>
+    <h2 class="text-h2 font-semibold text-primary tracking-snug mt-1 mb-1">Form controls</h2>
+    <p class="text-secondary mb-5 max-w-2xl">Label + control + help/error grouped as a field. Invalid uses <code class="font-mono text-sm">aria-invalid</code> + a danger border and error text; native checkbox/radio keep semantics with <code class="font-mono text-sm">accent-color</code>.</p>
+
+    <div class="mp-card elevate grid grid-cols-1 sm:grid-cols-2 gap-5">
+      <div class="mp-field">
+        <label class="mp-label" for="f-email">Email <span class="mp-req" aria-hidden="true">*</span></label>
+        <input id="f-email" type="email" class="mp-input focus-ring" placeholder="you@example.com" aria-required="true">
+        <p class="mp-help">We never share your address.</p>
+      </div>
+
+      <div class="mp-field">
+        <label class="mp-label" for="f-pwd">Password</label>
+        <input id="f-pwd" type="password" class="mp-input focus-ring" placeholder="••••••••" aria-required="true">
+        <p class="mp-error-text" id="f-pwd-err" role="alert">At least 8 characters.</p>
+      </div>
+
+      <div class="mp-field">
+        <label class="mp-label" for="f-bad">Invalid field</label>
+        <input id="f-bad" type="text" class="mp-input focus-ring" value="123" aria-invalid="true" aria-describedby="f-bad-err">
+        <p class="mp-error-text" id="f-bad-err"><svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="10" cy="10" r="8"/><path d="M10 6v5M10 14v.01"/></svg> Must be a valid unit (g, kg, ml, cup).</p>
+      </div>
+
+      <div class="mp-field">
+        <label class="mp-label" for="f-sel">Serving unit</label>
+        <select id="f-sel" class="mp-select focus-ring">
+          <option value="g">grams</option>
+          <option value="kg">kilograms</option>
+          <option value="ml">millilitres</option>
+          <option value="cup">cup</option>
+        </select>
+        <p class="mp-help">Used to normalize quantities.</p>
+      </div>
+
+      <div class="mp-field sm:col-span-2">
+        <label class="mp-label" for="f-notes">Notes</label>
+        <textarea id="f-notes" class="mp-textarea focus-ring" placeholder="Optional cooking notes…"></textarea>
+      </div>
+
+      <div class="flex flex-col gap-3">
+        <label class="mp-check"><input type="checkbox" checked> Track macros</label>
+        <label class="mp-check"><input type="checkbox"> Sync to shopping list</label>
+        <label class="mp-check"><input type="checkbox" disabled> Disabled option</label>
+      </div>
+
+      <div class="flex flex-col gap-3">
+        <label class="mp-check"><input type="radio" name="meal" checked> Breakfast</label>
+        <label class="mp-check"><input type="radio" name="meal"> Lunch</label>
+        <label class="mp-check"><input type="radio" name="meal"> Dinner</label>
+      </div>
+
+      <div class="flex flex-col gap-3">
+        <label class="mp-switch"><input type="checkbox" checked><span class="mp-switch-track"></span> Email reminders</label>
+        <label class="mp-switch"><input type="checkbox"><span class="mp-switch-track"></span> Weekly digest</label>
+      </div>
+
+      <div class="mp-field">
+        <label class="mp-label" for="f-dis">Disabled</label>
+        <input id="f-dis" type="text" class="mp-input" value="read only" disabled>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================ TABS ============================ -->
+  <section class="mb-12">
+    <p class="text-xs font-semibold uppercase tracking-wide text-muted">04 · Tabs</p>
+    <h2 class="text-h2 font-semibold text-primary tracking-snug mt-1 mb-1">Tabs</h2>
+    <p class="text-secondary mb-5 max-w-2xl">Arrow keys move between tabs; Home/End jump to the ends. The selected tab is the accent underline.</p>
+
+    <div class="mp-card">
+      <div class="mp-tablist" role="tablist" aria-label="Meal categories" id="demo-tabs">
+        <button role="tab" id="t-all" aria-controls="p-all" aria-selected="true" class="mp-tab focus-ring" tabindex="0">All</button>
+        <button role="tab" id="t-break" aria-controls="p-break" aria-selected="false" class="mp-tab focus-ring" tabindex="-1">Breakfast</button>
+        <button role="tab" id="t-lunch" aria-controls="p-lunch" aria-selected="false" class="mp-tab focus-ring" tabindex="-1">Lunch</button>
+        <button role="tab" id="t-dinner" aria-controls="p-dinner" aria-selected="false" class="mp-tab focus-ring" tabindex="-1">Dinner</button>
+      </div>
+      <div role="tabpanel" id="p-all" aria-labelledby="t-all" class="mp-tabpanel"><p class="mp-card-body">Every recipe, across all meals.</p></div>
+      <div role="tabpanel" id="p-break" aria-labelledby="t-break" class="mp-tabpanel hidden"><p class="mp-card-body">Morning recipes — oats, eggs, yogurt.</p></div>
+      <div role="tabpanel" id="p-lunch" aria-labelledby="t-lunch" class="mp-tabpanel hidden"><p class="mp-card-body">Midday — salads, wraps, soups.</p></div>
+      <div role="tabpanel" id="p-dinner" aria-labelledby="t-dinner" class="mp-tabpanel hidden"><p class="mp-card-body">Evening — pasta, stir-fry, roast.</p></div>
+    </div>
+  </section>
+
+  <!-- ============================ BADGES ============================ -->
+  <section class="mb-12">
+    <p class="text-xs font-semibold uppercase tracking-wide text-muted">05 · Badges &amp; pills</p>
+    <h2 class="text-h2 font-semibold text-primary tracking-snug mt-1 mb-1">Badges &amp; pills</h2>
+    <p class="text-secondary mb-5 max-w-2xl">Compact status labels. Neutral by default; accent for brand; status colors for success/warning/danger; day chips for the week.</p>
+
+    <div class="mp-card elevate flex flex-wrap items-center gap-2">
+      <span class="mp-badge">Neutral</span>
+      <span class="mp-badge mp-badge-accent">Accent</span>
+      <span class="mp-badge mp-badge-success">Saved</span>
+      <span class="mp-badge mp-badge-warning">Check macros</span>
+      <span class="mp-badge mp-badge-danger">Over budget</span>
+      <span class="mp-badge mp-badge-outline">Outline</span>
+      <span class="mp-badge-lg mp-badge-day" style="--day-color:var(--day-mon);--day-fg:var(--day-mon-fg)">Mon</span>
+      <span class="mp-badge-lg mp-badge-day-soft" style="--day-soft:var(--day-thu-soft)">Thu</span>
+      <span class="mp-badge-lg mp-badge-day" style="--day-color:var(--day-sat);--day-fg:var(--day-sat-fg)">Sat</span>
+    </div>
+  </section>
+
+  <!-- ============================ TOASTS ============================ -->
+  <section class="mb-12">
+    <p class="text-xs font-semibold uppercase tracking-wide text-muted">06 · Toasts</p>
+    <h2 class="text-h2 font-semibold text-primary tracking-snug mt-1 mb-1">Toasts</h2>
+    <p class="text-secondary mb-5 max-w-2xl">Non-blocking feedback — the replacement for <code class="font-mono text-sm">alert()</code> and silent <code class="font-mono text-sm">console.error</code>. Error/warning announce as <code class="font-mono text-sm">role="alert"</code>; success/info as <code class="font-mono text-sm">role="status"</code>. Auto-dismiss after 5s; pause on hover.</p>
+
+    <div class="mp-card elevate flex flex-wrap gap-3" id="toast-triggers">
+      <button class="mp-btn mp-btn-secondary focus-ring" data-toast="success">Success toast</button>
+      <button class="mp-btn mp-btn-secondary focus-ring" data-toast="error">Error toast</button>
+      <button class="mp-btn mp-btn-secondary focus-ring" data-toast="warning">Warning toast</button>
+      <button class="mp-btn mp-btn-secondary focus-ring" data-toast="info">Info toast</button>
+      <button class="mp-btn mp-btn-secondary focus-ring" data-toast="titled">With title</button>
+    </div>
+  </section>
+
+  <!-- ============================ STATES ============================ -->
+  <section class="mb-12">
+    <p class="text-xs font-semibold uppercase tracking-wide text-muted">07 · Empty · loading · error</p>
+    <h2 class="text-h2 font-semibold text-primary tracking-snug mt-1 mb-1">Feedback states</h2>
+    <p class="text-secondary mb-5 max-w-2xl">The #1 planner UX gap — today these are silent failures. Each state gets an icon, a one-line explanation, and an action.</p>
+
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div class="mp-card mp-state">
+        <svg class="mp-state-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 7v10l9 4 9-4V7"/></svg>
+        <p class="mp-state-title">No recipes yet</p>
+        <p class="mp-state-desc">Add your first recipe to start planning the week.</p>
+        <div class="mp-state-action"><button class="mp-btn mp-btn-primary mp-btn-sm focus-ring">Add recipe</button></div>
+      </div>
+
+      <div class="mp-card mp-state">
+        <div class="mp-spinner" aria-hidden="true"></div>
+        <p class="mp-state-title">Loading your plan…</p>
+        <p class="mp-state-desc">Pulling this week's meals and macros.</p>
+      </div>
+
+      <div class="mp-card mp-state mp-state-error">
+        <svg class="mp-state-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16v.01"/></svg>
+        <p class="mp-state-title">Couldn't load recipes</p>
+        <p class="mp-state-desc">The server didn't respond in time.</p>
+        <div class="mp-state-action"><button class="mp-btn mp-btn-secondary mp-btn-sm focus-ring">Retry</button></div>
+      </div>
+    </div>
+
+    <h3 class="text-h3 font-semibold text-primary mt-8 mb-3">Skeleton — loading content in place</h3>
+    <div class="mp-card max-w-sm">
+      <div class="mp-skeleton mp-skeleton-line"></div>
+      <div class="mp-skeleton mp-skeleton-line"></div>
+      <div class="mp-skeleton mp-skeleton-line"></div>
+    </div>
+  </section>
+
+  <!-- ============================ MODALS ============================ -->
+  <section class="mb-12">
+    <p class="text-xs font-semibold uppercase tracking-wide text-muted">08 · Modals &amp; dialogs</p>
+    <h2 class="text-h2 font-semibold text-primary tracking-snug mt-1 mb-1">Modals &amp; dialogs</h2>
+    <p class="text-secondary mb-5 max-w-2xl">Accessible: focus trap, Escape, click-outside, <code class="font-mono text-sm">role="dialog" aria-modal</code>, restored focus. Full-screen on mobile.</p>
+
+    <div class="mp-card elevate flex flex-wrap gap-3" id="modal-triggers">
+      <button class="mp-btn mp-btn-primary focus-ring" data-modal="confirm">Confirm dialog</button>
+      <button class="mp-btn mp-btn-secondary focus-ring" data-modal="form">Form in modal</button>
+      <button class="mp-btn mp-btn-secondary focus-ring" data-modal="long">Long content</button>
+    </div>
+  </section>
+
+  <!-- ============================ AUTH SHOWCASE ============================ -->
+  <section class="mb-16">
+    <p class="text-xs font-semibold uppercase tracking-wide text-muted">09 · Auth screen — form showcase</p>
+    <h2 class="text-h2 font-semibold text-primary tracking-snug mt-1 mb-1">Login / signup</h2>
+    <p class="text-secondary mb-5 max-w-2xl">The restyled auth screen as the form showcase: tabs, fields with inline errors, a loading submit, and a success toast. This is the reference the welcome page adopts.</p>
+
+    <div class="max-w-md mx-auto mp-card elevate p-6" id="auth-card">
+      <div class="text-center mb-6">
+        <h3 class="text-h2 font-bold text-accent tracking-tight">Meal Planner</h3>
+        <p class="text-secondary">Sign in to continue</p>
+      </div>
+
+      <div class="mb-4 flex gap-2" role="tablist" aria-label="Authentication" id="auth-tabs">
+        <button role="tab" id="auth-login-tab" aria-selected="true" class="mp-btn mp-btn-secondary mp-btn-block focus-ring">Login</button>
+        <button role="tab" id="auth-signup-tab" aria-selected="false" class="mp-btn mp-btn-ghost mp-btn-block focus-ring">Sign up</button>
+      </div>
+
+      <!-- Login -->
+      <form id="auth-login-form" class="flex flex-col gap-4" novalidate>
+        <div class="mp-field">
+          <label class="mp-label" for="login-email">Email</label>
+          <input id="login-email" type="email" required class="mp-input focus-ring" autocomplete="email">
+          <p class="mp-error-text" id="login-email-err" role="alert"></p>
+        </div>
+        <div class="mp-field">
+          <label class="mp-label" for="login-password">Password</label>
+          <input id="login-password" type="password" required class="mp-input focus-ring" autocomplete="current-password">
+          <p class="mp-error-text" id="login-password-err" role="alert"></p>
+        </div>
+        <button class="mp-btn mp-btn-primary mp-btn-block focus-ring" type="submit">Login</button>
+      </form>
+
+      <!-- Signup -->
+      <form id="auth-signup-form" class="flex flex-col gap-4 hidden" novalidate>
+        <div class="mp-field">
+          <label class="mp-label" for="signup-email">Email</label>
+          <input id="signup-email" type="email" required class="mp-input focus-ring" autocomplete="email">
+          <p class="mp-error-text" id="signup-email-err" role="alert"></p>
+        </div>
+        <div class="mp-field">
+          <label class="mp-label" for="signup-password">Password</label>
+          <input id="signup-password" type="password" required class="mp-input focus-ring" autocomplete="new-password">
+          <p class="mp-error-text" id="signup-password-err" role="alert"></p>
+        </div>
+        <button class="mp-btn mp-btn-primary mp-btn-block focus-ring" type="submit">Create account</button>
+      </form>
+
+      <p class="mp-help text-center mt-4">Demo form — submit simulates a request; no data is sent.</p>
+    </div>
+  </section>
+
+  <footer class="border-t border-line pt-5 text-muted text-sm">
+    T3 · Component catalog — proposed, ready to lock on your review. Canonical source: <code class="font-mono">frontend/design/components.css</code> + <code class="font-mono">frontend/src/components/{modal,toast}.js</code>. Decision record: <code class="font-mono">docs/adr/0003-component-catalog.md</code>.
+  </footer>
+
+</div>
+
+<script type="module" src="/src/pages/catalog.js"></script>
+</body>
+</html>

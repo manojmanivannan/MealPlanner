@@ -119,6 +119,12 @@ class Recipe(Base):
     sodium_mg = Column(Numeric(10, 2), default=0.0)
     vitamin_c_mg = Column(Numeric(10, 2), default=0.0)
 
+    # A recipe name must be unique per user. Global recipes (user_id NULL)
+    # are deduped by name via the partial index, mirroring the Ingredient model.
+    __table_args__ = (
+        UniqueConstraint('user_id', 'name', name='uniq_user_recipe_name'),
+        Index('uniq_global_recipe_name', 'name', unique=True, postgresql_where=sa_text('user_id IS NULL')),
+    )
 
     def __repr__(self):
         return f"<Recipe(name='{self.name}')>"

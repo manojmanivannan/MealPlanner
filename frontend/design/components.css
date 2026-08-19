@@ -1,0 +1,527 @@
+/*
+ * MealPlanner — Component primitives (T3)
+ * ------------------------------------------------------------------
+ * The canonical source of truth for the restyled UI primitive classes.
+ * Consumes the T1 design tokens (../design/tokens.css) — it does NOT
+ * @import them itself, to avoid a double-import when styles.css pulls in
+ * both tokens.css and this file. Load order in the build is:
+ *   tailwindcss → tokens.css → components.css (this) → legacy.css
+ *
+ * Wrapped in `@layer components` so Tailwind utility classes (in the
+ * higher `utilities` layer) win when both apply — i.e. you can always
+ * override a component's padding/margin/width with a utility without a
+ * specificity fight. Layout, spacing tweaks, and one-off overrides belong
+ * to utilities; the classes here own the *look* of each primitive and its
+ * interactive states (hover / focus / active / disabled / loading).
+ *
+ * Naming: every primitive is namespaced `.mp-*` so it cannot collide with
+ * Tailwind utilities or the legacy `.clay-*` / `.meal-card` classes. The T1
+ * helpers (.surface, .day-chip, .focus-ring) stay unprefixed (T1's choice).
+ *
+ * Theme: every color comes from a T1 variable, so light/dark + the manual
+ * toggle all work by construction. Day accents are never used as text —
+ * only as dot / bar / chip fill / border (per the locked T1 contract).
+ */
+
+@layer components {
+
+  /* ============================================================
+   * Buttons
+   * ============================================================ */
+  .mp-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    font: inherit;
+    font-size: var(--font-size-body);
+    font-weight: var(--weight-semibold);
+    line-height: 1;
+    padding: var(--space-2) var(--space-4);
+    border-radius: var(--radius-md);
+    border: 1px solid transparent;
+    cursor: pointer;
+    color: var(--text-primary);
+    background: var(--bg-surface);
+    transition: background var(--duration-fast) var(--ease-standard),
+                border-color var(--duration-fast) var(--ease-standard),
+                color var(--duration-fast) var(--ease-standard),
+                box-shadow var(--duration-fast) var(--ease-standard);
+    user-select: none;
+    white-space: nowrap;
+  }
+  .mp-btn:focus-visible { outline: none; box-shadow: var(--ring); }
+  .mp-btn:disabled,
+  .mp-btn[aria-disabled="true"] {
+    cursor: not-allowed;
+    opacity: 0.55;
+  }
+  .mp-btn:disabled:hover,
+  .mp-btn[aria-disabled="true"]:hover { background: var(--bg-surface); }
+
+  /* Sizes */
+  .mp-btn-sm { font-size: var(--font-size-small); padding: var(--space-1) var(--space-3); }
+  .mp-btn-lg { font-size: var(--font-size-lg); padding: var(--space-3) var(--space-5); }
+  .mp-btn-block { width: 100%; }
+
+  /* Primary — teal, the one structural accent. */
+  .mp-btn-primary {
+    background: var(--accent);
+    color: var(--accent-fg);
+    border-color: var(--accent);
+  }
+  .mp-btn-primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+  .mp-btn-primary:active { background: var(--accent-active); border-color: var(--accent-active); }
+  .mp-btn-primary:disabled:hover,
+  .mp-btn-primary[aria-disabled="true"]:hover { background: var(--accent); border-color: var(--accent); }
+
+  /* Secondary — neutral surface + a stronger edge. The workhorse. */
+  .mp-btn-secondary {
+    background: var(--bg-surface);
+    color: var(--text-primary);
+    border-color: var(--border-strong);
+  }
+  .mp-btn-secondary:hover { background: var(--bg-subtle); }
+  .mp-btn-secondary:active { background: var(--bg-sunken); }
+
+  /* Ghost — transparent until hovered. For low-emphasis actions in a row. */
+  .mp-btn-ghost {
+    background: transparent;
+    color: var(--text-secondary);
+    border-color: transparent;
+  }
+  .mp-btn-ghost:hover { background: var(--bg-subtle); color: var(--text-primary); }
+  .mp-btn-ghost:active { background: var(--bg-sunken); }
+
+  /* Danger — solid status-red for destructive confirmations.
+     --accent-fg is white in light / dark-ink in dark, both AA on the
+     status-red surface, so the same fg token works in both themes. */
+  .mp-btn-danger {
+    background: var(--color-danger);
+    color: var(--accent-fg);
+    border-color: var(--color-danger);
+  }
+  .mp-btn-danger:hover { filter: brightness(0.94); }
+  .mp-btn-danger:active { filter: brightness(0.88); }
+
+  /* Danger outline — destructive intent without shouting. */
+  .mp-btn-danger-outline {
+    background: transparent;
+    color: var(--color-danger);
+    border-color: var(--color-danger);
+  }
+  .mp-btn-danger-outline:hover { background: var(--color-danger); color: var(--accent-fg); }
+
+  /* Loading state — aria-busy + a spinner. Hides the label via opacity. */
+  .mp-btn[data-loading="true"] { position: relative; color: transparent; pointer-events: none; }
+  .mp-btn[data-loading="true"]::after {
+    content: "";
+    position: absolute;
+    width: 1em; height: 1em;
+    border: 2px solid currentColor;
+    border-right-color: transparent;
+    border-radius: var(--radius-pill);
+    animation: mp-spin 0.6s linear infinite;
+    color: var(--accent-fg);
+  }
+  .mp-btn-secondary[data-loading="true"]::after,
+  .mp-btn-ghost[data-loading="true"]::after,
+  .mp-btn-danger-outline[data-loading="true"]::after { color: var(--text-primary); }
+  .mp-btn[data-loading="true"]:disabled { opacity: 1; }
+
+  /* Icon-only button (e.g. modal close, row actions). */
+  .mp-btn-icon {
+    padding: var(--space-2);
+    width: 2.25rem; height: 2.25rem;
+  }
+  .mp-btn-icon.mp-btn-sm { width: 1.75rem; height: 1.75rem; padding: var(--space-1); }
+
+  @keyframes mp-spin { to { transform: rotate(360deg); } }
+
+  /* ============================================================
+   * Cards — neutral surface + day-accent variant
+   * ============================================================ */
+  .mp-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-lg);
+    padding: var(--space-4);
+  }
+  .mp-card.elevate { box-shadow: var(--shadow-md); }
+  .mp-card.interactive { cursor: pointer; transition: box-shadow var(--duration-base) var(--ease-standard), border-color var(--duration-base) var(--ease-standard), transform var(--duration-base) var(--ease-standard); }
+  .mp-card.interactive:hover { box-shadow: var(--shadow-lg); border-color: var(--border-strong); }
+  .mp-card.interactive:active { transform: translateY(1px); }
+
+  /* Day-accent card: neutral surface, the day shows as a top/left accent.
+     --day-color is set inline (var(--day-mon) etc.). Color is never the bg. */
+  .mp-card-day { border-top: 3px solid var(--day-color); }
+  .mp-card-day-bar { border-left: 4px solid var(--day-color); }
+
+  .mp-card-header { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); margin-bottom: var(--space-3); }
+  .mp-card-title { font-size: var(--font-size-lg); font-weight: var(--weight-semibold); color: var(--text-primary); letter-spacing: var(--tracking-snug); }
+  .mp-card-subtitle { font-size: var(--font-size-small); color: var(--text-muted); }
+  .mp-card-body { font-size: var(--font-size-body); color: var(--text-secondary); }
+  .mp-card-footer { margin-top: var(--space-4); display: flex; gap: var(--space-2); justify-content: flex-end; }
+
+  /* ============================================================
+   * Form fields — labels, inputs, selects, checkboxes
+   * ============================================================ */
+  .mp-field { display: flex; flex-direction: column; gap: var(--space-1); }
+  .mp-label { font-size: var(--font-size-small); font-weight: var(--weight-medium); color: var(--text-secondary); }
+  .mp-label .mp-req { color: var(--color-danger); margin-left: var(--space-1); }
+  .mp-help { font-size: var(--font-size-caption); color: var(--text-muted); }
+  .mp-error-text { font-size: var(--font-size-caption); color: var(--color-danger); display: flex; align-items: center; gap: var(--space-1); min-height: 1.25em; }
+
+  .mp-input,
+  .mp-select,
+  .mp-textarea {
+    font: inherit;
+    font-size: var(--font-size-body);
+    line-height: var(--leading-body);
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-default);
+    background: var(--bg-surface);
+    color: var(--text-primary);
+    width: 100%;
+    transition: border-color var(--duration-fast) var(--ease-standard), box-shadow var(--duration-fast) var(--ease-standard);
+  }
+  .mp-input::placeholder,
+  .mp-textarea::placeholder { color: var(--text-muted); }
+  .mp-input:focus-visible,
+  .mp-select:focus-visible,
+  .mp-textarea:focus-visible { outline: none; border-color: var(--accent); box-shadow: var(--ring); }
+  .mp-input[aria-invalid="true"],
+  .mp-select[aria-invalid="true"],
+  .mp-textarea[aria-invalid="true"] { border-color: var(--color-danger); }
+  .mp-input[aria-invalid="true"]:focus-visible,
+  .mp-select[aria-invalid="true"]:focus-visible { border-color: var(--color-danger); box-shadow: 0 0 0 var(--ring-offset) var(--bg-surface), 0 0 0 calc(var(--ring-offset) + var(--ring-width)) var(--color-danger); }
+  .mp-input:disabled,
+  .mp-select:disabled { background: var(--bg-subtle); color: var(--text-muted); cursor: not-allowed; }
+
+  .mp-textarea { min-height: 6rem; resize: vertical; line-height: var(--leading-body); }
+
+  /* Select chevron — inline SVG data-uri, themed with currentColor. */
+  .mp-select {
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 20 20' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 8l5 5 5-5'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right var(--space-3) center;
+    padding-right: var(--space-7);
+  }
+  .mp-select:disabled { background-image: none; }
+
+  /* Checkbox + radio — native, with accent-color + a visible focus ring.
+     Native controls keep semantics/keyboard behavior for free. */
+  .mp-check {
+    display: inline-flex;
+    align-items: baseline;
+    gap: var(--space-2);
+    font-size: var(--font-size-body);
+    color: var(--text-primary);
+    cursor: pointer;
+  }
+  .mp-check input[type="checkbox"],
+  .mp-check input[type="radio"] {
+    accent-color: var(--accent);
+    width: 1.1rem; height: 1.1rem;
+    flex: none;
+    margin-top: 0.18em;
+  }
+  .mp-check input:focus-visible { outline: none; box-shadow: var(--ring); border-radius: var(--radius-xs); }
+  .mp-check:has(input:disabled) { color: var(--text-muted); cursor: not-allowed; }
+
+  /* Switch — a checkbox re-skinned as a pill toggle. */
+  .mp-switch { display: inline-flex; align-items: center; gap: var(--space-2); cursor: pointer; }
+  .mp-switch input { position: absolute; opacity: 0; width: 0; height: 0; }
+  .mp-switch .mp-switch-track {
+    width: 2.5rem; height: 1.4rem;
+    background: var(--bg-sunken);
+    border-radius: var(--radius-pill);
+    position: relative;
+    transition: background var(--duration-base) var(--ease-standard);
+    flex: none;
+  }
+  .mp-switch .mp-switch-track::after {
+    content: "";
+    position: absolute;
+    top: 2px; left: 2px;
+    width: 1rem; height: 1rem;
+    background: var(--bg-surface);
+    border-radius: var(--radius-pill);
+    box-shadow: var(--shadow-sm);
+    transition: transform var(--duration-base) var(--ease-standard);
+  }
+  .mp-switch input:checked + .mp-switch-track { background: var(--accent); }
+  .mp-switch input:checked + .mp-switch-track::after { transform: translateX(1.1rem); }
+  .mp-switch input:focus-visible + .mp-switch-track { box-shadow: var(--ring); }
+  .mp-switch input:disabled + .mp-switch-track { opacity: 0.5; }
+
+  /* ============================================================
+   * Tabs
+   * ============================================================ */
+  .mp-tablist {
+    display: flex;
+    gap: var(--space-1);
+    border-bottom: 1px solid var(--border-default);
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .mp-tablist::-webkit-scrollbar { display: none; }
+  .mp-tab {
+    font: inherit;
+    font-size: var(--font-size-body);
+    font-weight: var(--weight-medium);
+    color: var(--text-secondary);
+    background: transparent;
+    border: 0;
+    padding: var(--space-3) var(--space-4);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    white-space: nowrap;
+    transition: color var(--duration-fast) var(--ease-standard), border-color var(--duration-fast) var(--ease-standard);
+  }
+  .mp-tab:hover { color: var(--text-primary); }
+  .mp-tab:focus-visible { outline: none; box-shadow: var(--ring); border-radius: var(--radius-sm); }
+  .mp-tab[aria-selected="true"] { color: var(--accent); border-bottom-color: var(--accent); }
+  .mp-tab[aria-selected="true"]:hover { color: var(--accent-hover); }
+  .mp-tabpanel { padding-top: var(--space-4); }
+
+  /* ============================================================
+   * Disclosure — native <details>/<summary>, progressive disclosure
+   * ============================================================
+   * No JS: <details> gives toggle + keyboard semantics for free; this
+   * class just replaces the default marker with a chevron that rotates
+   * on [open]. Used for the minerals group in the ingredient edit form.
+   */
+  .mp-disclosure { border-top: 1px solid var(--border-subtle); }
+  .mp-disclosure > .mp-disclosure-summary {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font: inherit;
+    font-size: var(--font-size-small);
+    font-weight: var(--weight-medium);
+    color: var(--text-secondary);
+    cursor: pointer;
+    list-style: none;
+    padding: var(--space-3) 0;
+    user-select: none;
+  }
+  .mp-disclosure > .mp-disclosure-summary::-webkit-details-marker { display: none; }
+  .mp-disclosure > .mp-disclosure-summary:hover { color: var(--text-primary); }
+  .mp-disclosure > .mp-disclosure-summary:focus-visible {
+    outline: none;
+    box-shadow: var(--ring);
+    border-radius: var(--radius-sm);
+  }
+  .mp-disclosure-chevron {
+    flex: none;
+    color: var(--text-muted);
+    transition: transform var(--duration-fast) var(--ease-standard);
+  }
+  .mp-disclosure[open] > .mp-disclosure-summary .mp-disclosure-chevron { transform: rotate(180deg); }
+
+  /* ============================================================
+   * Badges / pills
+   * ============================================================ */
+  .mp-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    padding: 2px var(--space-2);
+    border-radius: var(--radius-pill);
+    font-size: var(--font-size-caption);
+    font-weight: var(--weight-semibold);
+    line-height: 1.4;
+    background: var(--bg-subtle);
+    color: var(--text-secondary);
+    border: 1px solid transparent;
+    white-space: nowrap;
+  }
+  .mp-badge-lg { padding: var(--space-1) var(--space-3); font-size: var(--font-size-small); }
+  .mp-badge-accent { background: var(--accent-subtle); color: var(--accent); }
+  .mp-badge-success { background: var(--color-success); color: var(--accent-fg); }
+  .mp-badge-warning { background: var(--color-warning); color: var(--accent-fg); }
+  .mp-badge-danger { background: var(--color-danger); color: var(--accent-fg); }
+  .mp-badge-outline { background: transparent; border-color: var(--border-strong); color: var(--text-secondary); }
+  /* Day badge — solid day color chip (label in --day-fg) or soft tint. */
+  .mp-badge-day { background: var(--day-color); color: var(--day-fg); }
+  .mp-badge-day-soft { background: var(--day-soft); color: var(--text-primary); }
+
+  /* ============================================================
+   * Toasts
+   * ============================================================ */
+  .mp-toast-region {
+    position: fixed;
+    z-index: var(--z-toast);
+    bottom: var(--space-5);
+    right: var(--space-5);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    width: min(22rem, calc(100vw - var(--space-6)));
+    pointer-events: none;
+  }
+  .mp-toast {
+    pointer-events: auto;
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    background: var(--bg-surface-raised);
+    border: 1px solid var(--border-default);
+    border-left: 4px solid var(--text-muted);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-lg);
+    color: var(--text-primary);
+    font-size: var(--font-size-small);
+    animation: mp-toast-in var(--duration-base) var(--ease-in-out);
+  }
+  .mp-toast.is-leaving { animation: mp-toast-out var(--duration-fast) var(--ease-in-out) forwards; }
+  .mp-toast-success { border-left-color: var(--color-success); }
+  .mp-toast-error { border-left-color: var(--color-danger); }
+  .mp-toast-warning { border-left-color: var(--color-warning); }
+  .mp-toast-info { border-left-color: var(--accent); }
+  .mp-toast-icon { flex: none; color: var(--text-muted); margin-top: 1px; }
+  .mp-toast-success .mp-toast-icon { color: var(--color-success); }
+  .mp-toast-error .mp-toast-icon { color: var(--color-danger); }
+  .mp-toast-warning .mp-toast-icon { color: var(--color-warning); }
+  .mp-toast-info .mp-toast-icon { color: var(--accent); }
+  .mp-toast-body { flex: 1; min-width: 0; }
+  .mp-toast-title { font-weight: var(--weight-semibold); }
+  .mp-toast-msg { color: var(--text-secondary); }
+  .mp-toast-close {
+    font: inherit;
+    background: transparent;
+    border: 0;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 0;
+    margin: -2px -2px -2px 0;
+    border-radius: var(--radius-xs);
+    flex: none;
+  }
+  .mp-toast-close:hover { color: var(--text-primary); }
+  .mp-toast-close:focus-visible { outline: none; box-shadow: var(--ring); }
+
+  @keyframes mp-toast-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes mp-toast-out { to { opacity: 0; transform: translateX(8px); } }
+
+  /* ============================================================
+   * Empty / loading / error states — the #1 planner UX gap
+   * ============================================================ */
+  .mp-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    gap: var(--space-2);
+    padding: var(--space-7) var(--space-5);
+    color: var(--text-secondary);
+  }
+  .mp-state-icon {
+    width: 2.5rem; height: 2.5rem;
+    color: var(--text-muted);
+    flex: none;
+  }
+  .mp-state-title { font-size: var(--font-size-lg); font-weight: var(--weight-semibold); color: var(--text-primary); margin: var(--space-1) 0 0; }
+  .mp-state-desc { font-size: var(--font-size-body); color: var(--text-secondary); max-width: 42ch; margin: 0; }
+  .mp-state-action { margin-top: var(--space-3); }
+  .mp-state-error .mp-state-icon { color: var(--color-danger); }
+  .mp-state-error .mp-state-title { color: var(--text-primary); }
+
+  /* Loading spinner (standalone) */
+  .mp-spinner {
+    width: 1.75rem; height: 1.75rem;
+    border: 2.5px solid var(--border-default);
+    border-top-color: var(--accent);
+    border-radius: var(--radius-pill);
+    animation: mp-spin 0.7s linear infinite;
+    flex: none;
+  }
+
+  /* Skeleton — shimmering placeholder for loading content. */
+  .mp-skeleton {
+    background: linear-gradient(90deg, var(--bg-subtle) 25%, var(--bg-sunken) 37%, var(--bg-subtle) 63%);
+    background-size: 400% 100%;
+    border-radius: var(--radius-sm);
+    animation: mp-shimmer 1.4s ease-in-out infinite;
+  }
+  @keyframes mp-shimmer { 0% { background-position: 100% 0; } 100% { background-position: -100% 0; } }
+  .mp-skeleton-line { height: 0.875rem; margin-bottom: var(--space-2); border-radius: var(--radius-sm); }
+  .mp-skeleton-line:last-child { margin-bottom: 0; width: 70%; }
+
+  /* ============================================================
+   * Modal / dialog — accessible shell; JS (modal.js) drives behavior
+   * ============================================================ */
+  .mp-modal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: var(--z-modal);
+    background: rgba(15, 19, 32, 0.45);
+    backdrop-filter: blur(2px);
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: var(--space-6) var(--space-4);
+    overflow-y: auto;
+  }
+  .mp-modal {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    width: 100%;
+    max-width: 32rem;
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100vh - var(--space-10));
+    margin: auto;
+    animation: mp-modal-in var(--duration-base) var(--ease-in-out);
+  }
+  /* Width tiers — the size arg to openModal(). md is the .mp-modal default. */
+  .mp-modal-sm { max-width: 22rem; }
+  .mp-modal-md { max-width: 32rem; }
+  .mp-modal-lg { max-width: 48rem; }
+  .mp-modal-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-3);
+    padding: var(--space-4) var(--space-5) var(--space-3);
+  }
+  .mp-modal-title { font-size: var(--font-size-xl); font-weight: var(--weight-semibold); color: var(--text-primary); letter-spacing: var(--tracking-snug); margin: 0; line-height: 1.3; }
+  .mp-modal-close { flex: none; }
+  .mp-modal-body { padding: var(--space-2) var(--space-5) var(--space-4); overflow-y: auto; color: var(--text-secondary); font-size: var(--font-size-body); }
+  .mp-modal-footer {
+    display: flex;
+    gap: var(--space-2);
+    justify-content: flex-end;
+    padding: var(--space-3) var(--space-5) var(--space-4);
+    border-top: 1px solid var(--border-subtle);
+  }
+
+  @keyframes mp-modal-in { from { opacity: 0; transform: translateY(8px) scale(0.99); } to { opacity: 1; transform: none; } }
+
+  /* Full-screen on mobile — the panel becomes the page. */
+  @media (max-width: 640px) {
+    .mp-modal-overlay { padding: 0; align-items: stretch; }
+    .mp-modal {
+      max-width: none;
+      max-height: 100vh;
+      border-radius: 0;
+      border: 0;
+      min-height: 100vh;
+      margin: 0;
+      animation: mp-modal-slide var(--duration-base) var(--ease-in-out);
+    }
+    .mp-modal-body { flex: 1 1 auto; }
+    .mp-toast-region { left: var(--space-4); right: var(--space-4); bottom: var(--space-4); width: auto; }
+  }
+  @keyframes mp-modal-slide { from { transform: translateY(16px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+} /* end @layer components */

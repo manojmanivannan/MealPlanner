@@ -1,0 +1,306 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>MealPlanner Design Tokens</title>
+<link rel="stylesheet" href="tokens.css" />
+<!--
+  T1 swatch — the react-to surface for the locked token decision.
+  Tokens are loaded from tokens.css (the canonical source), so this page
+  can never drift from it. Inter is loaded if available; otherwise
+  system-ui stands in. The real build (T2) ships Inter via Vite/Tailwind.
+-->
+<style>
+/* Swatch-only layout — all color/type/spacing comes from tokens.css */
+* { box-sizing: border-box; }
+body { margin: 0; }
+.wrap { max-width: 980px; margin: 0 auto; padding: var(--space-7) var(--space-5) var(--space-9); }
+@media (max-width: 640px) { .wrap { padding: var(--space-5) var(--space-4) var(--space-8); } }
+
+header.page { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--space-3); margin-bottom: var(--space-7); }
+header.page h1 { font-size: var(--font-size-h1); font-weight: var(--weight-bold); letter-spacing: var(--tracking-tight); margin: 0; }
+header.page .sub { color: var(--text-secondary); font-size: var(--font-size-lg); margin-top: var(--space-1); }
+
+/* Theme toggle */
+.toggle { display: inline-flex; background: var(--bg-subtle); border: 1px solid var(--border-default); border-radius: var(--radius-pill); padding: 3px; gap: 2px; }
+.toggle button { font: inherit; font-size: var(--font-size-small); font-weight: var(--weight-medium); color: var(--text-secondary); background: transparent; border: 0; border-radius: var(--radius-pill); padding: var(--space-1) var(--space-3); cursor: pointer; }
+.toggle button[aria-pressed="true"] { background: var(--bg-surface); color: var(--text-primary); box-shadow: var(--shadow-sm); }
+.toggle button:focus-visible { outline: none; box-shadow: var(--ring); }
+
+section { margin-top: var(--space-8); }
+section > h2 { font-size: var(--font-size-h2); font-weight: var(--weight-semibold); letter-spacing: var(--tracking-snug); margin: 0 0 var(--space-1); }
+section > .lead { color: var(--text-secondary); font-size: var(--font-size-body); margin: 0 0 var(--space-5); max-width: 64ch; }
+.eyebrow { text-transform: uppercase; letter-spacing: var(--tracking-wide); font-size: var(--font-size-caption); font-weight: var(--weight-semibold); color: var(--text-muted); }
+
+.grid { display: grid; gap: var(--space-3); }
+.grid.cols-2 { grid-template-columns: repeat(2, 1fr); }
+.grid.cols-3 { grid-template-columns: repeat(3, 1fr); }
+@media (max-width: 720px) { .grid.cols-2, .grid.cols-3 { grid-template-columns: 1fr; } }
+
+/* Specimen card */
+.card { padding: var(--space-4); }
+.card .label { font-size: var(--font-size-caption); color: var(--text-muted); margin-bottom: var(--space-2); font-variant-numeric: tabular-nums; }
+.card .swatch { height: 72px; border-radius: var(--radius-md); border: 1px solid var(--border-default); }
+
+/* Day row */
+.day-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.day-card { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3); }
+.day-card .name { font-weight: var(--weight-semibold); font-size: var(--font-size-small); }
+.day-card .hex { font-family: var(--font-mono); font-size: var(--font-size-caption); color: var(--text-muted); }
+.strip { display: grid; grid-template-columns: repeat(7, 1fr); gap: var(--space-2); }
+@media (max-width: 720px) { .strip { grid-template-columns: repeat(2, 1fr); } }
+
+/* Type specimens */
+.type-row { display: flex; align-items: baseline; gap: var(--space-4); padding: var(--space-3) 0; border-top: 1px solid var(--border-subtle); }
+.type-row:first-child { border-top: 0; }
+.type-row .meta { font-family: var(--font-mono); font-size: var(--font-size-caption); color: var(--text-muted); width: 18ch; flex: none; }
+.type-row .sample { color: var(--text-primary); }
+
+/* Radius chips */
+.radius-row { display: flex; align-items: center; gap: var(--space-4); flex-wrap: wrap; }
+.radius-chip { width: 64px; height: 64px; background: var(--accent); border: 1px solid var(--border-strong); }
+
+/* Spacing bars */
+.scale-row { display: flex; align-items: center; gap: var(--space-3); margin: var(--space-2) 0; }
+.scale-row .meta { font-family: var(--font-mono); font-size: var(--font-size-caption); color: var(--text-muted); width: 14ch; flex: none; }
+.scale-bar { height: 12px; background: var(--accent); border-radius: var(--radius-xs); }
+
+/* Elevation panel */
+.elev-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-5); }
+@media (max-width: 720px) { .elev-grid { grid-template-columns: 1fr; } }
+.elev-panel { padding: var(--space-5); background: var(--bg-surface); border-radius: var(--radius-lg); }
+.elev-panel.flat { border: 1px solid var(--border-default); }
+.elev-panel.bordered { border: 1px solid var(--border-strong); }
+.elev-panel.shadowed { border: 1px solid var(--border-default); box-shadow: var(--shadow-md); }
+.elev-panel .name { font-weight: var(--weight-semibold); margin-bottom: var(--space-1); }
+.elev-panel .desc { font-size: var(--font-size-small); color: var(--text-secondary); }
+
+/* Focus demo */
+.focus-demo { display: flex; gap: var(--space-3); flex-wrap: wrap; align-items: center; }
+.btn { font: inherit; font-weight: var(--weight-semibold); font-size: var(--font-size-body); padding: var(--space-2) var(--space-4); border-radius: var(--radius-md); border: 1px solid transparent; cursor: pointer; }
+.btn-primary { background: var(--accent); color: var(--accent-fg); }
+.btn-primary:hover { background: var(--accent-hover); }
+.btn-ghost { background: var(--bg-surface); color: var(--text-primary); border-color: var(--border-default); }
+.btn-ghost:hover { background: var(--bg-subtle); }
+.input { font: inherit; font-size: var(--font-size-body); padding: var(--space-2) var(--space-3); border-radius: var(--radius-md); border: 1px solid var(--border-default); background: var(--bg-surface); color: var(--text-primary); }
+.input::placeholder { color: var(--text-muted); }
+.link { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
+
+/* Week mock */
+.week { display: grid; grid-template-columns: repeat(7, 1fr); gap: var(--space-2); }
+@media (max-width: 720px) { .week { grid-template-columns: 1fr; } }
+.day-col { padding: var(--space-3); background: var(--bg-surface); border: 1px solid var(--border-default); border-radius: var(--radius-lg); }
+.day-col .head { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-3); }
+.day-col .head .name { font-weight: var(--weight-semibold); font-size: var(--font-size-small); }
+.meal { border-left: 4px solid var(--day-color); padding: var(--space-2) var(--space-3); background: var(--bg-subtle); border-radius: var(--radius-sm); margin-bottom: var(--space-2); font-size: var(--font-size-small); color: var(--text-secondary); }
+.meal strong { color: var(--text-primary); font-weight: var(--weight-semibold); }
+
+footer.page { margin-top: var(--space-9); padding-top: var(--space-5); border-top: 1px solid var(--border-default); color: var(--text-muted); font-size: var(--font-size-small); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page">
+    <div>
+      <h1>Design Tokens</h1>
+      <div class="sub">MealPlanner · T1 — the foundation the restyle builds on. Crisp/flat, cool slate neutrals, teal accent, a disciplined 7-color week.</div>
+    </div>
+    <div class="toggle" role="group" aria-label="Theme">
+      <button data-set="light"  aria-pressed="true">Light</button>
+      <button data-set="system" aria-pressed="false">System</button>
+      <button data-set="dark"   aria-pressed="false">Dark</button>
+    </div>
+  </header>
+
+  <!-- SURFACES & TEXT -->
+  <section>
+    <div class="eyebrow">01 · Neutral surface ramp + text</div>
+    <h2>Surfaces, borders, text</h2>
+    <p class="lead">Cool slate neutrals preserve the existing <code>#232946</code> ink — distinctive next to generic gray. Every text token hits WCAG AA on the surface it pairs with.</p>
+    <div class="grid cols-3">
+      <div class="card surface"><div class="label">bg-canvas</div><div class="swatch" style="background:var(--bg-canvas)"></div></div>
+      <div class="card surface"><div class="label">bg-surface</div><div class="swatch" style="background:var(--bg-surface)"></div></div>
+      <div class="card surface"><div class="label">bg-subtle</div><div class="swatch" style="background:var(--bg-subtle)"></div></div>
+      <div class="card surface"><div class="label">border-default</div><div class="swatch" style="background:var(--border-default)"></div></div>
+      <div class="card surface"><div class="label">border-strong</div><div class="swatch" style="background:var(--border-strong)"></div></div>
+      <div class="card surface"><div class="label">bg-sunken</div><div class="swatch" style="background:var(--bg-sunken)"></div></div>
+    </div>
+    <div class="card surface" style="margin-top:var(--space-4)">
+      <div class="label" style="margin-bottom:var(--space-3)">Text on surface</div>
+      <p style="font-size:var(--font-size-body);color:var(--text-primary);margin:0 0 var(--space-2)">text-primary — the ink for headings and body.</p>
+      <p style="font-size:var(--font-size-body);color:var(--text-secondary);margin:0 0 var(--space-2)">text-secondary — supporting copy and labels.</p>
+      <p style="font-size:var(--font-size-body);color:var(--text-muted);margin:0">text-muted — captions and meta, still AA.</p>
+    </div>
+  </section>
+
+  <!-- BRAND + STATUS -->
+  <section>
+    <div class="eyebrow">02 · Brand accent + status</div>
+    <h2>Teal — the one structural accent</h2>
+    <p class="lead">Teal is already in the brand DNA (the old <code>.clay-btn</code> label was teal) and sits apart from all seven day hues. It carries links, focus, active states, and primary actions. Status colors are disambiguated from day colors by icon + context.</p>
+    <div class="grid cols-3">
+      <div class="card surface"><div class="label">accent · primary action</div><button class="btn btn-primary focus-ring" style="margin-top:var(--space-2)">Add recipe</button></div>
+      <div class="card surface"><div class="label">accent-subtle · chip bg</div><div class="swatch" style="background:var(--accent-subtle);height:40px"></div></div>
+      <div class="card surface"><div class="label">link</div><a class="link" href="#" style="font-size:var(--font-size-body)">View weekly plan</a></div>
+    </div>
+    <div class="day-row" style="margin-top:var(--space-4)">
+      <span class="day-chip" style="--day-color:var(--color-success);--day-fg:var(--accent-fg)">● Saved</span>
+      <span class="day-chip" style="--day-color:var(--color-warning);--day-fg:var(--accent-fg)">● Check macros</span>
+      <span class="day-chip" style="--day-color:var(--color-danger);--day-fg:var(--accent-fg)">● Over budget</span>
+    </div>
+  </section>
+
+  <!-- THE WEEK -->
+  <section>
+    <div class="eyebrow">03 · The 7 day accents — the signature</div>
+    <h2>A disciplined rainbow week</h2>
+    <p class="lead">The day colors are the one memorable thing; everything around them stays quiet. They are <strong>never used as text</strong> — only as dot, left bar, and chip fill — so the yellow that failed contrast as a full-card fill is structurally safe here. Solids clear 3:1 on the surface (AA non-text); chip labels are white at 4.5:1. The original pale pastels survive as <code>*-soft</code> tints for subtle backgrounds.</p>
+
+    <div class="strip" style="margin-top:var(--space-5)">
+      <div class="day-card surface" style="--day-color:var(--day-mon);--day-fg:var(--day-mon-fg);--day-soft:var(--day-mon-soft)"><span class="day-dot"></span><span class="name">Mon</span><span class="hex">violet</span></div>
+      <div class="day-card surface" style="--day-color:var(--day-tue);--day-fg:var(--day-tue-fg);--day-soft:var(--day-tue-soft)"><span class="day-dot"></span><span class="name">Tue</span><span class="hex">blue</span></div>
+      <div class="day-card surface" style="--day-color:var(--day-wed);--day-fg:var(--day-wed-fg);--day-soft:var(--day-wed-soft)"><span class="day-dot"></span><span class="name">Wed</span><span class="hex">emerald</span></div>
+      <div class="day-card surface" style="--day-color:var(--day-thu);--day-fg:var(--day-thu-fg);--day-soft:var(--day-thu-soft)"><span class="day-dot"></span><span class="name">Thu</span><span class="hex">amber</span></div>
+      <div class="day-card surface" style="--day-color:var(--day-fri);--day-fg:var(--day-fri-fg);--day-soft:var(--day-fri-soft)"><span class="day-dot"></span><span class="name">Fri</span><span class="hex">orange</span></div>
+      <div class="day-card surface" style="--day-color:var(--day-sat);--day-fg:var(--day-sat-fg);--day-soft:var(--day-sat-soft)"><span class="day-dot"></span><span class="name">Sat</span><span class="hex">rose</span></div>
+      <div class="day-card surface" style="--day-color:var(--day-sun);--day-fg:var(--day-sun-fg);--day-soft:var(--day-sun-soft)"><span class="day-dot"></span><span class="name">Sun</span><span class="hex">indigo</span></div>
+    </div>
+
+    <div class="grid cols-2" style="margin-top:var(--space-5)">
+      <div class="card surface">
+        <div class="label">Solid chip (label in day-fg, 4.5:1)</div>
+        <div class="day-row" style="margin-top:var(--space-2)">
+          <span class="day-chip" style="--day-color:var(--day-mon);--day-fg:var(--day-mon-fg)">Mon</span>
+          <span class="day-chip" style="--day-color:var(--day-thu);--day-fg:var(--day-thu-fg)">Thu</span>
+          <span class="day-chip" style="--day-color:var(--day-sun);--day-fg:var(--day-sun-fg)">Sun</span>
+        </div>
+      </div>
+      <div class="card surface">
+        <div class="label">Soft tint chip (neutral-ink label)</div>
+        <div class="day-row" style="margin-top:var(--space-2)">
+          <span class="day-chip-soft" style="--day-soft:var(--day-mon-soft)">Mon</span>
+          <span class="day-chip-soft" style="--day-soft:var(--day-thu-soft)">Thu</span>
+          <span class="day-chip-soft" style="--day-soft:var(--day-sun-soft)">Sun</span>
+        </div>
+      </div>
+    </div>
+
+    <h3 style="font-size:var(--font-size-h3);font-weight:var(--weight-semibold);margin:var(--space-7) 0 var(--space-3)">In context — a neutral card with a day accent</h3>
+    <p class="lead">Cards stay neutral; the day shows up as a dot in the header and a left bar on each meal. No more full-card pastel fills.</p>
+    <div class="week">
+      <div class="day-col" style="--day-color:var(--day-mon)"><div class="head"><span class="day-dot"></span><span class="name">Mon</span></div><div class="meal"><strong>Oats</strong> · breakfast</div><div class="meal"><strong>Salad</strong> · lunch</div></div>
+      <div class="day-col" style="--day-color:var(--day-tue)"><div class="head"><span class="day-dot"></span><span class="name">Tue</span></div><div class="meal"><strong>Yogurt</strong> · breakfast</div><div class="meal"><strong>Pasta</strong> · dinner</div></div>
+      <div class="day-col" style="--day-color:var(--day-wed)"><div class="head"><span class="day-dot"></span><span class="name">Wed</span></div><div class="meal"><strong>Eggs</strong> · breakfast</div><div class="meal"><strong>Wrap</strong> · lunch</div></div>
+      <div class="day-col" style="--day-color:var(--day-thu)"><div class="head"><span class="day-dot"></span><span class="name">Thu</span></div><div class="meal"><strong>Toast</strong> · breakfast</div><div class="meal"><strong>Soup</strong> · lunch</div></div>
+      <div class="day-col" style="--day-color:var(--day-fri)"><div class="head"><span class="day-dot"></span><span class="name">Fri</span></div><div class="meal"><strong>Smoothie</strong> · breakfast</div><div class="meal"><strong>Stir-fry</strong> · dinner</div></div>
+      <div class="day-col" style="--day-color:var(--day-sat)"><div class="head"><span class="day-dot"></span><span class="name">Sat</span></div><div class="meal"><strong>Pancakes</strong> · breakfast</div><div class="meal"><strong>Pizza</strong> · dinner</div></div>
+      <div class="day-col" style="--day-color:var(--day-sun)"><div class="head"><span class="day-dot"></span><span class="name">Sun</span></div><div class="meal"><strong>Bagel</strong> · breakfast</div><div class="meal"><strong>Roast</strong> · dinner</div></div>
+    </div>
+  </section>
+
+  <!-- TYPOGRAPHY -->
+  <section>
+    <div class="eyebrow">04 · Typography</div>
+    <h2>Inter, with a scale</h2>
+    <p class="lead">A 1.25-modular scale on Inter, with a mono utility face for macro/data columns. Display and headings tighten slightly for a crisp top of the page.</p>
+    <div class="card surface">
+      <div class="type-row"><span class="meta">display · 48/1.1 · 700</span><span class="sample" style="font-size:var(--font-size-display);font-weight:var(--weight-bold);letter-spacing:var(--tracking-tight);line-height:var(--leading-display)">Plan the week</span></div>
+      <div class="type-row"><span class="meta">h1 · 36/1.2 · 700</span><span class="sample" style="font-size:var(--font-size-h1);font-weight:var(--weight-bold);letter-spacing:var(--tracking-tight);line-height:var(--leading-h1)">Monday</span></div>
+      <div class="type-row"><span class="meta">h2 · 30/1.25 · 600</span><span class="sample" style="font-size:var(--font-size-h2);font-weight:var(--weight-semibold);letter-spacing:var(--tracking-snug);line-height:var(--leading-h2)">Breakfast</span></div>
+      <div class="type-row"><span class="meta">h3 · 24/1.3 · 600</span><span class="sample" style="font-size:var(--font-size-h3);font-weight:var(--weight-semibold);line-height:var(--leading-h3)">Ingredients</span></div>
+      <div class="type-row"><span class="meta">xl · 20/1.4 · 500</span><span class="sample" style="font-size:var(--font-size-xl);font-weight:var(--weight-medium);line-height:var(--leading-xl)">Oats with berries</span></div>
+      <div class="type-row"><span class="meta">lg · 18/1.5 · 400</span><span class="sample" style="font-size:var(--font-size-lg);line-height:var(--leading-lg)">A supporting line of copy.</span></div>
+      <div class="type-row"><span class="meta">body · 16/1.6 · 400</span><span class="sample" style="font-size:var(--font-size-body);line-height:var(--leading-body)">Body text reads at a comfortable measure for the daily-use app.</span></div>
+      <div class="type-row"><span class="meta">small · 14/1.5 · 400</span><span class="sample" style="font-size:var(--font-size-small);line-height:var(--leading-small)">Small text for labels and secondary rows.</span></div>
+      <div class="type-row"><span class="meta">caption · 12/1.5 · 400</span><span class="sample" style="font-size:var(--font-size-caption);line-height:var(--leading-caption)">Caption / meta · tabular nums 1,234 kcal</span></div>
+      <div class="type-row"><span class="meta">mono · data</span><span class="sample tnum" style="font-family:var(--font-mono);font-size:var(--font-size-body)">420 kcal · 32 g protein</span></div>
+    </div>
+  </section>
+
+  <!-- SPACING -->
+  <section>
+    <div class="eyebrow">05 · Spacing</div>
+    <h2>4px base scale</h2>
+    <p class="lead">A rem-based 4px ramp so layouts respect the root font size.</p>
+    <div class="card surface">
+      <div class="scale-row"><span class="meta">space-1 · 4</span><span class="scale-bar" style="width:4px"></span></div>
+      <div class="scale-row"><span class="meta">space-2 · 8</span><span class="scale-bar" style="width:8px"></span></div>
+      <div class="scale-row"><span class="meta">space-3 · 12</span><span class="scale-bar" style="width:12px"></span></div>
+      <div class="scale-row"><span class="meta">space-4 · 16</span><span class="scale-bar" style="width:16px"></span></div>
+      <div class="scale-row"><span class="meta">space-5 · 24</span><span class="scale-bar" style="width:24px"></span></div>
+      <div class="scale-row"><span class="meta">space-6 · 32</span><span class="scale-bar" style="width:32px"></span></div>
+      <div class="scale-row"><span class="meta">space-7 · 48</span><span class="scale-bar" style="width:48px"></span></div>
+      <div class="scale-row"><span class="meta">space-8 · 64</span><span class="scale-bar" style="width:64px"></span></div>
+    </div>
+  </section>
+
+  <!-- RADIUS -->
+  <section>
+    <div class="eyebrow">06 · Radius</div>
+    <h2>Crisp corners</h2>
+    <p class="lead">Cards cap at <code>radius-lg</code> (12px) — the same corner the clay version used, for continuity. Inputs and buttons stay tighter at <code>radius-md</code>.</p>
+    <div class="radius-row" style="margin-top:var(--space-4)">
+      <div style="text-align:center"><div class="radius-chip" style="border-radius:var(--radius-xs)"></div><div class="label" style="margin-top:var(--space-2)">xs · 4</div></div>
+      <div style="text-align:center"><div class="radius-chip" style="border-radius:var(--radius-sm)"></div><div class="label" style="margin-top:var(--space-2)">sm · 6</div></div>
+      <div style="text-align:center"><div class="radius-chip" style="border-radius:var(--radius-md)"></div><div class="label" style="margin-top:var(--space-2)">md · 8</div></div>
+      <div style="text-align:center"><div class="radius-chip" style="border-radius:var(--radius-lg)"></div><div class="label" style="margin-top:var(--space-2)">lg · 12</div></div>
+      <div style="text-align:center"><div class="radius-chip" style="border-radius:var(--radius-xl)"></div><div class="label" style="margin-top:var(--space-2)">xl · 16</div></div>
+      <div style="text-align:center"><div class="radius-chip" style="border-radius:var(--radius-2xl)"></div><div class="label" style="margin-top:var(--space-2)">2xl · 24</div></div>
+      <div style="text-align:center"><div class="radius-chip" style="border-radius:var(--radius-pill)"></div><div class="label" style="margin-top:var(--space-2)">pill</div></div>
+    </div>
+  </section>
+
+  <!-- ELEVATION -->
+  <section>
+    <div class="eyebrow">07 · Elevation</div>
+    <h2>One subtle shadow — or a border</h2>
+    <p class="lead">Claymorphism (nested inset + outer shadows) is gone. A card is either flat with a hairline border, border-only with a stronger edge, or lifted by a single subtle shadow. The deeper tier is reserved for overlays.</p>
+    <div class="elev-grid" style="margin-top:var(--space-5)">
+      <div class="elev-panel flat"><div class="name">Flat</div><div class="desc">Hairline border, no shadow. Default resting state for cards.</div></div>
+      <div class="elev-panel bordered"><div class="name">Border-only</div><div class="desc">Stronger edge, still no shadow. For grouped or inset regions.</div></div>
+      <div class="elev-panel shadowed"><div class="name">Shadow</div><div class="desc">The single subtle tier — raised cards, popovers, hover.</div></div>
+    </div>
+  </section>
+
+  <!-- FOCUS + CONTROLS -->
+  <section>
+    <div class="eyebrow">08 · Focus ring + controls</div>
+    <h2>Keyboard-visible, AA</h2>
+    <p class="lead">A 2px teal ring with a 2px surface offset — visible on every theme. Tab through to see it; the ring is keyboard-only (<code>:focus-visible</code>).</p>
+    <div class="card surface focus-demo" style="margin-top:var(--space-4)">
+      <button class="btn btn-primary focus-ring">Add recipe</button>
+      <button class="btn btn-ghost focus-ring">Cancel</button>
+      <input class="input focus-ring" placeholder="Search recipes" />
+      <a class="link focus-ring" href="#">Weekly plan</a>
+    </div>
+  </section>
+
+  <footer class="page">
+    T1 · Design token system &amp; palette — proposed, ready to lock on your review. Canonical source: <code>frontend/design/tokens.css</code>. Decision record: <code>docs/adr/0001-design-tokens.md</code>.
+  </footer>
+</div>
+
+<script>
+  (function () {
+    var root = document.documentElement;
+    var buttons = document.querySelectorAll('.toggle button');
+    function apply(choice) {
+      if (choice === 'system') root.removeAttribute('data-theme');
+      else root.setAttribute('data-theme', choice);
+      buttons.forEach(function (b) {
+        b.setAttribute('aria-pressed', b.dataset.set === choice ? 'true' : 'false');
+      });
+      try { localStorage.setItem('mp-t1-theme', choice); } catch (e) {}
+    }
+    var saved = 'light';
+    try { saved = localStorage.getItem('mp-t1-theme') || 'light'; } catch (e) {}
+    apply(saved);
+    buttons.forEach(function (b) {
+      b.addEventListener('click', function () { apply(b.dataset.set); });
+    });
+  })();
+</script>
+</body>
+</html>

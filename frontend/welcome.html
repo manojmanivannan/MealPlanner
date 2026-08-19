@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome • Meal Planner</title>
+    <link rel="icon" type="image/x-icon" href="/meal_logo.ico">
+    <meta name="application-name" content="Meal Planner">
+</head>
+<body class="min-h-screen flex items-center justify-center p-4 bg-canvas text-primary font-sans">
+    <div class="w-full max-w-md bg-surface rounded-xl shadow-lg p-6 border border-line">
+        <div class="text-center mb-6">
+            <h1 class="text-2xl font-bold text-accent">Meal Planner</h1>
+            <p class="text-secondary">Sign in to continue</p>
+        </div>
+
+        <div class="mb-4 flex space-x-2">
+            <button id="tab-login" class="flex-1 py-2 rounded-md bg-accent text-accent-fg">Login</button>
+            <button id="tab-signup" class="flex-1 py-2 rounded-md bg-subtle text-primary">Sign up</button>
+        </div>
+
+        <form id="login-form" class="space-y-4">
+            <div>
+                <label class="block text-sm text-secondary">Email</label>
+                <input id="login-email" type="email" required class="mt-1 w-full border border-line rounded-md p-2 bg-surface text-primary">
+            </div>
+            <div>
+                <label class="block text-sm text-secondary">Password</label>
+                <input id="login-password" type="password" required class="mt-1 w-full border border-line rounded-md p-2 bg-surface text-primary">
+            </div>
+            <button class="w-full py-2 bg-accent hover:bg-accent-hover text-accent-fg rounded-md" type="submit">Login</button>
+            <div id="login-error" class="text-[var(--color-danger)] text-sm"></div>
+        </form>
+
+        <form id="signup-form" class="space-y-4 hidden">
+            <div>
+                <label class="block text-sm text-secondary">Email</label>
+                <input id="signup-email" type="email" required class="mt-1 w-full border border-line rounded-md p-2 bg-surface text-primary">
+            </div>
+            <div>
+                <label class="block text-sm text-secondary">Password</label>
+                <input id="signup-password" type="password" required class="mt-1 w-full border border-line rounded-md p-2 bg-surface text-primary">
+            </div>
+            <button class="w-full py-2 bg-accent hover:bg-accent-hover text-accent-fg rounded-md" type="submit">Create account</button>
+            <div id="signup-error" class="text-[var(--color-danger)] text-sm"></div>
+        </form>
+    </div>
+
+    <script type="module" src="/src/pages/welcome.js"></script>
+</body>
+</html>
