@@ -1,0 +1,233 @@
+/*
+ * Unit tests for the ingredients pure logic (T6 TDD seam).
+ *
+ * Runs with Node's built-in runner — no test deps, no DOM:
+ *   node --test frontend/test/ingredients-logic.test.mjs
+ *
+ * The logic module imports nothing DOM-bound, so these helpers (nutrition
+ * vocabulary, per-unit labels, ordering, badges, search, validation) are
+ * testable in isolation from the page render.
+ */
+import { test } from 'node:test'
+import assert from 'node:assert/strict'
+
+import {
+  DEFAULT_UNITS,
+  MACRO_FIELDS,
+  MINERAL_FIELDS,
+  NUTRITION_FIELDS,
+  perUnitLabel,
+  nutritionLabel,
+  groupByLetter,
+  sortByShelfLife,
+  sortByName,
+  shelfLifeBadge,
+  filterIngredients,
+  validateIngredient,
+} from '../src/pages/ingredients-logic.js'
+
+const sample = [
+  { id: 1, name: 'Apple',  available: true,  remaining_shelf_life: 5 },
+  { id: 2, name: 'Banana', available: true,  remaining_shelf_life: 1 },
+  { id: 3, name: 'Carrot', available: false, remaining_shelf_life: 10 },
+  { id: 4, name: 'almond', available: true,  remaining_shelf_life: 0 },
+  { id: 5, name: '3 eggs', available: false, remaining_shelf_life: null },
+]
+
+/* ----------------------------- Vocabulary ----------------------------- */
+
+test('DEFAULT_UNITS matches the backend ServingUnits enum', () => {
+  assert.deepEqual(DEFAULT_UNITS, ['g', 'ml', 'cup', 'tbsp', 'tsp', 'nos'])
+})
+
+test('MACRO_FIELDS lists the 5 always-visible macro fields in order', () => {
+  assert.deepEqual(MACRO_FIELDS.map((f) => f.key), ['energy', 'protein', 'carbs', 'fat', 'fiber'])
+})
+
+test('MINERAL_FIELDS lists the 6 progressive-disclosure minerals in order', () => {
+  assert.deepEqual(MINERAL_FIELDS.map((f) => f.key), [
+    'iron_mg', 'magnesium_mg', 'calcium_mg', 'potassium_mg', 'sodium_mg', 'vitamin_c_mg',
+  ])
+})
+
+test('NUTRITION_FIELDS is macros then minerals', () => {
+  assert.deepEqual(
+    NUTRITION_FIELDS.map((f) => f.key),
+    [...MACRO_FIELDS.map((f) => f.key), ...MINERAL_FIELDS.map((f) => f.key)],
+  )
+})
+
+/* ----------------------- perUnitLabel / nutritionLabel ----------------------- */
+
+test('perUnitLabel uses 100g / 100ml for bulk units, the unit itself otherwise', () => {
+  assert.equal(perUnitLabel('g'), '100g')
+  assert.equal(perUnitLabel('ml'), '100ml')
+  assert.equal(perUnitLabel('cup'), 'cup')
+  assert.equal(perUnitLabel('tbsp'), 'tbsp')
+  assert.equal(perUnitLabel('nos'), 'nos')
+})
+
+test('nutritionLabel formats field + unit + per-unit suffix', () => {
+  const energy = MACRO_FIELDS.find((f) => f.key === 'energy')
+  const protein = MACRO_FIELDS.find((f) => f.key === 'protein')
+  const iron = MINERAL_FIELDS.find((f) => f.key === 'iron_mg')
+  assert.equal(nutritionLabel(energy, 'g'), 'Energy (kcal/100g)')
+  assert.equal(nutritionLabel(protein, 'tbsp'), 'Protein (g/tbsp)')
+  assert.equal(nutritionLabel(iron, 'ml'), 'Iron (mg/100ml)')
+  assert.equal(nutritionLabel(iron, 'nos'), 'Iron (mg/nos)')
+})
+
+/* ------------------------------ groupByLetter ------------------------------ */
+
+test('groupByLetter buckets by first letter and orders A–Z then #', () => {
+  const groups = groupByLetter(sample)
+  assert.deepEqual(Object.keys(groups), ['A', 'B', 'C', '#'])
+  assert.deepEqual(groups.A.map((i) => i.id), [1, 4]) // Apple, almond → both 'A'
+  assert.deepEqual(groups.B.map((i) => i.id), [2])
+  assert.deepEqual(groups.C.map((i) => i.id), [3])
+  assert.deepEqual(groups['#'].map((i) => i.id), [5]) // '3 eggs'
+})
+
+test('groupByLetter does not mutate the input', () => {
+  const copy = sample.map((i) => ({ ...i }))
+  groupByLetter(sample)
+  assert.deepEqual(sample, copy)
+})
+
+test('groupByLetter of an empty list returns an empty object', () => {
+  assert.deepEqual(groupByLetter([]), {})
+})
+
+/* ------------------------------ sortByShelfLife ------------------------------ */
+
+test('sortByShelfLife puts available first, then by remaining asc', () => {
+  const out = sortByShelfLife(sample).map((i) => i.id)
+  // available (expired almond id4 [0], banana id2 [1], apple id1 [5]),
+  // then unavailable (carrot id3 [10], eggs id5 [null → last]).
+  assert.deepEqual(out, [4, 2, 1, 3, 5])
+})
+
+test('sortByShelfLife treats null remaining as last within its group', () => {
+  const out = sortByShelfLife([
+    { id: 'a', available: true, remaining_shelf_life: null },
+    { id: 'b', available: true, remaining_shelf_life: 3 },
+    { id: 'c', available: false, remaining_shelf_life: null },
+  ]).map((i) => i.id)
+  assert.deepEqual(out, ['b', 'a', 'c'])
+})
+
+test('sortByShelfLife does not mutate the input', () => {
+  const copy = sample.map((i) => ({ ...i }))
+  sortByShelfLife(sample)
+  assert.deepEqual(sample, copy)
+})
+
+/* ------------------------------ shelfLifeBadge ------------------------------ */
+
+test('shelfLifeBadge: expired is danger', () => {
+  assert.deepEqual(shelfLifeBadge({ available: true, remaining_shelf_life: 0 }),
+    { text: 'Expired', tone: 'danger', shown: true })
+})
+
+test('shelfLifeBadge: 1 day left is warning', () => {
+  assert.deepEqual(shelfLifeBadge({ available: true, remaining_shelf_life: 1 }),
+    { text: '1 day left', tone: 'warning', shown: true })
+})
+
+test('shelfLifeBadge: 2 days left is warning, 3 is neutral', () => {
+  assert.deepEqual(shelfLifeBadge({ available: true, remaining_shelf_life: 2 }),
+    { text: '2 days left', tone: 'warning', shown: true })
+  assert.equal(shelfLifeBadge({ available: true, remaining_shelf_life: 3 }).tone, 'neutral')
+})
+
+test('shelfLifeBadge: not available is not shown', () => {
+  const b = shelfLifeBadge({ available: false, remaining_shelf_life: 5 })
+  assert.equal(b.shown, false)
+  assert.equal(b.text, '')
+})
+
+test('shelfLifeBadge: null remaining but available shows a pantry label', () => {
+  const b = shelfLifeBadge({ available: true, remaining_shelf_life: null })
+  assert.equal(b.shown, true)
+  assert.equal(b.tone, 'neutral')
+})
+
+/* ------------------------------ filterIngredients ------------------------------ */
+
+test('sortByName orders by name (case-aware) and does not mutate the input', () => {
+  const out = sortByName([{ name: 'banana' }, { name: 'Apple' }, { name: 'cherry' }])
+  assert.deepEqual(out.map((i) => i.name), ['Apple', 'banana', 'cherry'])
+  const copy = sample.map((i) => ({ ...i }))
+  sortByName(sample)
+  assert.deepEqual(sample, copy)
+})
+
+test('filterIngredients: empty term returns all (as a new array)', () => {
+  const out = filterIngredients(sample, '')
+  assert.deepEqual(out.map((i) => i.id), sample.map((i) => i.id))
+  assert.notEqual(out, sample) // new array
+})
+
+test('filterIngredients: case-insensitive name substring', () => {
+  const out = filterIngredients(sample, 'app')
+  assert.deepEqual(out.map((i) => i.id), [1])
+  assert.deepEqual(filterIngredients(sample, 'A').map((i) => i.id), [1, 2, 3, 4]) // Apple, Banana, Carrot, almond
+})
+
+test('filterIngredients: no match returns empty', () => {
+  assert.deepEqual(filterIngredients(sample, 'zzz'), [])
+})
+
+test('filterIngredients does not mutate the input', () => {
+  const copy = sample.map((i) => ({ ...i }))
+  filterIngredients(sample, 'a')
+  assert.deepEqual(sample, copy)
+})
+
+/* ------------------------------ validateIngredient ------------------------------ */
+
+test('validateIngredient: a valid ingredient has no errors', () => {
+  const r = validateIngredient({ name: 'Tomato', shelf_life: '5', serving_unit: 'g', serving_size: '100' })
+  assert.equal(r.valid, true)
+  assert.deepEqual(r.errors, {})
+})
+
+test('validateIngredient: name required', () => {
+  const r = validateIngredient({ name: '   ', shelf_life: '5', serving_unit: 'g' })
+  assert.equal(r.valid, false)
+  assert.equal(r.errors['name'], 'Name is required.')
+})
+
+test('validateIngredient: shelf life required', () => {
+  const r = validateIngredient({ name: 'X', shelf_life: '', serving_unit: 'g' })
+  assert.equal(r.valid, false)
+  assert.ok(r.errors['shelf-life'])
+})
+
+test('validateIngredient: shelf life must be a positive integer', () => {
+  assert.ok(validateIngredient({ name: 'X', shelf_life: '0', serving_unit: 'g' }).errors['shelf-life'])
+  assert.ok(validateIngredient({ name: 'X', shelf_life: '-3', serving_unit: 'g' }).errors['shelf-life'])
+  assert.ok(validateIngredient({ name: 'X', shelf_life: '2.5', serving_unit: 'g' }).errors['shelf-life'])
+  assert.ok(validateIngredient({ name: 'X', shelf_life: '5', serving_unit: 'g' }).errors['shelf-life'] === undefined)
+})
+
+test('validateIngredient: serving unit required and must be a known unit', () => {
+  assert.ok(validateIngredient({ name: 'X', shelf_life: '5', serving_unit: '' }).errors['serving-unit'])
+  assert.ok(validateIngredient({ name: 'X', shelf_life: '5', serving_unit: 'kg' }).errors['serving-unit'])
+  assert.ok(validateIngredient({ name: 'X', shelf_life: '5', serving_unit: 'g' }).errors['serving-unit'] === undefined)
+})
+
+test('validateIngredient: serving size optional, but if present must be > 0', () => {
+  assert.equal(validateIngredient({ name: 'X', shelf_life: '5', serving_unit: 'g' }).valid, true)
+  assert.ok(validateIngredient({ name: 'X', shelf_life: '5', serving_unit: 'g', serving_size: '0' }).errors['serving-size'])
+  assert.ok(validateIngredient({ name: 'X', shelf_life: '5', serving_unit: 'g', serving_size: '-1' }).errors['serving-size'])
+  assert.equal(validateIngredient({ name: 'X', shelf_life: '5', serving_unit: 'g', serving_size: '100' }).valid, true)
+})
+
+test('validateIngredient: multiple errors are reported together', () => {
+  const r = validateIngredient({ name: '', shelf_life: '', serving_unit: '' })
+  assert.equal(r.valid, false)
+  assert.ok(r.errors['name'])
+  assert.ok(r.errors['shelf-life'])
+  assert.ok(r.errors['serving-unit'])
+})

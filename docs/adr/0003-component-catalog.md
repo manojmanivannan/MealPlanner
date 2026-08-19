@@ -41,4 +41,10 @@ Adopt a token-driven component-primitive layer as the single source of truth (`f
 
 `npm run dev` serves `catalog.html` (200) and every module (`src/components/modal.js`, `src/components/toast.js`, `src/bootstrap.js`, `src/styles.css`, `design/components.css`, `design/tokens.css` all 200); the catalog's theme toggle, tabs (arrow-key + Home/End), toast triggers, modal triggers (focus-in, Tab trap, ESC, backdrop-click, focus restore, scroll lock), and the auth form (tabbed login/signup, inline validation, loading submit, success toast) drive the live page.
 
+## Addendum — T6 (#20): `.mp-disclosure`
+
+T6 (ingredients redesign) reopens this catalog for one new primitive rather than reusing an existing affordance, because the spec calls for a **grouped / progressive-disclosure** nutrition form (macros always visible, minerals behind a disclosure) and no existing primitive covers it. The addition is documented here so the catalog's "single source of truth" status (see Consequences) is preserved:
+
+- **Disclosure — native `<details>`/`<summary>`.** `.mp-disclosure` (a container with a top border) + `.mp-disclosure-summary` (a flex header row) + `.mp-disclosure-chevron` (an SVG marker that rotates 180° on `[open]`). No JS: `<details>` provides the toggle, keyboard, and `aria-expanded`-equivalent semantics for free; the class only replaces the default marker with the themed chevron and styles the summary header from T1 tokens (`--text-secondary`, `--ring` on `:focus-visible`, `--duration-fast` for the chevron rotation). Used by the ingredient edit modal's minerals group; available to T7+ for any other progressive-disclosure form section.
+
 **Scope note on the test suite:** the repo's existing test suite is the Python/pytest backend stack (`tests/`, needs `pytest` + `fastapi.testclient` + `testcontainers` Postgres/Docker), which is not installed in this environment and has zero overlap with these frontend-only changes — so it was not re-run here. The frontend has no JS test runner yet; automated a11y/keyboard verification is the T8 gate ticket's job.

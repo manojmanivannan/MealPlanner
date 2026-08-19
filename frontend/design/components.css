@@ -290,6 +290,41 @@
   .mp-tabpanel { padding-top: var(--space-4); }
 
   /* ============================================================
+   * Disclosure — native <details>/<summary>, progressive disclosure
+   * ============================================================
+   * No JS: <details> gives toggle + keyboard semantics for free; this
+   * class just replaces the default marker with a chevron that rotates
+   * on [open]. Used for the minerals group in the ingredient edit form.
+   */
+  .mp-disclosure { border-top: 1px solid var(--border-subtle); }
+  .mp-disclosure > .mp-disclosure-summary {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font: inherit;
+    font-size: var(--font-size-small);
+    font-weight: var(--weight-medium);
+    color: var(--text-secondary);
+    cursor: pointer;
+    list-style: none;
+    padding: var(--space-3) 0;
+    user-select: none;
+  }
+  .mp-disclosure > .mp-disclosure-summary::-webkit-details-marker { display: none; }
+  .mp-disclosure > .mp-disclosure-summary:hover { color: var(--text-primary); }
+  .mp-disclosure > .mp-disclosure-summary:focus-visible {
+    outline: none;
+    box-shadow: var(--ring);
+    border-radius: var(--radius-sm);
+  }
+  .mp-disclosure-chevron {
+    flex: none;
+    color: var(--text-muted);
+    transition: transform var(--duration-fast) var(--ease-standard);
+  }
+  .mp-disclosure[open] > .mp-disclosure-summary .mp-disclosure-chevron { transform: rotate(180deg); }
+
+  /* ============================================================
    * Badges / pills
    * ============================================================ */
   .mp-badge {
