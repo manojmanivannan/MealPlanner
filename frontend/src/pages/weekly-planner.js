@@ -214,6 +214,7 @@ function renderSummaryBanner() {
     protein: weekTotals.protein / 7,
     carbs: weekTotals.carbs / 7,
     fat: weekTotals.fat / 7,
+    fiber: weekTotals.fiber / 7,
   }
 
   const completionPct = Math.round((totalMeals / maxMeals) * 100)
@@ -265,13 +266,23 @@ function renderSummaryBanner() {
     </div>
 
     <!-- Avg Fat Metric -->
-    <div class="mp-card p-3.5 flex flex-col justify-between col-span-2 sm:col-span-1">
+    <div class="mp-card p-3.5 flex flex-col justify-between">
       <div class="text-xs text-muted uppercase tracking-wider text-[10px] mb-1 font-medium">Avg Daily Fat</div>
       <div class="flex items-baseline gap-1">
         <span class="text-xl font-bold text-rose-600 dark:text-rose-400 tnum">${fmt(dailyAvg.fat, 1)}</span>
         <span class="text-xs text-muted">g/day</span>
       </div>
       <span class="text-[11px] text-muted truncate mt-1">Total: ${fmt(weekTotals.fat, 0)} g</span>
+    </div>
+
+    <!-- Avg Fiber Metric -->
+    <div class="mp-card p-3.5 flex flex-col justify-between">
+      <div class="text-xs text-muted uppercase tracking-wider text-[10px] mb-1 font-medium">Avg Daily Fiber</div>
+      <div class="flex items-baseline gap-1">
+        <span class="text-xl font-bold text-purple-600 dark:text-purple-400 tnum">${fmt(dailyAvg.fiber, 0)}</span>
+        <span class="text-xs text-muted">g/day</span>
+      </div>
+      <span class="text-[11px] text-muted truncate mt-1">Total: ${fmt(weekTotals.fiber, 0)} g</span>
     </div>
   `
 }
@@ -467,10 +478,16 @@ function mealSlot(day, meal, ids, slotNutrition) {
 /* ------------------------- Day Summary Footer ------------------------ */
 
 function dayFooter(dayTotals) {
-  const totalMacroGrams = (dayTotals.protein || 0) + (dayTotals.carbs || 0) + (dayTotals.fat || 0)
-  const protPct = totalMacroGrams > 0 ? Math.round((dayTotals.protein / totalMacroGrams) * 100) : 33
-  const carbPct = totalMacroGrams > 0 ? Math.round((dayTotals.carbs / totalMacroGrams) * 100) : 33
-  const fatPct = totalMacroGrams > 0 ? Math.max(0, 100 - protPct - carbPct) : 34
+  const p = Math.max(0, dayTotals.protein || 0)
+  const c = Math.max(0, dayTotals.carbs || 0)
+  const f = Math.max(0, dayTotals.fat || 0)
+  const fib = Math.max(0, dayTotals.fiber || 0)
+  const totalGrams = p + c + f + fib
+
+  const protPct = totalGrams > 0 ? Math.round((p / totalGrams) * 100) : 25
+  const carbPct = totalGrams > 0 ? Math.round((c / totalGrams) * 100) : 25
+  const fatPct = totalGrams > 0 ? Math.round((f / totalGrams) * 100) : 25
+  const fibPct = totalGrams > 0 ? Math.max(0, 100 - protPct - carbPct - fatPct) : 25
 
   return `
     <footer class="mt-3 pt-3 border-t border-line">
@@ -480,11 +497,12 @@ function dayFooter(dayTotals) {
         <span class="text-sm font-bold text-primary tnum">${fmt(dayTotals.energy, 0)} <span class="text-xs font-normal text-muted">kcal</span></span>
       </div>
 
-      <!-- Macro Ratio Visual Strip -->
-      <div class="mp-macro-ratio mb-2.5" title="Protein ${protPct}% | Carbs ${carbPct}% | Fat ${fatPct}%">
-        <div class="bg-emerald-500 transition-all" style="width: ${protPct}%"></div>
-        <div class="bg-blue-500 transition-all" style="width: ${carbPct}%"></div>
-        <div class="bg-rose-500 transition-all" style="width: ${fatPct}%"></div>
+      <!-- Macro + Fiber Ratio Visual Strip (Protein / Carbs / Fat / Fiber) -->
+      <div class="mp-macro-ratio mb-2.5" title="Protein ${protPct}% (${fmt(p, 1)}g) | Carbs ${carbPct}% (${fmt(c, 1)}g) | Fat ${fatPct}% (${fmt(f, 1)}g) | Fiber ${fibPct}% (${fmt(fib, 0)}g)">
+        <div class="bg-emerald-500 transition-all" style="width: ${protPct}%" title="Protein: ${fmt(p, 1)}g (${protPct}%)"></div>
+        <div class="bg-blue-500 transition-all" style="width: ${carbPct}%" title="Carbs: ${fmt(c, 1)}g (${carbPct}%)"></div>
+        <div class="bg-rose-500 transition-all" style="width: ${fatPct}%" title="Fat: ${fmt(f, 1)}g (${fatPct}%)"></div>
+        <div class="bg-purple-500 transition-all" style="width: ${fibPct}%" title="Fiber: ${fmt(fib, 0)}g (${fibPct}%)"></div>
       </div>
 
       <!-- 2x2 Macro Metric Cards (Clean & Uncrowded) -->
