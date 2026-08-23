@@ -48,6 +48,11 @@
 }
 
 /* Base layout */
+html {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
 body {
   min-height: 100vh;
   display: flex;
@@ -56,8 +61,23 @@ body {
   color: var(--text-primary);
 }
 
+@media (max-width: 767px) {
+  body {
+    padding-bottom: var(--bottom-nav-height);
+  }
+}
+
 main {
   flex: 1 0 auto;
+}
+
+/* Utilities for hiding scrollbars on swipeable carousels & tabs */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
 /* Custom scrollbars */

@@ -50,17 +50,25 @@ function esc(str) {
 
 /* ------------------------------- State ------------------------------- */
 
+function getCurrentDayName() {
+  const dayIndex = new Date().getDay()
+  const mapping = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+  return mapping[dayIndex] || 'Monday'
+}
+
 const state = {
   recipes: [],
   plan: {},
   status: 'loading',
   error: null,
+  mobileSelectedDay: getCurrentDayName(),
 }
 
 let recentIds = loadRecent()
 
 const grid = document.getElementById('meal-plan-grid')
 const summaryBanner = document.getElementById('week-summary-banner')
+const dayPicker = document.getElementById('mobile-day-picker')
 const exportPdfBtn = document.getElementById('export-pdf-btn')
 const weekLabel = document.getElementById('current-week-label')
 
@@ -189,6 +197,7 @@ function render() {
     return
   }
   renderSummaryBanner()
+  renderMobileDayPicker()
   renderGrid()
 }
 
@@ -221,7 +230,7 @@ function renderSummaryBanner() {
 
   summaryBanner.innerHTML = `
     <!-- Planned Meals Metric -->
-    <div class="mp-card p-3.5 flex flex-col justify-between">
+    <div class="mp-card p-3.5 flex flex-col justify-between flex-none w-[145px] sm:w-auto snap-start">
       <div class="flex items-center justify-between text-xs text-muted mb-1">
         <span class="font-medium uppercase tracking-wider text-[10px]">Planned Meals</span>
         <span class="font-semibold text-primary tnum">${totalMeals}/${maxMeals}</span>
@@ -236,7 +245,7 @@ function renderSummaryBanner() {
     </div>
 
     <!-- Avg Calories Metric -->
-    <div class="mp-card p-3.5 flex flex-col justify-between">
+    <div class="mp-card p-3.5 flex flex-col justify-between flex-none w-[145px] sm:w-auto snap-start">
       <div class="text-xs text-muted uppercase tracking-wider text-[10px] mb-1 font-medium">Avg Daily Cal</div>
       <div class="flex items-baseline gap-1">
         <span class="text-xl font-bold text-primary tnum">${fmt(dailyAvg.energy, 0)}</span>
@@ -246,7 +255,7 @@ function renderSummaryBanner() {
     </div>
 
     <!-- Avg Protein Metric -->
-    <div class="mp-card p-3.5 flex flex-col justify-between">
+    <div class="mp-card p-3.5 flex flex-col justify-between flex-none w-[145px] sm:w-auto snap-start">
       <div class="text-xs text-muted uppercase tracking-wider text-[10px] mb-1 font-medium">Avg Daily Protein</div>
       <div class="flex items-baseline gap-1">
         <span class="text-xl font-bold text-emerald-600 dark:text-emerald-400 tnum">${fmt(dailyAvg.protein, 1)}</span>
@@ -256,7 +265,7 @@ function renderSummaryBanner() {
     </div>
 
     <!-- Avg Carbs Metric -->
-    <div class="mp-card p-3.5 flex flex-col justify-between">
+    <div class="mp-card p-3.5 flex flex-col justify-between flex-none w-[145px] sm:w-auto snap-start">
       <div class="text-xs text-muted uppercase tracking-wider text-[10px] mb-1 font-medium">Avg Daily Carbs</div>
       <div class="flex items-baseline gap-1">
         <span class="text-xl font-bold text-blue-600 dark:text-blue-400 tnum">${fmt(dailyAvg.carbs, 1)}</span>
@@ -266,7 +275,7 @@ function renderSummaryBanner() {
     </div>
 
     <!-- Avg Fat Metric -->
-    <div class="mp-card p-3.5 flex flex-col justify-between">
+    <div class="mp-card p-3.5 flex flex-col justify-between flex-none w-[145px] sm:w-auto snap-start">
       <div class="text-xs text-muted uppercase tracking-wider text-[10px] mb-1 font-medium">Avg Daily Fat</div>
       <div class="flex items-baseline gap-1">
         <span class="text-xl font-bold text-rose-600 dark:text-rose-400 tnum">${fmt(dailyAvg.fat, 1)}</span>
@@ -276,7 +285,7 @@ function renderSummaryBanner() {
     </div>
 
     <!-- Avg Fiber Metric -->
-    <div class="mp-card p-3.5 flex flex-col justify-between">
+    <div class="mp-card p-3.5 flex flex-col justify-between flex-none w-[145px] sm:w-auto snap-start">
       <div class="text-xs text-muted uppercase tracking-wider text-[10px] mb-1 font-medium">Avg Daily Fiber</div>
       <div class="flex items-baseline gap-1">
         <span class="text-xl font-bold text-purple-600 dark:text-purple-400 tnum">${fmt(dailyAvg.fiber, 0)}</span>
@@ -287,10 +296,35 @@ function renderSummaryBanner() {
   `
 }
 
+function renderMobileDayPicker() {
+  if (!dayPicker) return
+
+  const items = [
+    { key: 'all', label: 'All', count: '' },
+    ...DAYS.map((d) => {
+      let count = 0
+      MEAL_SLOTS.forEach((m) => {
+        const ids = slotIds(d, m)
+        if (ids.length && ids.some((id) => state.recipes.find((r) => r.id === id))) count++
+      })
+      return { key: d, label: DAY_SHORT[d] || d.slice(0, 3), count: `${count}/5` }
+    }),
+  ]
+
+  dayPicker.innerHTML = items.map((item) => {
+    const active = state.mobileSelectedDay === item.key
+    return `
+      <button type="button" class="mp-day-picker-item ${active ? 'active' : ''}" data-day-pick="${item.key}" role="tab" aria-selected="${active}">
+        <span class="font-bold text-xs uppercase tracking-tight">${item.label}</span>
+        ${item.count ? `<span class="text-[10px] text-muted font-medium mt-0.5 tnum">${item.count}</span>` : ''}
+      </button>`
+  }).join('')
+}
+
 function renderSkeleton() {
   if (summaryBanner) {
-    summaryBanner.innerHTML = Array.from({ length: 5 }).map(() => `
-      <div class="mp-card p-4">
+    summaryBanner.innerHTML = Array.from({ length: 6 }).map(() => `
+      <div class="mp-card p-4 flex-none w-[145px] sm:w-auto">
         <div class="mp-skeleton mp-skeleton-line" style="width: 50%"></div>
         <div class="mp-skeleton mp-skeleton-line" style="width: 80%; height: 1.5rem; margin-top: 0.5rem"></div>
       </div>
@@ -320,6 +354,7 @@ function renderSkeleton() {
 
 function renderError() {
   if (summaryBanner) summaryBanner.innerHTML = ''
+  if (dayPicker) dayPicker.innerHTML = ''
   grid.innerHTML = `
     <div class="col-span-full">
       <div class="mp-card mp-state mp-state-error p-8">
@@ -333,6 +368,7 @@ function renderError() {
 
 function renderEmpty() {
   if (summaryBanner) summaryBanner.innerHTML = ''
+  if (dayPicker) dayPicker.innerHTML = ''
   grid.innerHTML = `
     <div class="col-span-full">
       <div class="mp-card mp-state p-12">
@@ -347,7 +383,12 @@ function renderEmpty() {
 }
 
 function renderGrid() {
-  grid.innerHTML = DAYS.map((day) => dayCard(day)).join('')
+  const isMobile = window.innerWidth < 768
+  const daysToRender = (isMobile && state.mobileSelectedDay !== 'all')
+    ? [state.mobileSelectedDay]
+    : DAYS
+
+  grid.innerHTML = daysToRender.map((day) => dayCard(day)).join('')
 }
 
 /* ----------------------------- Day Card ------------------------------ */
@@ -562,6 +603,20 @@ grid.addEventListener('click', (e) => {
   else if (action === 'copy-day') openCopyDayModal(day, btn)
   else if (action === 'recipe') showRecipeDetails(recipeId, btn)
   else if (action === 'retry') load()
+})
+
+if (dayPicker) {
+  dayPicker.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-day-pick]')
+    if (!btn) return
+    state.mobileSelectedDay = btn.dataset.dayPick
+    renderMobileDayPicker()
+    renderGrid()
+  })
+}
+
+window.addEventListener('resize', () => {
+  renderGrid()
 })
 
 /* ------------------------------- Modals ------------------------------ */

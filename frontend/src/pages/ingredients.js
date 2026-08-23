@@ -163,24 +163,24 @@ function renderMetrics() {
 
   metricsStrip.innerHTML = `
     <!-- Total Library -->
-    <div class="mp-card p-4 flex flex-col justify-between">
+    <div class="mp-card p-4 flex flex-col justify-between flex-none w-[170px] sm:w-auto snap-start">
       <div class="text-[11px] font-semibold uppercase tracking-wider text-muted mb-1">Master Library</div>
       <div class="flex items-baseline gap-2">
         <span class="text-2xl font-bold text-primary tnum">${total}</span>
-        <span class="text-xs text-muted">ingredients</span>
+        <span class="text-xs text-muted">items</span>
       </div>
-      <span class="text-xs text-muted mt-2">Nutrient &amp; pantry library</span>
+      <span class="text-xs text-muted mt-2 truncate">Nutrient library</span>
     </div>
 
     <!-- In Pantry -->
-    <div class="mp-card p-4 flex flex-col justify-between">
+    <div class="mp-card p-4 flex flex-col justify-between flex-none w-[170px] sm:w-auto snap-start">
       <div class="flex items-center justify-between text-xs text-muted mb-1">
-        <span class="text-[11px] font-semibold uppercase tracking-wider text-muted">In Stock Pantry</span>
+        <span class="text-[11px] font-semibold uppercase tracking-wider text-muted">In Pantry</span>
         <span class="font-bold text-emerald-600 dark:text-emerald-400 tnum">${available}/${total}</span>
       </div>
       <div class="flex items-baseline gap-2">
         <span class="text-2xl font-bold text-emerald-600 dark:text-emerald-400 tnum">${inStockPct}%</span>
-        <span class="text-xs text-muted">items available</span>
+        <span class="text-xs text-muted">available</span>
       </div>
       <div class="mp-progress mt-2 h-1.5 bg-subtle">
         <div class="mp-progress-bar bg-emerald-500" style="width: ${inStockPct}%"></div>
@@ -188,13 +188,13 @@ function renderMetrics() {
     </div>
 
     <!-- Freshness Watch -->
-    <div class="mp-card p-4 flex flex-col justify-between">
+    <div class="mp-card p-4 flex flex-col justify-between flex-none w-[170px] sm:w-auto snap-start">
       <div class="text-[11px] font-semibold uppercase tracking-wider text-muted mb-1">Freshness Status</div>
       <div class="flex items-baseline gap-2">
         <span class="text-2xl font-bold ${expiring > 0 ? 'text-amber-500' : 'text-primary'} tnum">${expiring}</span>
         <span class="text-xs text-muted">expiring soon</span>
       </div>
-      <span class="text-xs text-muted mt-2">${expiring > 0 ? 'Consume within 48 hours' : 'All pantry items fresh'}</span>
+      <span class="text-xs text-muted mt-2 truncate">${expiring > 0 ? 'Use in 48h' : 'Pantry fresh'}</span>
     </div>
   `
 }
@@ -202,7 +202,7 @@ function renderMetrics() {
 function renderSkeleton() {
   if (metricsStrip) {
     metricsStrip.innerHTML = Array.from({ length: 3 }).map(() => `
-      <div class="mp-card p-4">
+      <div class="mp-card p-4 flex-none w-[170px] sm:w-auto">
         <div class="mp-skeleton mp-skeleton-line w-1/3 mb-2"></div>
         <div class="mp-skeleton mp-skeleton-line w-1/2 h-8 rounded-lg"></div>
       </div>

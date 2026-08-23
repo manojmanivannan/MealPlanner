@@ -36,11 +36,18 @@
                 </div>
             </div>
 
-            <!-- Weekly Nutrition Overview Banner -->
-            <div id="week-summary-banner" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mt-4">
+            <!-- Weekly Nutrition Overview Banner (Swipeable on mobile) -->
+            <div id="week-summary-banner" class="flex sm:grid overflow-x-auto sm:overflow-visible pb-2 sm:pb-0 snap-x no-scrollbar grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mt-4">
                 <!-- Dynamically populated by weekly-planner.js -->
             </div>
         </section>
+
+        <!-- Mobile Day Selector Pill Strip (visible on mobile only) -->
+        <div class="block md:hidden mb-4 sticky top-16 z-30 bg-canvas/95 backdrop-blur-md py-2 -mx-4 px-4 border-b border-line-subtle">
+            <div id="mobile-day-picker" class="mp-day-picker no-scrollbar">
+                <!-- Dynamically populated by weekly-planner.js -->
+            </div>
+        </div>
 
         <!-- 7-Day Planner Grid -->
         <section>

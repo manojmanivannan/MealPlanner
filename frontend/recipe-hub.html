@@ -51,11 +51,13 @@
                 </div>
             </div>
 
-            <!-- Category Tablist -->
-            <div id="hub-tabs" class="mp-tablist" role="tablist" aria-label="Recipe categories"></div>
+            <!-- Category Tablist (Swipeable on mobile) -->
+            <div class="overflow-x-auto no-scrollbar -mx-4 px-4 sm:mx-0 sm:px-0 pb-1">
+                <div id="hub-tabs" class="mp-tablist flex-nowrap min-w-max" role="tablist" aria-label="Recipe categories"></div>
+            </div>
 
             <!-- Recipe Grid -->
-            <div id="recipe-grid" role="tabpanel" aria-labelledby="hub-tabs" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 pt-6"></div>
+            <div id="recipe-grid" role="tabpanel" aria-labelledby="hub-tabs" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5 pt-4 sm:pt-6"></div>
         </section>
     </main>
 

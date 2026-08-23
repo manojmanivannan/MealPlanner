@@ -106,6 +106,9 @@ export function openModal(opts = {}) {
   if (bodyId) panel.setAttribute('aria-describedby', bodyId)
   panel.tabIndex = -1
 
+  const handle = document.createElement('div')
+  handle.className = 'mp-modal-handle block sm:hidden'
+
   const header = document.createElement('div')
   header.className = 'mp-modal-header'
   const heading = document.createElement('h2')
@@ -124,7 +127,7 @@ export function openModal(opts = {}) {
   if (bodyId) bodyEl.id = bodyId
   appendContent(bodyEl, body)
 
-  panel.append(header, bodyEl)
+  panel.append(handle, header, bodyEl)
   if (footer != null) {
     const footerEl = document.createElement('div')
     footerEl.className = 'mp-modal-footer'
