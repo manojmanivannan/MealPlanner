@@ -23,6 +23,14 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login", auto_error=False)
 
 SECRET_KEY = os.environ.get("MEALPLANNER_SECRET", "devsecret")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.environ.get("MEALPLANNER_TOKEN_MINUTES", "1440"))
+DEFAULT_USER_EMAIL = (
+    os.environ.get("DEFAULT_USER_EMAIL")
+    or os.environ.get("DEFAULT_USERNAME")
+    or os.environ.get("DEFAULT_EMAIL")
+    or os.environ.get("APP_USER_EMAIL")
+    or os.environ.get("APP_USERNAME")
+    or "demo@demo.com"
+)
 
 
 def verify_password(plain_password: str, password_hash: str) -> bool:
@@ -115,7 +123,11 @@ def signup(user_in: UserCreateSchema, db: Session = Depends(get_db)):
     db.refresh(user)
 
     # Duplicate recipes and ingredients from demo user
-    demo_user = db.query(User).filter(User.email == "demo@demo.com").first()
+    demo_user = (
+        db.query(User).filter(User.email == DEFAULT_USER_EMAIL).first()
+        or db.query(User).filter(User.email == "demo@demo.com").first()
+        or db.query(User).order_by(User.id).first()
+    )
     if demo_user:
         # Duplicate ingredients
         for ingredient in db.query(Ingredient).filter(Ingredient.user_id == demo_user.id).all():

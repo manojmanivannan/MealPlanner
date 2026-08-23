@@ -1,4 +1,5 @@
 # setup_db.py
+import os
 import csv
 import sys
 import json  # <-- ADD THIS IMPORT
@@ -12,6 +13,22 @@ from database import engine, Base, SessionLocal
 from models import Ingredient, Recipe, WeeklyPlan, RecipeMealType, User
 from sqlalchemy import text as sa_text
 from passlib.context import CryptContext
+
+DEFAULT_USER_EMAIL = (
+    os.environ.get("DEFAULT_USER_EMAIL")
+    or os.environ.get("DEFAULT_USERNAME")
+    or os.environ.get("DEFAULT_EMAIL")
+    or os.environ.get("APP_USER_EMAIL")
+    or os.environ.get("APP_USERNAME")
+    or "demo@demo.com"
+)
+DEFAULT_USER_PASSWORD = (
+    os.environ.get("DEFAULT_USER_PASSWORD")
+    or os.environ.get("DEFAULT_PASSWORD")
+    or os.environ.get("APP_USER_PASSWORD")
+    or os.environ.get("APP_PASSWORD")
+    or "demo123"
+)
 
 # --- Custom Exception ---
 class DataLoadError(Exception):
@@ -295,14 +312,30 @@ def setup_database() -> None:
                     END IF;
                 END$$;
             """))
-            # Ensure at least one default user exists for seed data
-            # Insert default demo user with a bcrypt hash if none exists
-            pwd = CryptContext(schemes=["bcrypt"], deprecated="auto").hash("demo123")
-            conn.execute(sa_text(f"""
-                INSERT INTO users (email, password_hash)
-                SELECT 'demo@demo.com', :pwd
-                WHERE NOT EXISTS (SELECT 1 FROM users);
-            """), {"pwd": pwd})
+            # Ensure default user exists for seed data and is updated to configured credentials
+            pwd = CryptContext(schemes=["bcrypt"], deprecated="auto").hash(DEFAULT_USER_PASSWORD)
+            has_users = conn.execute(sa_text("SELECT 1 FROM users LIMIT 1")).scalar()
+            if not has_users:
+                conn.execute(sa_text("""
+                    INSERT INTO users (email, password_hash)
+                    VALUES (:email, :pwd);
+                """), {"email": DEFAULT_USER_EMAIL, "pwd": pwd})
+            else:
+                # Update existing demo@demo.com if custom email was configured
+                conn.execute(sa_text("""
+                    UPDATE users
+                    SET email = :email, password_hash = :pwd
+                    WHERE email = 'demo@demo.com'
+                      AND NOT EXISTS (SELECT 1 FROM users WHERE email = :email AND email <> 'demo@demo.com');
+                """), {"email": DEFAULT_USER_EMAIL, "pwd": pwd})
+
+                # Update password for configured default user to stay in sync with .env
+                conn.execute(sa_text("""
+                    UPDATE users
+                    SET password_hash = :pwd
+                    WHERE email = :email;
+                """), {"email": DEFAULT_USER_EMAIL, "pwd": pwd})
+
             # Backfill weekly_plan user_id if null
             conn.execute(sa_text("""
                 UPDATE weekly_plan 

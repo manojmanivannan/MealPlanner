@@ -16,12 +16,25 @@ This project uses Docker for easy setup and deployment. You can run it locally o
 1.  **Prerequisites:**
     *   Docker and Docker Compose installed.
 
-2.  **Run the application:**
+2.  **Configure environment (Optional):**
+    *   Create or edit the `.env` file in the project root to configure your database and default login credentials:
+        ```bash
+        cp .env.example .env
+        ```
+    *   Set your desired login credentials in `.env`:
+        ```dotenv
+        DEFAULT_USER_EMAIL=demo@demo.com
+        DEFAULT_USER_PASSWORD=demo123
+        ```
+
+3.  **Run the application:**
     ```bash
     docker-compose --profile local up --build
+    # or using the start helper script:
+    ./start.sh up
     ```
 
-3.  **Access the application:**
+4.  **Access the application:**
     *   Open your web browser and go to `http://localhost:8080`.
 
 ### Production with Tailscale

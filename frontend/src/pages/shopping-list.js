@@ -1,23 +1,8 @@
 /*
- * Shopping List page entry + page-content logic (T7)
+ * Shopping List Page — Material Flat Minimalist Architecture
  * ------------------------------------------------------------------
- * The one NEW view in the frontend modernization. It generates the week's
- * shopping list from the existing /utilities/shopping-list endpoint (which
- * aggregates the ingredients of every planned recipe and drops the ones
- * already in the user's pantry — no backend work), then enriches each line
- * with a "which day/meal uses this" hint derived client-side from the weekly
- * plan + recipes (the endpoint doesn't carry that).
- *
- * Built on the T3 component catalog, the same way the planner / recipe-hub /
- * ingredients pages are:
- *   • Token-driven .mp-* components; loading / empty / error states instead
- *     of blank-or-silent failures; feedback via toast.js (no alert/console).
- *   • Check-off is a client-only affordance (there is no persisted-purchase
- *     endpoint) stored in localStorage, keyed by ingredient name, so it
- *     survives a regenerated list until the ingredient is no longer needed.
- *   • The pure helpers (merge, usage index, filter, progress, formatting)
- *     live in shopping-list-logic.js and are unit-tested in isolation; this
- *     module is the DOM/fetch glue.
+ * Aggregated grocery list generated from active meal plan minus pantry items,
+ * interactive check-off, usage hints, progress tracking, and clipboard export.
  */
 import { mountLayout } from '../bootstrap.js'
 import { toast } from '../components/toast.js'
@@ -35,21 +20,20 @@ import {
 /* ----------------------------- Constants ----------------------------- */
 
 const API_BASE = '/api'
-
 const PURCHASED_KEY = 'mp-shopping-purchased'
 
 /* ------------------------------- State ------------------------------- */
 
 const state = {
-  shoppingList: {},    // raw /utilities/shopping-list response
-  items: [],           // merged render items (mergeItems output)
-  usageIndex: {},      // ingredientName -> usage entries (buildUsageIndex)
-  hasPlan: false,      // whether the week has any assigned slot at all
-  status: 'loading',   // 'loading' | 'ready' | 'error'
+  shoppingList: {},
+  items: [],
+  usageIndex: {},
+  hasPlan: false,
+  status: 'loading',
   error: null,
 }
 
-let purchased = loadPurchased()       // Set<string> of purchased ingredient keys
+let purchased = loadPurchased()
 let searchTerm = ''
 let hidePurchased = false
 
@@ -58,13 +42,10 @@ const progressEl = document.getElementById('shopping-progress')
 const searchInput = document.getElementById('shopping-search')
 const hidePurchasedInput = document.getElementById('hide-purchased')
 const resetBtn = document.getElementById('uncheck-all')
+const copyBtn = document.getElementById('copy-list-btn')
+const countBadge = document.getElementById('shopping-count-badge')
 
-/* ----------------------- localStorage persistence ----------------------- */
-// Check-off has no backend, so purchased state lives in localStorage as a
-// small JSON array of ingredient keys. The shopping list is regenerated from
-// the plan on every load, so stale keys (an ingredient no longer needed) are
-// harmless: progress() and the render both ignore purchased keys that aren't
-// in the current list.
+/* ----------------------- LocalStorage Persistence -------------------- */
 
 function loadPurchased() {
   try {
@@ -81,7 +62,7 @@ function savePurchased() {
   try { localStorage.setItem(PURCHASED_KEY, JSON.stringify([...purchased])) } catch (_) {}
 }
 
-/* ------------------------------ API layer ---------------------------- */
+/* ------------------------------ API Layer ---------------------------- */
 
 function authHeaders() {
   const token = localStorage.getItem('token')
@@ -118,7 +99,6 @@ async function fetchRecipes() {
   return resp.json()
 }
 
-// Escape reflected content (ingredient names, units) before innerHTML.
 function esc(str) {
   return String(str == null ? '' : str)
     .replace(/&/g, '&amp;')
@@ -135,95 +115,124 @@ function filteredItems() {
 }
 
 function render() {
+  if (countBadge) {
+    countBadge.textContent = state.status === 'ready'
+      ? `${state.items.length} items needed`
+      : 'Calculating...'
+  }
+
   renderProgress()
-  if (state.status === 'loading') { renderSkeleton(); syncResetBtn(); return }
-  if (state.status === 'error') { renderError(); syncResetBtn(); return }
-  if (state.items.length === 0) { renderEmpty(); syncResetBtn(); return }
+  if (state.status === 'loading') {
+    renderSkeleton()
+    syncResetBtn()
+    return
+  }
+  if (state.status === 'error') {
+    renderError()
+    syncResetBtn()
+    return
+  }
+  if (state.items.length === 0) {
+    renderEmpty()
+    syncResetBtn()
+    return
+  }
   renderList()
   syncResetBtn()
 }
 
-// Enable Reset only when there's something checked off to clear.
 function syncResetBtn() {
-  resetBtn.disabled = purchased.size === 0
+  if (resetBtn) resetBtn.disabled = purchased.size === 0
 }
 
-// Progress bar + summary over the WHOLE list (independent of the search /
-// hide-purchased filters), so checking items off always moves the bar.
 function renderProgress() {
-  if (state.status !== 'ready') { progressEl.innerHTML = ''; return }
+  if (!progressEl) return
+  if (state.status !== 'ready') {
+    progressEl.innerHTML = ''
+    return
+  }
   const { total, done, remaining } = progress(state.items, purchased)
-  if (total === 0) { progressEl.innerHTML = ''; return }
+  if (total === 0) {
+    progressEl.innerHTML = ''
+    return
+  }
   const pct = total ? Math.round((done / total) * 100) : 0
-  const label = remaining === 0
-    ? `All ${total} items checked off`
-    : `${done} of ${total} checked`
+  const isComplete = remaining === 0
+
   progressEl.innerHTML = `
-    <div class="flex items-center gap-3">
-      <div class="flex-1 h-2 rounded-full bg-subtle overflow-hidden" role="progressbar" aria-valuenow="${done}" aria-valuemin="0" aria-valuemax="${total}" aria-label="${label}">
-        <div class="h-full bg-accent transition-all" style="width:${pct}%"></div>
+    <div class="mp-card p-4 flex flex-col gap-2">
+      <div class="flex items-center justify-between text-xs">
+        <span class="font-semibold text-muted uppercase tracking-wider text-[10px]">Grocery Progress</span>
+        <span class="font-bold text-primary tnum">${done} of ${total} checked (${pct}%)</span>
       </div>
-      <span class="text-sm text-secondary tnum flex-none">${label}</span>
+      <div class="mp-progress h-2 bg-subtle">
+        <div class="mp-progress-bar ${isComplete ? 'bg-emerald-500' : 'bg-accent'}" style="width: ${pct}%"></div>
+      </div>
+      <div class="flex items-center justify-between text-xs text-muted mt-0.5">
+        <span>${isComplete ? '🎉 All grocery items acquired!' : `${remaining} items remaining to purchase`}</span>
+        <span class="tnum font-medium">${remaining} left</span>
+      </div>
     </div>`
 }
 
 function renderSkeleton() {
   listEl.innerHTML = Array.from({ length: 6 }).map(() => `
-    <div class="py-3 border-b border-line-subtle last:border-0">
-      <div class="flex items-center gap-3">
-        <span class="mp-skeleton" style="width:1.125rem;height:1.125rem;border-radius:0.25rem"></span>
-        <div class="flex-1">
-          <div class="mp-skeleton mp-skeleton-line" style="width:40%;margin:0 0 0.25rem"></div>
-          <div class="mp-skeleton mp-skeleton-line" style="width:60%;margin:0"></div>
-        </div>
+    <div class="p-3.5 border-b border-line-subtle last:border-0 flex items-center gap-3">
+      <span class="mp-skeleton w-4 h-4 rounded"></span>
+      <div class="flex-1">
+        <div class="mp-skeleton mp-skeleton-line w-1/3 mb-1.5"></div>
+        <div class="mp-skeleton mp-skeleton-line w-1/2 mb-0"></div>
       </div>
     </div>`).join('')
 }
 
 function renderError() {
   listEl.innerHTML = `
-    <div class="mp-state mp-state-error">
+    <div class="mp-state mp-state-error p-8">
       <svg class="mp-state-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="10" cy="10" r="8"/><path d="M10 6v5M10 14v.01" stroke-linecap="round"/></svg>
-      <p class="mp-state-title">Couldn't load your shopping list</p>
-      <p class="mp-state-desc">${esc(state.error || 'Something went wrong. Please try again.')}</p>
+      <p class="mp-state-title">Couldn't load shopping list</p>
+      <p class="mp-state-desc">${esc(state.error || 'Something went wrong. Please check your network.')}</p>
       <button type="button" class="mp-btn mp-btn-secondary focus-ring mp-state-action" data-action="retry">Retry</button>
     </div>`
 }
 
 function renderEmpty() {
-  // Two empty shapes: no plan yet, or the pantry already covers the week.
   const body = state.hasPlan
-    ? { title: 'Nothing to buy',
-        desc: 'Your pantry already covers every ingredient in this week\'s plan.',
-        action: null }
-    : { title: 'No recipes planned yet',
-        desc: 'Plan some meals for the week first, then come back for your shopping list.',
-        action: { label: 'Go to Weekly Planner', href: 'index.html' } }
+    ? {
+        title: 'Everything in Stock!',
+        desc: 'Your pantry already contains every ingredient needed for this week\'s planned meals.',
+        action: null,
+      }
+    : {
+        title: 'No Weekly Meals Planned',
+        desc: 'Add recipes to your weekly schedule first, and your grocery shopping list will generate automatically.',
+        action: { label: 'Go to Weekly Planner', href: 'index.html' },
+      }
 
   listEl.innerHTML = `
-    <div class="mp-state">
-      <svg class="mp-state-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M4 7h12l-1 9a1 1 0 01-1 1H6a1 1 0 01-1-1L4 7z"/><path d="M7 7V5a3 3 0 016 0v2" stroke-linecap="round"/></svg>
-      <p class="mp-state-title">${esc(body.title)}</p>
-      <p class="mp-state-desc">${esc(body.desc)}</p>
-      ${body.action ? `<a class="mp-btn mp-btn-primary focus-ring mp-state-action" href="${body.action.href}">${esc(body.action.label)}</a>` : ''}
+    <div class="mp-state p-12">
+      <div class="w-16 h-16 rounded-2xl bg-accent/10 text-accent flex items-center justify-center mb-3">
+        <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg>
+      </div>
+      <p class="mp-state-title text-xl font-bold">${esc(body.title)}</p>
+      <p class="mp-state-desc mt-1">${esc(body.desc)}</p>
+      ${body.action ? `<a class="mp-btn mp-btn-primary focus-ring mp-state-action mt-4" href="${body.action.href}">${esc(body.action.label)}</a>` : ''}
     </div>`
 }
 
 function renderList() {
   const items = filteredItems()
   if (items.length === 0) {
-    // The list isn't empty but the filter cleared it — distinct from the true
-    // empty state above so the user understands it's their filter, not the plan.
     const desc = hidePurchased && searchTerm
-      ? 'No items match your search, and the rest are already checked off.'
+      ? 'No items match your search, and the rest are checked off.'
       : hidePurchased
-        ? 'Everything is checked off. Toggle "Hide checked" to review them.'
-        : 'No items match your search.'
+        ? 'All items are checked off! Turn off "Hide Checked" to view completed items.'
+        : 'No ingredients match your filter.'
     listEl.innerHTML = `
-      <div class="mp-state">
+      <div class="mp-state p-10">
         <svg class="mp-state-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="9" cy="9" r="6"/><path d="M14 14l3 3" stroke-linecap="round"/></svg>
-        <p class="mp-state-title">No items to show</p>
-        <p class="mp-state-desc">${esc(desc)}</p>
+        <p class="mp-state-title">No matching items</p>
+        <p class="mp-state-desc mt-1">${esc(desc)}</p>
       </div>`
     return
   }
@@ -234,31 +243,28 @@ function renderList() {
 function itemRow(item) {
   const checked = purchased.has(item.key)
   const usage = formatUsageHint(item.usage)
-  // Title attribute lists the full recipe breakdown for the hint, for when
-  // the compact "Mon · Breakfast" line is truncated.
   const usageTitle = item.usage.length
-    ? `Used in: ${item.usage.map((u) => `${u.day} ${MEAL_LABELS[u.meal] || u.meal} — ${u.recipeName}`).join(', ')}`
+    ? `Used in: ${item.usage.map((u) => `${u.day} ${MEAL_LABELS[u.meal] || u.meal} (${u.recipeName})`).join(', ')}`
     : ''
   const qty = `${formatQuantity(item.quantity)} ${esc(item.servingUnit || '')}`.trim()
-  const nameCls = checked ? 'line-through text-muted' : 'text-primary font-medium'
+  const nameCls = checked ? 'line-through text-muted opacity-60' : 'text-primary font-medium'
+  const rowBg = checked ? 'bg-subtle/40' : 'hover:bg-subtle/50'
+
   return `
-    <label class="mp-check w-full shopping-row py-3 border-b border-line-subtle last:border-0" data-key="${esc(item.key)}">
-      <input type="checkbox" data-action="toggle" data-key="${esc(item.key)}"${checked ? ' checked' : ''}>
+    <label class="mp-check w-full p-3.5 border-b border-line-subtle last:border-0 transition-all cursor-pointer ${rowBg}" data-key="${esc(item.key)}">
+      <input type="checkbox" data-action="toggle" data-key="${esc(item.key)}"${checked ? ' checked' : ''} class="mt-0.5">
       <span class="flex-1 min-w-0">
-        <span class="flex items-center justify-between gap-2">
-          <span class="${nameCls} truncate">${esc(item.name)}</span>
-          <span class="text-secondary tnum text-sm flex-none">${qty}</span>
+        <span class="flex items-center justify-between gap-3">
+          <span class="${nameCls} text-sm truncate transition-all">${esc(item.name)}</span>
+          <span class="mp-badge mp-badge-outline text-xs font-semibold tnum flex-none">${qty}</span>
         </span>
-        ${usage ? `<span class="block text-muted text-xs truncate mt-0.5"${usageTitle ? ` title="${esc(usageTitle)}"` : ''}>${esc(usage)}</span>` : ''}
+        ${usage ? `<span class="inline-flex items-center gap-1 text-[11px] text-muted truncate mt-1"${usageTitle ? ` title="${esc(usageTitle)}"` : ''}><span class="w-1.5 h-1.5 rounded-full bg-accent/60"></span>${esc(usage)}</span>` : ''}
       </span>
     </label>`
 }
 
-/* ------------------------- Event delegation -------------------------- */
+/* ------------------------- Event Delegation -------------------------- */
 
-// Checkbox toggle: update purchased state, persist, re-render, and restore
-// focus to the toggled checkbox so screen-reader / keyboard users keep their
-// place in the list (a full re-render would otherwise drop focus to <body>).
 listEl.addEventListener('change', (e) => {
   const cb = e.target.closest('input[type="checkbox"][data-action="toggle"]')
   if (!cb || !listEl.contains(cb)) return
@@ -270,46 +276,66 @@ listEl.addEventListener('change', (e) => {
   restoreFocus(key)
 })
 
-// Retry from the error state.
 listEl.addEventListener('click', (e) => {
   const btn = e.target.closest('[data-action="retry"]')
   if (btn) load()
 })
 
 function restoreFocus(key) {
-  // Defer until after the re-render's innerHTML swap lands in the DOM.
   requestAnimationFrame(() => {
     const cb = listEl.querySelector(`input[data-action="toggle"][data-key="${cssEsc(key)}"]`)
     if (cb) cb.focus()
   })
 }
 
-// Attribute selectors don't tolerate every character; escape for the
-// querySelector (keys are lowercased ingredient names, so this is belt-and-
-// braces, but a name with a "." or "[" would otherwise break the selector).
 function cssEsc(s) {
   return String(s).replace(/["\\]/g, '\\$&')
 }
 
-// Live search — re-renders the list but keeps the input focused (it's in the
-// stable toolbar, outside #shopping-list).
-searchInput.addEventListener('input', () => {
-  searchTerm = searchInput.value
-  render()
-})
+if (searchInput) {
+  searchInput.addEventListener('input', () => {
+    searchTerm = searchInput.value
+    render()
+  })
+}
 
-hidePurchasedInput.addEventListener('change', () => {
-  hidePurchased = hidePurchasedInput.checked
-  render()
-})
+if (hidePurchasedInput) {
+  hidePurchasedInput.addEventListener('change', () => {
+    hidePurchased = hidePurchasedInput.checked
+    render()
+  })
+}
 
-resetBtn.addEventListener('click', () => {
-  if (purchased.size === 0) return
-  purchased = new Set()
-  savePurchased()
-  toast.info('Shopping list reset.')
-  render()
-})
+if (resetBtn) {
+  resetBtn.addEventListener('click', () => {
+    if (purchased.size === 0) return
+    purchased = new Set()
+    savePurchased()
+    toast.info('Shopping check-marks reset.')
+    render()
+  })
+}
+
+// Copy List to Clipboard
+if (copyBtn) {
+  copyBtn.addEventListener('click', () => {
+    if (!state.items.length) {
+      toast.warning('No shopping items to copy.')
+      return
+    }
+    const lines = state.items.map((i) => {
+      const isDone = purchased.has(i.key) ? '[x]' : '[ ]'
+      const qty = `${formatQuantity(i.quantity)} ${i.servingUnit || ''}`.trim()
+      return `${isDone} ${i.name} - ${qty}`
+    })
+    const text = `Weekly Grocery Shopping List:\n\n${lines.join('\n')}`
+
+    navigator.clipboard.writeText(text).then(
+      () => toast.success('Shopping list copied to clipboard!'),
+      () => toast.error('Failed to copy to clipboard.')
+    )
+  })
+}
 
 /* ------------------------------- Boot -------------------------------- */
 
@@ -318,34 +344,25 @@ async function load() {
   state.error = null
   render()
   try {
-    // The shopping list is the spec's primary deliverable. Fetch it first and
-    // alone — a failure here is the only thing that sends the whole view to the
-    // error state. The "which day/meal" hints are enrichment built from the
-    // plan + recipes, so those are fetched best-effort below and must never
-    // take the primary list down with them.
     const shoppingList = await fetchShoppingList()
     state.shoppingList = shoppingList || {}
 
-    // Enrichment: rebuild the ingredient → (day, meal, recipe) index from the
-    // plan + recipes so each line can show a "Mon · Breakfast" hint. If either
-    // enrichment fetch fails, the list still renders — just without hints
-    // (and a toast explains why), rather than blanking the whole view.
     try {
       const [plan, recipes] = await Promise.all([fetchPlan(), fetchRecipes()])
       state.usageIndex = buildUsageIndex(plan || {}, Array.isArray(recipes) ? recipes : [])
       state.hasPlan = planHasEntries(plan)
     } catch (enrichErr) {
-      if (enrichErr && enrichErr.message === 'auth') throw enrichErr // auth is still fatal
+      if (enrichErr && enrichErr.message === 'auth') throw enrichErr
       state.usageIndex = {}
       state.hasPlan = false
-      toast.warning('Day/meal hints are unavailable — showing the list without them.', { title: 'Hints offline', duration: 6000 })
+      toast.warning('Day/meal hints offline — showing items only.', { title: 'Hints Offline', duration: 4000 })
     }
 
     state.items = mergeItems(state.shoppingList, state.usageIndex)
     state.status = 'ready'
     render()
   } catch (err) {
-    if (err && err.message === 'auth') return // redirected by handleAuthError
+    if (err && err.message === 'auth') return
     state.status = 'error'
     state.error = err && err.message ? err.message : 'Unknown error'
     render()

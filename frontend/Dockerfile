@@ -1,7 +1,13 @@
+# Multi-stage build: compile Vite MPA frontend with Tailwind v4, then serve with Nginx
+FROM node:20-alpine AS build
+WORKDIR /app
+
+COPY frontend/package*.json ./
+RUN npm ci
+
+COPY frontend/ ./
+RUN npm run build
+
 FROM nginx:latest
-
-# Copy nginx.conf
 COPY nginx.conf /etc/nginx/nginx.conf
-
-# Copy source files into application directory
-COPY ./frontend/html /usr/share/nginx/html
+COPY --from=build /app/dist /usr/share/nginx/html

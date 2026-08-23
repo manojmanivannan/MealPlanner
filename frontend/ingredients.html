@@ -3,52 +3,75 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ingredients</title>
+    <title>Ingredients &amp; Pantry — MealPlanner</title>
     <link rel="icon" type="image/x-icon" href="/meal_logo.ico">
+    <meta name="description" content="Manage your pantry inventory, track ingredient shelf lives, and review micro/macronutrient values.">
     <meta name="application-name" content="Meal Planner">
 </head>
 <body class="min-h-screen flex flex-col bg-canvas text-primary font-sans">
-    <!-- Shared nav header + auth bootstrap injected here by src/layout.js -->
+    <!-- Shared nav header injected by layout.js -->
     <div id="app-header"></div>
 
-    <main class="container mx-auto px-4 sm:px-6 py-8 sm:py-12 flex-1 w-full max-w-7xl">
+    <main class="container mx-auto px-4 sm:px-6 py-6 sm:py-8 flex-1 w-full max-w-7xl">
         <section>
-            <div class="mb-6">
-                <h1 class="text-2xl md:text-3xl font-bold tracking-tight text-primary">Ingredients</h1>
-                <p class="text-secondary mt-1 max-w-2xl">Your pantry and ingredient library. Toggle what's in the pantry, add new ingredients, and edit nutrition per serving.</p>
-            </div>
-
-            <!-- Toolbar: stable in the DOM so the search input keeps focus while
-                 typing (the grid below re-renders; this row never does). -->
-            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
-                <div class="flex items-center gap-3 flex-wrap">
+            <!-- Page Header -->
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-6 border-b border-line mb-6">
+                <div>
+                    <div class="flex items-center gap-2 mb-1">
+                        <span class="mp-badge mp-badge-accent">Pantry &amp; Storage</span>
+                        <span id="ingredient-count-badge" class="text-xs font-semibold text-muted">Loading...</span>
+                    </div>
+                    <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-primary">Ingredients &amp; Nutrition</h1>
+                    <p class="text-secondary text-sm mt-1 max-w-2xl">Maintain your ingredient master database, toggle pantry availability, and track freshness and micronutrients.</p>
+                </div>
+                <div class="flex items-center gap-2.5">
                     <button id="add-ingredient-btn" type="button" class="mp-btn mp-btn-primary focus-ring">
                         <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 4v12M4 10h12"/></svg>
                         Add Ingredient
                     </button>
-                    <div class="relative">
-                        <label for="ingredient-search" class="sr-only">Search ingredients</label>
-                        <input id="ingredient-search" type="search" class="mp-input pl-9 focus-ring" placeholder="Search by name…" autocomplete="off">
-                        <svg class="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted pointer-events-none" viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="9" cy="9" r="6"/><path d="M14 14l3 3"/></svg>
-                    </div>
-                </div>
-                <div class="flex items-center gap-2">
-                    <label for="sort-select" class="text-sm text-secondary">Sort</label>
-                    <select id="sort-select" class="mp-select focus-ring w-auto">
-                        <option value="name">A–Z</option>
-                        <option value="shelf">Shelf life</option>
-                    </select>
                 </div>
             </div>
 
-            <!-- Ingredient grid + loading/empty/error states are rendered here
-                 by src/pages/ingredients.js (token-driven .mp-* components). -->
-            <div id="ingredient-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 pt-2"></div>
+            <!-- Pantry Metric Cards Strip -->
+            <div id="pantry-metrics-strip" class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+                <!-- Injected by ingredients.js -->
+            </div>
+
+            <!-- Toolbar: Search + Sort + Filter -->
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
+                <div class="relative flex-1 max-w-md">
+                    <label for="ingredient-search" class="sr-only">Search ingredients</label>
+                    <input id="ingredient-search" type="search" class="mp-input pl-9 pr-12 focus-ring" placeholder="Search ingredients..." autocomplete="off">
+                    <svg class="absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none" viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="9" cy="9" r="6"/><path d="M14 14l3 3"/></svg>
+                    <kbd class="hidden sm:inline-block absolute right-3 top-1/2 -translate-y-1/2 text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-subtle border border-line text-muted font-bold">/</kbd>
+                </div>
+
+                <div class="flex items-center gap-3 flex-wrap">
+                    <div class="flex items-center gap-1.5">
+                        <label for="sort-select" class="text-xs font-semibold text-muted uppercase tracking-wider">Sort:</label>
+                        <select id="sort-select" class="mp-select focus-ring w-auto py-1 text-xs">
+                            <option value="name">Name (A–Z)</option>
+                            <option value="shelf">Shelf Life</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Ingredient Grid -->
+            <div id="ingredient-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 pt-1"></div>
         </section>
     </main>
 
-    <footer class="bg-sunken text-secondary py-8 text-center text-sm">
-        <p>Manage your ingredients efficiently.</p>
+    <footer class="bg-surface border-t border-line text-secondary py-6 text-center text-xs mt-auto">
+        <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
+            <p class="text-muted">MealPlanner • Material Flat Minimalist Nutrition Experience</p>
+            <div class="flex items-center gap-4 text-muted">
+                <a href="index.html" class="hover:text-primary transition-colors">Planner</a>
+                <a href="recipe-hub.html" class="hover:text-primary transition-colors">Recipes</a>
+                <a href="shopping-list.html" class="hover:text-primary transition-colors">Shopping</a>
+                <a href="catalog.html" class="hover:text-primary transition-colors">Components</a>
+            </div>
+        </div>
     </footer>
 
     <script type="module" src="/src/pages/ingredients.js"></script>
