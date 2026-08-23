@@ -1,21 +1,23 @@
 /*
  * Weekly Planner Page — Material Flat Minimalist Architecture
  * ------------------------------------------------------------------
- * Responsive 7-day grid, 5 chronological meal slots per day,
- * dynamic macro calculations, multi-select recipe assignment,
- * copy-day tools, and PDF export.
+ * Interactive 7-day meal planning across 5 slots with dynamic nutrition
+ * calculations, searchable recipe assignment, copy day automation, and PDF export.
  */
 import { mountLayout } from '../bootstrap.js'
 import { openModal } from '../components/modal.js'
 import { toast } from '../components/toast.js'
+import {
+  DAYS,
+  DAY_SHORT,
+  MEAL_ORDER,
+  MEAL_LABELS,
+} from './shopping-list-logic.js'
 
 /* ----------------------------- Constants ----------------------------- */
 
 const API_BASE = '/api'
-
-const MEAL_SLOTS = ['pre_breakfast', 'breakfast', 'lunch', 'snack', 'dinner']
-
-const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+const RECENT_KEY = 'mp-recent-recipes'
 
 const DAY_TOKEN = {
   Monday: 'mon',
@@ -27,24 +29,15 @@ const DAY_TOKEN = {
   Sunday: 'sun',
 }
 
-const MEAL_LABELS = {
-  pre_breakfast: 'Pre-Breakfast',
-  breakfast: 'Breakfast',
-  lunch: 'Lunch',
-  snack: 'Snack',
-  dinner: 'Dinner',
+const MEAL_SLOTS = ['pre_breakfast', 'breakfast', 'lunch', 'snack', 'dinner']
+
+const MEAL_ICONS = {
+  pre_breakfast: '🌅',
+  breakfast: '🍳',
+  lunch: '🥗',
+  snack: '🍎',
+  dinner: '🍲',
 }
-
-const MACRO_COLS = [
-  { key: 'energy', short: 'Cal', unit: 'kcal', digits: 0, color: 'text-amber-600 dark:text-amber-400' },
-  { key: 'protein', short: 'Prot', unit: 'g', digits: 1, color: 'text-emerald-600 dark:text-emerald-400' },
-  { key: 'carbs', short: 'Carb', unit: 'g', digits: 1, color: 'text-blue-600 dark:text-blue-400' },
-  { key: 'fat', short: 'Fat', unit: 'g', digits: 1, color: 'text-rose-600 dark:text-rose-400' },
-  { key: 'fiber', short: 'Fiber', unit: 'g', digits: 0, color: 'text-purple-600 dark:text-purple-400' },
-]
-
-const RECENT_KEY = 'mp-planner-recent'
-const RECENT_MAX = 6
 
 function esc(str) {
   return String(str == null ? '' : str)
@@ -68,27 +61,28 @@ let recentIds = loadRecent()
 
 const grid = document.getElementById('meal-plan-grid')
 const summaryBanner = document.getElementById('week-summary-banner')
+const exportPdfBtn = document.getElementById('export-pdf-btn')
+const weekLabel = document.getElementById('current-week-label')
 
-/* --------------------------- Recent Recipes -------------------------- */
+/* ----------------------- LocalStorage Persistence -------------------- */
 
 function loadRecent() {
   try {
     const raw = localStorage.getItem(RECENT_KEY)
     if (!raw) return []
     const arr = JSON.parse(raw)
-    return Array.isArray(arr) ? arr.filter((n) => Number.isInteger(n)) : []
+    return Array.isArray(arr) ? arr.map(Number).filter(Boolean) : []
   } catch (_) {
     return []
   }
 }
 
-function saveRecent(ids) {
-  try { localStorage.setItem(RECENT_KEY, JSON.stringify(ids)) } catch (_) {}
-}
-
-function pushRecent(id) {
-  recentIds = [id, ...recentIds.filter((n) => n !== id)].slice(0, RECENT_MAX)
-  saveRecent(recentIds)
+function recordRecent(id) {
+  if (!id) return
+  recentIds = [id, ...recentIds.filter((x) => x !== id)].slice(0, 10)
+  try {
+    localStorage.setItem(RECENT_KEY, JSON.stringify(recentIds))
+  } catch (_) {}
 }
 
 /* ------------------------------ API Layer ---------------------------- */
@@ -107,29 +101,40 @@ function handleAuthError(resp) {
   return false
 }
 
-async function fetchRecipes() {
-  const resp = await fetch(`${API_BASE}/recipes`, { headers: authHeaders() })
+async function fetchJson(url, opts = {}) {
+  const resp = await fetch(url, { ...opts, headers: { ...authHeaders(), ...(opts.headers || {}) } })
   if (handleAuthError(resp)) throw new Error('auth')
-  if (!resp.ok) throw new Error(`Recipes failed (${resp.status})`)
+  if (!resp.ok) {
+    let detail = ''
+    try { detail = (await resp.json()).detail } catch (_) {}
+    throw new Error(detail || `Request failed (${resp.status})`)
+  }
+  if (resp.status === 204) return null
   return resp.json()
+}
+
+async function fetchRecipes() {
+  return fetchJson(`${API_BASE}/recipes`)
 }
 
 async function fetchPlan() {
-  const resp = await fetch(`${API_BASE}/weekly-plan`, { headers: authHeaders() })
-  if (handleAuthError(resp)) throw new Error('auth')
-  if (!resp.ok) throw new Error(`Plan failed (${resp.status})`)
-  return resp.json()
+  return fetchJson(`${API_BASE}/weekly-plan`)
 }
 
 async function putSlot(day, meal, recipeIds) {
-  const resp = await fetch(`${API_BASE}/weekly-plan`, {
+  return fetchJson(`${API_BASE}/weekly-plan`, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ day, meal_type: meal, recipe_ids: recipeIds }),
   })
-  if (handleAuthError(resp)) throw new Error('auth')
-  if (!resp.ok) throw new Error(`Save failed (${resp.status})`)
-  return recipeIds
+}
+
+async function putFullPlan(plan) {
+  return fetchJson(`${API_BASE}/weekly-plan/all`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(plan),
+  })
 }
 
 /* --------------------------- Nutrition Helpers ------------------------ */
@@ -334,6 +339,8 @@ function renderGrid() {
   grid.innerHTML = DAYS.map((day) => dayCard(day)).join('')
 }
 
+/* ----------------------------- Day Card ------------------------------ */
+
 function dayCard(day) {
   const tok = DAY_TOKEN[day]
   const dayTotals = emptyNutrition()
@@ -341,42 +348,46 @@ function dayCard(day) {
 
   const slots = MEAL_SLOTS.map((meal) => {
     const ids = slotIds(day, meal)
-    if (ids.length && ids.some((id) => state.recipes.find((r) => r.id === id))) plannedCount++
+    if (ids.length && ids.some((id) => state.recipes.find((r) => r.id === id))) {
+      plannedCount++
+    }
     const n = sumNutrition(ids)
     addInto(dayTotals, n)
     return mealSlot(day, meal, ids, n)
   }).join('')
 
   return `
-    <article class="mp-card mp-card-day flex flex-col shadow-xs hover:shadow-md transition-shadow" style="--day-color:var(--day-${tok});--day-fg:var(--day-${tok}-fg);--day-soft:var(--day-${tok}-soft)">
-      <header class="mp-card-header pb-2.5 border-b border-line-subtle">
-        <div class="flex items-center gap-2 min-w-0">
-          <span class="day-dot" aria-hidden="true"></span>
-          <h2 class="font-bold text-base text-primary tracking-tight truncate">${day}</h2>
-        </div>
-        <div class="flex items-center gap-1.5 flex-none">
-          <span class="mp-badge mp-badge-day-soft text-xs" title="${plannedCount} of ${MEAL_SLOTS.length} meals planned">${plannedCount}/${MEAL_SLOTS.length}</span>
-          <button type="button" class="mp-btn mp-btn-ghost mp-btn-xs focus-ring text-secondary" data-action="copy-day" data-day="${day}" aria-label="Copy ${day}'s plan" title="Copy ${day}'s plan to other days">
-            <svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="7" width="9" height="9" rx="1.5"/><path d="M4 13V4a1 1 0 011-1h9"/></svg>
-            <span class="hidden xs:inline">Copy</span>
-          </button>
-        </div>
-      </header>
+    <article class="mp-card mp-card-day flex flex-col justify-between shadow-xs hover:shadow-md transition-all" style="--day-color:var(--day-${tok});--day-fg:var(--day-${tok}-fg);--day-soft:var(--day-${tok}-soft)">
+      <div>
+        <!-- Card Day Header -->
+        <header class="mp-card-header pb-2.5 border-b border-line-subtle mb-2.5">
+          <div class="flex items-center gap-2 min-w-0">
+            <span class="day-dot" aria-hidden="true"></span>
+            <h2 class="font-bold text-base text-primary tracking-tight truncate">${day}</h2>
+          </div>
+          <div class="flex items-center gap-1.5 flex-none">
+            <span class="mp-badge mp-badge-day-soft text-xs font-semibold" title="${plannedCount} of ${MEAL_SLOTS.length} meals planned">${plannedCount}/${MEAL_SLOTS.length}</span>
+            <button type="button" class="mp-btn mp-btn-ghost mp-btn-xs focus-ring text-secondary" data-action="copy-day" data-day="${day}" aria-label="Copy ${day}'s plan" title="Copy ${day}'s plan to other days">
+              <svg viewBox="0 0 20 20" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="7" width="9" height="9" rx="1.5"/><path d="M4 13V4a1 1 0 011-1h9"/></svg>
+              <span class="hidden sm:inline">Copy</span>
+            </button>
+          </div>
+        </header>
 
-      <div class="flex-grow flex flex-col divide-y divide-line-subtle">${slots}</div>
+        <!-- 5 Meal Slots -->
+        <div class="flex flex-col divide-y divide-line-subtle">${slots}</div>
+      </div>
 
-      <footer class="mt-3 pt-3 border-t border-line">
-        <div class="flex items-center justify-between mb-1.5">
-          <span class="text-[11px] font-semibold uppercase tracking-wider text-muted">Day Summary</span>
-          <span class="text-xs font-bold text-primary tnum">${fmt(dayTotals.energy, 0)} kcal</span>
-        </div>
-        ${macroRow(dayTotals, { dayTotal: true })}
-      </footer>
+      <!-- Day Nutrition Summary Footer -->
+      ${dayFooter(dayTotals)}
     </article>`
 }
 
-function mealSlot(day, meal, ids, nutrition) {
+/* ----------------------------- Meal Slot ------------------------------ */
+
+function mealSlot(day, meal, ids, slotNutrition) {
   const label = MEAL_LABELS[meal] || meal.replace('_', ' ')
+  const icon = MEAL_ICONS[meal] || '🍽️'
   const occupied = ids.length > 0
 
   const chips = ids.map((rid) => {
@@ -391,29 +402,48 @@ function mealSlot(day, meal, ids, nutrition) {
         </div>`
     }
 
+    const n = perRecipe(recipe)
     const dietDot = recipe.is_vegetarian
       ? `<span class="w-2 h-2 rounded-full bg-emerald-500 flex-none" title="Vegetarian"></span>`
       : `<span class="w-2 h-2 rounded-full bg-amber-500 flex-none" title="Non-Vegetarian"></span>`
 
     return `
-      <div class="group flex items-center justify-between gap-2 w-full bg-surface border border-line hover:border-border-strong rounded-lg px-2.5 py-1.5 text-xs transition-colors shadow-xs">
-        <div class="flex items-center gap-1.5 min-w-0 flex-1">
-          ${dietDot}
-          <button type="button" class="font-medium text-primary hover:text-accent truncate text-left focus-ring" data-action="recipe" data-recipe-id="${rid}" title="View recipe details">${esc(recipe.name)}</button>
+      <div class="group relative flex flex-col gap-1 w-full bg-surface border border-line hover:border-border-strong rounded-lg p-2 transition-all shadow-xs">
+        <div class="flex items-center justify-between gap-1.5 min-w-0">
+          <div class="flex items-center gap-1.5 min-w-0 flex-1">
+            ${dietDot}
+            <button type="button" class="font-semibold text-xs text-primary hover:text-accent truncate text-left focus-ring" data-action="recipe" data-recipe-id="${rid}" title="View details for ${esc(recipe.name)}">
+              ${esc(recipe.name)}
+            </button>
+          </div>
+          <button type="button" class="text-muted hover:text-red-500 p-1 rounded hover:bg-subtle focus-ring transition-colors flex-none" data-action="remove" data-day="${day}" data-meal="${meal}" data-recipe-id="${rid}" aria-label="Remove ${esc(recipe.name)}" title="Remove recipe">
+            <svg viewBox="0 0 20 20" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 5l10 10M15 5L5 15"/></svg>
+          </button>
         </div>
-        <button type="button" class="text-muted hover:text-red-500 p-0.5 rounded focus-ring opacity-70 group-hover:opacity-100 transition-opacity" data-action="remove" data-day="${day}" data-meal="${meal}" data-recipe-id="${rid}" aria-label="Remove ${esc(recipe.name)}" title="Remove">
-          <svg viewBox="0 0 20 20" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 5l10 10M15 5L5 15"/></svg>
-        </button>
+
+        <!-- Recipe Macro Tag Row -->
+        <div class="flex items-center gap-1.5 text-[10px] text-muted flex-wrap">
+          <span class="font-bold text-primary tnum">${fmt(n.energy, 0)} kcal</span>
+          <span class="text-muted/40">•</span>
+          <span class="text-emerald-600 dark:text-emerald-400 font-medium tnum">${fmt(n.protein, 1)}g P</span>
+          <span class="text-muted/40">•</span>
+          <span class="text-blue-600 dark:text-blue-400 font-medium tnum">${fmt(n.carbs, 1)}g C</span>
+          <span class="text-muted/40">•</span>
+          <span class="text-rose-600 dark:text-rose-400 font-medium tnum">${fmt(n.fat, 1)}g F</span>
+        </div>
       </div>`
   }).join('')
 
   return `
-    <div class="py-2.5 first:pt-2 last:pb-2">
+    <div class="py-2.5 first:pt-1.5 last:pb-1.5">
       <div class="flex items-center justify-between gap-2 mb-1.5">
-        <span class="text-[11px] font-semibold text-secondary uppercase tracking-wider">${label}</span>
+        <span class="text-[11px] font-semibold text-secondary uppercase tracking-wider flex items-center gap-1">
+          <span>${icon}</span>
+          <span>${label}</span>
+        </span>
         <div class="flex items-center gap-1">
-          ${occupied ? `<button type="button" class="text-[11px] text-muted hover:text-red-500 font-medium px-1 py-0.5 rounded focus-ring" data-action="clear" data-day="${day}" data-meal="${meal}">Clear</button>` : ''}
-          <button type="button" class="text-[11px] text-accent hover:text-accent-hover font-semibold px-1 py-0.5 rounded focus-ring" data-action="assign" data-day="${day}" data-meal="${meal}">${occupied ? '+ Add More' : '+ Add'}</button>
+          ${occupied ? `<button type="button" class="text-[10px] text-muted hover:text-red-500 font-medium px-1 py-0.5 rounded focus-ring" data-action="clear" data-day="${day}" data-meal="${meal}">Clear</button>` : ''}
+          <button type="button" class="text-[10px] text-accent hover:text-accent-hover font-semibold px-1 py-0.5 rounded focus-ring" data-action="assign" data-day="${day}" data-meal="${meal}">${occupied ? '+ Add' : '+ Assign'}</button>
         </div>
       </div>
 
@@ -421,25 +451,62 @@ function mealSlot(day, meal, ids, nutrition) {
         ${chips || `
           <button type="button" class="w-full text-left py-2 px-2.5 border border-dashed border-line hover:border-accent/50 rounded-lg text-xs text-muted hover:text-accent hover:bg-accent/5 transition-all flex items-center justify-center gap-1.5 focus-ring" data-action="assign" data-day="${day}" data-meal="${meal}">
             <svg viewBox="0 0 20 20" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M10 4v12M4 10h12"/></svg>
-            <span>Assign recipe</span>
+            <span>Assign ${label.toLowerCase()}</span>
           </button>
         `}
       </div>
 
-      ${occupied ? `<div class="mt-2 pt-1.5 border-t border-line-subtle/60">${macroRow(nutrition)}</div>` : ''}
+      ${ids.length > 1 ? `
+        <div class="flex items-center justify-between text-[10px] text-muted font-medium pt-1 px-1">
+          <span>Slot Total:</span>
+          <span class="font-bold text-primary tnum">${fmt(slotNutrition.energy, 0)} kcal · ${fmt(slotNutrition.protein, 1)}g P</span>
+        </div>` : ''}
     </div>`
 }
 
-function macroRow(nutrition, { dayTotal = false } = {}) {
-  const cells = MACRO_COLS.map((c) => {
-    return `
-      <div class="flex items-baseline gap-0.5 ${dayTotal ? 'text-xs' : 'text-[11px]'}">
-        <span class="text-muted text-[10px] uppercase">${c.short}:</span>
-        <span class="font-medium text-secondary tnum">${fmt(nutrition[c.key], c.digits)}${c.unit}</span>
-      </div>`
-  }).join('')
+/* ------------------------- Day Summary Footer ------------------------ */
 
-  return `<div class="grid grid-cols-5 gap-1 text-center">${cells}</div>`
+function dayFooter(dayTotals) {
+  const totalMacroGrams = (dayTotals.protein || 0) + (dayTotals.carbs || 0) + (dayTotals.fat || 0)
+  const protPct = totalMacroGrams > 0 ? Math.round((dayTotals.protein / totalMacroGrams) * 100) : 33
+  const carbPct = totalMacroGrams > 0 ? Math.round((dayTotals.carbs / totalMacroGrams) * 100) : 33
+  const fatPct = totalMacroGrams > 0 ? Math.max(0, 100 - protPct - carbPct) : 34
+
+  return `
+    <footer class="mt-3 pt-3 border-t border-line">
+      <!-- Total Calories Line -->
+      <div class="flex items-center justify-between mb-2">
+        <span class="text-[11px] font-bold uppercase tracking-wider text-muted">Daily Total</span>
+        <span class="text-sm font-bold text-primary tnum">${fmt(dayTotals.energy, 0)} <span class="text-xs font-normal text-muted">kcal</span></span>
+      </div>
+
+      <!-- Macro Ratio Visual Strip -->
+      <div class="mp-macro-ratio mb-2.5" title="Protein ${protPct}% | Carbs ${carbPct}% | Fat ${fatPct}%">
+        <div class="bg-emerald-500 transition-all" style="width: ${protPct}%"></div>
+        <div class="bg-blue-500 transition-all" style="width: ${carbPct}%"></div>
+        <div class="bg-rose-500 transition-all" style="width: ${fatPct}%"></div>
+      </div>
+
+      <!-- 2x2 Macro Metric Cards (Clean & Uncrowded) -->
+      <div class="mp-macro-grid">
+        <div class="mp-macro-card">
+          <span class="mp-macro-card-title">Protein</span>
+          <span class="mp-macro-card-val text-emerald-600 dark:text-emerald-400">${fmt(dayTotals.protein, 1)}g</span>
+        </div>
+        <div class="mp-macro-card">
+          <span class="mp-macro-card-title">Carbs</span>
+          <span class="mp-macro-card-val text-blue-600 dark:text-blue-400">${fmt(dayTotals.carbs, 1)}g</span>
+        </div>
+        <div class="mp-macro-card">
+          <span class="mp-macro-card-title">Fat</span>
+          <span class="mp-macro-card-val text-rose-600 dark:text-rose-400">${fmt(dayTotals.fat, 1)}g</span>
+        </div>
+        <div class="mp-macro-card">
+          <span class="mp-macro-card-title">Fiber</span>
+          <span class="mp-macro-card-val text-purple-600 dark:text-purple-400">${fmt(dayTotals.fiber, 0)}g</span>
+        </div>
+      </div>
+    </footer>`
 }
 
 /* --------------------------- Slot Accessors ------------------------- */
@@ -566,7 +633,7 @@ function openAssignModal(day, meal, returnFocus) {
 function openCopyDayModal(sourceDay, returnFocus) {
   const targets = DAYS.filter((d) => d !== sourceDay)
   const body = `
-    <p class="text-secondary text-sm mb-4">Select target days to copy <strong class="text-primary">${sourceDay}</strong>'s five meal slots into:</p>
+    <p class="text-secondary text-sm mb-4">Select target days to copy <strong class="text-primary">${sourceDay}</strong>'s meal plan into:</p>
     <div id="copy-targets" class="grid grid-cols-2 gap-2">
       ${targets.map((d) => `
         <label class="mp-check p-2.5 rounded-lg border border-line hover:bg-subtle cursor-pointer transition-colors">
@@ -598,29 +665,30 @@ function openCopyDayModal(sourceDay, returnFocus) {
   })
 
   copyBtn.addEventListener('click', () => {
-    const targets = Array.from(ctrl.panel.querySelectorAll('input[name="target"]:checked')).map((cb) => cb.value)
-    if (!targets.length) return
+    const selectedTargets = Array.from(ctrl.panel.querySelectorAll('input[name="target"]:checked'))
+      .map((cb) => cb.value)
     ctrl.close()
-    doCopyDay(sourceDay, targets)
+    copyDayToTargets(sourceDay, selectedTargets)
   })
+
   ctrl.panel.querySelectorAll('[data-close]').forEach((b) => b.addEventListener('click', () => ctrl.close()))
 }
 
 function showRecipeDetails(id, returnFocus) {
   const recipe = state.recipes.find((r) => r.id === id)
   if (!recipe) return
+  const n = perRecipe(recipe)
 
   const ingr = (Array.isArray(recipe.ingredients) ? recipe.ingredients : [])
-    .map((i) => `<span class="inline-flex items-center px-2 py-1 bg-subtle rounded-md text-xs font-medium text-primary">${i.quantity} ${i.serving_unit} ${esc(i.name)}</span>`)
+    .map((i) => `<span class="inline-flex items-center px-2.5 py-1 bg-subtle border border-line rounded-lg text-xs font-medium text-primary">${i.quantity} ${i.serving_unit} ${esc(i.name)}</span>`)
     .join(' ') || '<span class="text-muted">—</span>'
 
   const instr = esc((recipe.instructions || '').trim()) || '<span class="text-muted">No instructions provided.</span>'
-  const n = perRecipe(recipe)
 
   const body = `
     <div class="flex flex-col gap-4">
       <div class="flex items-center gap-2 flex-wrap">
-        <span class="mp-badge mp-badge-accent font-semibold">${esc((recipe.meal_type || '').replace('_', ' '))}</span>
+        <span class="mp-badge mp-badge-accent font-semibold">${esc(recipe.meal_type)}</span>
         <span class="mp-badge mp-badge-outline">Serves ${recipe.serves || 1}</span>
         ${recipe.is_vegetarian ? '<span class="mp-badge mp-badge-success">Vegetarian</span>' : '<span class="mp-badge mp-badge-warning">Non-Vegetarian</span>'}
       </div>
@@ -629,11 +697,11 @@ function showRecipeDetails(id, returnFocus) {
       <div class="p-3.5 bg-subtle rounded-xl border border-line">
         <p class="text-xs font-semibold text-muted uppercase tracking-wider mb-2">Nutrition Per Serving</p>
         <div class="grid grid-cols-5 gap-2 text-center">
-          <div><span class="block text-xs text-muted">Calories</span><span class="font-bold text-primary text-sm tnum">${fmt(n.energy, 0)} kcal</span></div>
-          <div><span class="block text-xs text-muted">Protein</span><span class="font-bold text-emerald-600 dark:text-emerald-400 text-sm tnum">${fmt(n.protein, 1)}g</span></div>
-          <div><span class="block text-xs text-muted">Carbs</span><span class="font-bold text-blue-600 dark:text-blue-400 text-sm tnum">${fmt(n.carbs, 1)}g</span></div>
-          <div><span class="block text-xs text-muted">Fat</span><span class="font-bold text-rose-600 dark:text-rose-400 text-sm tnum">${fmt(n.fat, 1)}g</span></div>
-          <div><span class="block text-xs text-muted">Fiber</span><span class="font-bold text-purple-600 dark:text-purple-400 text-sm tnum">${fmt(n.fiber, 0)}g</span></div>
+          <div><span class="block text-xs text-muted">Calories</span><span class="font-bold text-primary text-sm tnum">${(n.energy || 0).toFixed(0)} kcal</span></div>
+          <div><span class="block text-xs text-muted">Protein</span><span class="font-bold text-emerald-600 dark:text-emerald-400 text-sm tnum">${(n.protein || 0).toFixed(1)}g</span></div>
+          <div><span class="block text-xs text-muted">Carbs</span><span class="font-bold text-blue-600 dark:text-blue-400 text-sm tnum">${(n.carbs || 0).toFixed(1)}g</span></div>
+          <div><span class="block text-xs text-muted">Fat</span><span class="font-bold text-rose-600 dark:text-rose-400 text-sm tnum">${(n.fat || 0).toFixed(1)}g</span></div>
+          <div><span class="block text-xs text-muted">Fiber</span><span class="font-bold text-purple-600 dark:text-purple-400 text-sm tnum">${(n.fiber || 0).toFixed(0)}g</span></div>
         </div>
       </div>
 
@@ -655,122 +723,93 @@ function showRecipeDetails(id, returnFocus) {
     size: 'lg',
     returnFocus,
   })
+
   ctrl.panel.querySelectorAll('[data-close]').forEach((b) => b.addEventListener('click', () => ctrl.close()))
 }
 
-/* ----------------------------- Actions ------------------------------- */
+/* --------------------------- Plan Mutations ------------------------- */
 
-const saving = new Set()
-function slotKey(day, meal) { return `${day}|${meal}` }
+async function saveSlotAndRender(day, meal, ids) {
+  if (!state.plan[day]) state.plan[day] = {}
+  state.plan[day][meal] = ids
+  ids.forEach(recordRecent)
+  render()
 
-async function saveSlotAndRender(day, meal, recipeIds) {
-  const key = slotKey(day, meal)
-  if (saving.has(key)) return
-  saving.add(key)
   try {
-    await putSlot(day, meal, recipeIds)
-    if (!state.plan[day]) state.plan[day] = {}
-    state.plan[day][meal] = recipeIds
-    recipeIds.forEach(pushRecent)
-    render()
-    toast.success(`${MEAL_LABELS[meal] || meal} updated for ${day}.`)
+    await putSlot(day, meal, ids)
+    toast.success(`Updated ${day} ${MEAL_LABELS[meal] || meal}.`)
   } catch (err) {
     if (err && err.message === 'auth') return
-    toast.error('Could not save slot. Please try again.', { title: 'Save Failed' })
-  } finally {
-    saving.delete(key)
+    toast.error('Could not save slot update.', { title: 'Save Failed' })
+    load()
   }
 }
 
-function removeFromSlot(day, meal, recipeId) {
-  if (saving.has(slotKey(day, meal))) return
-  const remaining = slotIds(day, meal).filter((id) => id !== recipeId)
-  saveSlotAndRender(day, meal, remaining)
+async function removeFromSlot(day, meal, recipeId) {
+  const current = slotIds(day, meal)
+  const next = current.filter((id) => id !== recipeId)
+  saveSlotAndRender(day, meal, next)
 }
 
-function clearSlot(day, meal) {
-  if (saving.has(slotKey(day, meal))) return
-  if (!slotIds(day, meal).length) return
+async function clearSlot(day, meal) {
   saveSlotAndRender(day, meal, [])
 }
 
-async function doCopyDay(sourceDay, targetDays) {
-  const source = state.plan[sourceDay] || {}
-  const puts = []
-  targetDays.forEach((day) => {
-    MEAL_SLOTS.forEach((meal) => {
-      const ids = Array.isArray(source[meal]) ? source[meal] : []
-      puts.push(
-        putSlot(day, meal, ids).then(
-          () => ({ day, meal, ok: true }),
-          (err) => ({ day, meal, ok: false, err })
-        )
-      )
-    })
+async function copyDayToTargets(sourceDay, targetDays) {
+  const src = state.plan[sourceDay] || {}
+  const nextPlan = JSON.parse(JSON.stringify(state.plan))
+  targetDays.forEach((t) => {
+    nextPlan[t] = JSON.parse(JSON.stringify(src))
   })
+  state.plan = nextPlan
+  render()
 
-  const results = await Promise.all(puts)
-  const failed = results.filter((r) => !r.ok)
-
-  if (failed.some((r) => r.err && r.err.message === 'auth')) return
-
-  await load({ silent: true })
-
-  if (failed.length === 0) {
-    const noun = targetDays.length === 1 ? targetDays[0] : `${targetDays.length} days`
-    toast.success(`Copied ${sourceDay}'s plan to ${noun}.`)
-  } else {
-    const skipped = [...new Set(failed.map((r) => `${r.day} ${MEAL_LABELS[r.meal] || r.meal}`))].join(', ')
-    toast.warning(`Copied with ${failed.length} slot(s) skipped: ${skipped}.`, { title: 'Copy Partial' })
+  try {
+    await putFullPlan(state.plan)
+    toast.success(`Copied ${sourceDay}'s plan to ${targetDays.join(', ')}.`)
+  } catch (err) {
+    if (err && err.message === 'auth') return
+    toast.error('Could not copy meal plan.', { title: 'Copy Failed' })
+    load()
   }
 }
 
-/* ---------------------------- PDF Export ----------------------------- */
+/* ----------------------------- Export PDF ---------------------------- */
 
-document.getElementById('export-pdf-btn').addEventListener('click', exportPdf)
-
-async function exportPdf() {
-  const token = localStorage.getItem('token')
-  if (!token) {
-    toast.warning('Please log in to export your plan.')
-    return
-  }
-  const btn = document.getElementById('export-pdf-btn')
-  btn.dataset.loading = 'true'
-  btn.setAttribute('aria-busy', 'true')
-  btn.disabled = true
-  try {
-    const resp = await fetch(`${API_BASE}/weekly-plan/pdf`, { headers: { Authorization: 'Bearer ' + token } })
-    if (handleAuthError(resp)) throw new Error('auth')
-    if (!resp.ok) throw new Error(`PDF failed (${resp.status})`)
-    const blob = await resp.blob()
-    const url = window.URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = 'weekly_meal_plan.pdf'
-    document.body.appendChild(a)
-    a.click()
-    a.remove()
-    window.URL.revokeObjectURL(url)
-    toast.success('Weekly plan PDF downloaded.')
-  } catch (err) {
-    if (err && err.message === 'auth') return
-    toast.error('Could not export PDF. Please try again.', { title: 'Export Failed' })
-  } finally {
-    btn.dataset.loading = 'false'
-    btn.removeAttribute('aria-busy')
-    btn.disabled = false
-  }
+if (exportPdfBtn) {
+  exportPdfBtn.addEventListener('click', async () => {
+    exportPdfBtn.dataset.loading = 'true'
+    exportPdfBtn.disabled = true
+    try {
+      const resp = await fetch(`${API_BASE}/weekly-plan/pdf`, { headers: authHeaders() })
+      if (handleAuthError(resp)) return
+      if (!resp.ok) throw new Error('PDF export failed')
+      const blob = await resp.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `meal-plan-${new Date().toISOString().split('T')[0]}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      window.URL.revokeObjectURL(url)
+      toast.success('Weekly plan PDF downloaded.')
+    } catch (err) {
+      if (err && err.message === 'auth') return
+      toast.error('Could not export PDF. Please try again.', { title: 'Export Failed' })
+    } finally {
+      exportPdfBtn.dataset.loading = 'false'
+      exportPdfBtn.disabled = false
+    }
+  })
 }
 
 /* ------------------------------- Boot -------------------------------- */
 
-async function load({ silent = false } = {}) {
-  if (!silent) {
-    state.status = 'loading'
-    state.error = null
-    render()
-  }
+async function load() {
+  state.status = 'loading'
+  state.error = null
+  render()
   try {
     const [recipes, plan] = await Promise.all([fetchRecipes(), fetchPlan()])
     state.recipes = Array.isArray(recipes) ? recipes : []
