@@ -1,23 +1,16 @@
 /*
- * MealPlanner — Design Tokens (T1)
+ * MealPlanner — Design Tokens
  * ------------------------------------------------------------------
- * The single source of truth for color, spacing, radius, typography,
- * elevation, and focus for the whole frontend restyle. Consumed
- * directly as CSS custom properties; a later ticket (T2) wires these
- * into the compiled Tailwind v4 @theme layer.
+ * Material Flat Minimalist Design System
+ * 
+ * Single source of truth for color, spacing, radius, typography,
+ * elevation, and motion across the entire application.
  *
- * Theme model: light by default; dark follows the system preference
- * unless a manual choice is stamped on <html data-theme="light|dark">.
- *   :root                        -> light (forced)
- *   @media (prefers-color-scheme: dark)
- *     :root:not([data-theme="light"])  -> dark (system)
- *   :root[data-theme="dark"]      -> dark (forced)
- * The manual attribute always wins over the media query, in both
- * directions, so the toggle is symmetric.
- *
- * WCAG AA target throughout. The 7 day colors are NEVER used as text —
- * only as dot / border / chip fill — so the yellow that failed contrast
- * as a full-card fill is structurally safe here.
+ * Theme model:
+ *   :root                             -> light (default)
+ *   @media (prefers-color-scheme: dark) -> dark (system)
+ *   :root[data-theme="dark"]          -> dark (forced)
+ *   :root[data-theme="light"]         -> light (forced)
  */
 
 /* ============================================================
@@ -25,21 +18,21 @@
  * ============================================================ */
 :root {
   /* Type faces */
-  --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   --font-mono: ui-monospace, 'SF Mono', 'JetBrains Mono', Menlo, Consolas, monospace;
 
   /* Type scale — 1.25 modular, base 16px. Sizes in rem (root-scaled). */
-  --font-size-caption: 0.75rem;   /* 12 */
-  --font-size-small:   0.875rem;  /* 14 */
-  --font-size-body:    1rem;      /* 16 */
-  --font-size-lg:      1.125rem;  /* 18 */
-  --font-size-xl:      1.25rem;   /* 20 */
-  --font-size-h3:      1.5rem;    /* 24 */
-  --font-size-h2:      1.875rem;  /* 30 */
-  --font-size-h1:      2.25rem;   /* 36 */
-  --font-size-display: 3rem;      /* 48 */
+  --font-size-caption: 0.75rem;   /* 12px */
+  --font-size-small:   0.875rem;  /* 14px */
+  --font-size-body:    1rem;      /* 16px */
+  --font-size-lg:      1.125rem;  /* 18px */
+  --font-size-xl:      1.25rem;   /* 20px */
+  --font-size-h3:      1.5rem;    /* 24px */
+  --font-size-h2:      1.875rem;  /* 30px */
+  --font-size-h1:      2.25rem;   /* 36px */
+  --font-size-display: 3rem;      /* 48px */
 
-  /* Line heights (unitless) */
+  /* Line heights */
   --leading-caption: 1.5;
   --leading-small:   1.5;
   --leading-body:    1.6;
@@ -50,69 +43,72 @@
   --leading-h1:      1.2;
   --leading-display: 1.1;
 
-  /* Weights (Inter variable) */
+  /* Weights */
   --weight-regular:  400;
   --weight-medium:   500;
   --weight-semibold: 600;
   --weight-bold:     700;
 
   /* Letter spacing */
-  --tracking-tight:  -0.02em;  /* display, h1 */
-  --tracking-snug:   -0.01em;  /* h2, h3 */
+  --tracking-tight:  -0.025em;  /* display, h1 */
+  --tracking-snug:   -0.015em;  /* h2, h3 */
   --tracking-normal: 0;
-  --tracking-wide:   0.04em;  /* eyebrows, uppercase labels */
+  --tracking-wide:   0.05em;   /* eyebrows, uppercase labels */
 
-  /* Spacing — 4px base, rem (root-scaled) */
+  /* Spacing — 4px base */
   --space-0:  0;
   --space-px: 1px;
-  --space-1:  0.25rem;  /* 4  */
-  --space-2:  0.5rem;   /* 8  */
-  --space-3:  0.75rem;  /* 12 */
-  --space-4:  1rem;     /* 16 */
-  --space-5:  1.5rem;   /* 24 */
-  --space-6:  2rem;     /* 32 */
-  --space-7:  3rem;     /* 48 */
-  --space-8:  4rem;     /* 64 */
-  --space-9:  5rem;     /* 80 */
-  --space-10: 6rem;     /* 96 */
+  --space-1:  0.25rem;  /* 4px  */
+  --space-2:  0.5rem;   /* 8px  */
+  --space-3:  0.75rem;  /* 12px */
+  --space-4:  1rem;     /* 16px */
+  --space-5:  1.5rem;   /* 24px */
+  --space-6:  2rem;     /* 32px */
+  --space-7:  3rem;     /* 48px */
+  --space-8:  4rem;     /* 64px */
+  --space-9:  5rem;     /* 80px */
+  --space-10: 6rem;     /* 96px */
 
-  /* Radius — crisp, moderate. Cards cap at lg (12px), matching the
-     existing 12px corner the clay version used, for continuity. */
-  --radius-xs:  4px;
-  --radius-sm:  6px;
-  --radius-md:  8px;    /* inputs, buttons */
-  --radius-lg:  12px;   /* cards, panels */
-  --radius-xl:  16px;   /* large panels */
-  --radius-2xl: 24px;
-  --radius-pill: 9999px;
+  /* Radius — clean Material 3 geometry */
+  --radius-xs:   4px;
+  --radius-sm:   6px;
+  --radius-md:   8px;    /* buttons, inputs */
+  --radius-lg:   12px;   /* cards, panels */
+  --radius-xl:   16px;   /* dialogs, modals */
+  --radius-2xl:  24px;
+  --radius-pill: 9999px; /* chips, badges, switches */
 
-  /* Motion */
+  /* Motion & Physics */
   --duration-fast: 120ms;
-  --duration-base: 180ms;
-  --duration-slow: 240ms;
-  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
-  --ease-in-out:   cubic-bezier(0.42, 0, 0.58, 1);
+  --duration-base: 200ms;
+  --duration-slow: 300ms;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-in:       cubic-bezier(0.3, 0, 1, 1);
+  --ease-out:      cubic-bezier(0, 0, 0.2, 1);
+  --ease-spring:   cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  --ease-in-out:   cubic-bezier(0.4, 0, 0.2, 1);
 
   /* Z-index scale */
-  --z-base: 0;
-  --z-raised: 10;
+  --z-base:     0;
+  --z-raised:   10;
   --z-dropdown: 100;
-  --z-sticky: 200;
-  --z-overlay: 800;
-  --z-modal: 1000;
-  --z-toast: 1100;
+  --z-sticky:   200;
+  --z-overlay:  800;
+  --z-modal:    1000;
+  --z-toast:    1100;
 
-  /* Focus ring — 2px accent, 2px surface offset. >=3:1 in both themes. */
-  --ring-color: var(--accent);
-  --ring-width: 2px;
+  /* Mobile Safe Areas & Dimensions */
+  --safe-top:    env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left:   env(safe-area-inset-left, 0px);
+  --safe-right:  env(safe-area-inset-right, 0px);
+  --bottom-nav-height: calc(3.75rem + env(safe-area-inset-bottom, 0px));
+
+  /* Focus ring */
+  --ring-color:  var(--accent);
+  --ring-width:  2px;
   --ring-offset: 2px;
   --ring: 0 0 0 var(--ring-offset) var(--bg-surface), 0 0 0 calc(var(--ring-offset) + var(--ring-width)) var(--ring-color);
-
-  /* Day accent usage contract (locked):
-     --day-N       solid, >=3:1 on the neutral surface; dot / border / bar / chip fill
-     --day-N-soft  pale tint for subtle backgrounds; neutral-ink text sits on it
-     --day-N-fg    text on the solid chip (>=4.5:1)
-     Never use --day-N as text on a neutral surface. */
 }
 
 /* ============================================================
@@ -121,224 +117,239 @@
 :root {
   color-scheme: light;
 
-  /* Surfaces — cool slate, preserving the #232946 ink identity */
-  --bg-canvas:        #f6f7fa;  /* page */
-  --bg-surface:       #ffffff;  /* cards */
-  --bg-surface-raised:#ffffff;  /* popovers, hover */
-  --bg-subtle:        #eef0f5;  /* inset regions, hover bg */
-  --bg-sunken:        #e9ebf1;  /* wells, code blocks */
+  /* Surfaces — Clean Material slate & neutral */
+  --bg-canvas:         #f8fafc;  /* Page background */
+  --bg-surface:        #ffffff;  /* Card surface */
+  --bg-surface-raised: #ffffff;  /* Popovers, modals, dropdowns */
+  --bg-subtle:         #f1f5f9;  /* Inset regions, chips, hover states */
+  --bg-sunken:         #e2e8f0;  /* Wells, dividers, tracks */
 
-  /* Borders */
-  --border-subtle:  #eef0f5;
-  --border-default: #e1e4ec;
-  --border-strong:  #cdd2dd;
+  /* Borders — Crisp 1px hairline definition */
+  --border-subtle:  #f1f5f9;
+  --border-default: #e2e8f0;
+  --border-strong:  #cbd5e1;
 
-  /* Text — all >=4.5:1 on --bg-surface */
-  --text-primary:   #232946;  /* brand ink, ~13:1 */
-  --text-secondary: #4a5160;  /* ~8.7:1 */
-  --text-muted:     #6b7280;  /* ~4.6:1 — captions, meta */
+  /* Text ink — High WCAG AA/AAA contrast */
+  --text-primary:   #0f172a;  /* Slate-900: ~17:1 on white */
+  --text-secondary: #475569;  /* Slate-600: ~7:1 */
+  --text-muted:     #64748b;  /* Slate-500: ~4.6:1 */
 
-  /* Brand accent — teal. On-brand (old clay-btn was teal #25636b),
-     distinct from every day hue. #0f766e: ~5:1 on white as text/link,
-     white-on-it ~5:1 as a button label. */
-  --accent:        #0f766e;
-  --accent-hover:  #115e59;
-  --accent-active: #134e4a;
-  --accent-subtle: #d1f5ee;  /* tint bg for accent chips, neutral-ink text */
+  /* Brand Accent — Modern Teal/Emerald */
+  --accent:        #0d9488;  /* Teal-600 */
+  --accent-hover:  #0f766e;  /* Teal-700 */
+  --accent-active: #115e59;  /* Teal-800 */
+  --accent-subtle: #ccfbf1;  /* Teal-100 */
   --accent-fg:     #ffffff;
 
-  /* Status (context-disambiguated from day colors via icons) */
-  --color-danger:  #c2410c;  /* deep orange-red; AA on white */
-  --color-success: #047857;  /* emerald-700; AA on white */
-  --color-warning: #b45309;  /* amber-700; AA on white */
+  /* Semantic Status Colors */
+  --color-danger:  #ef4444;  /* Red-500 */
+  --color-success: #10b981;  /* Emerald-500 */
+  --color-warning: #f59e0b;  /* Amber-500 */
+  --color-info:    #3b82f6;  /* Blue-500 */
 
-  /* Elevation — replaces claymorphism. One subtle tier + border-only. */
-  --shadow-sm: 0 1px 2px rgba(20, 23, 32, 0.05);
-  --shadow-md: 0 2px 8px rgba(20, 23, 32, 0.07), 0 1px 2px rgba(20, 23, 32, 0.04);
-  --shadow-lg: 0 12px 32px rgba(20, 23, 32, 0.12), 0 2px 8px rgba(20, 23, 32, 0.06);
+  /* Material Flat Elevation Hierarchy */
+  --shadow-xs: 0 1px 2px 0 rgba(15, 23, 42, 0.04);
+  --shadow-sm: 0 1px 3px 0 rgba(15, 23, 42, 0.06), 0 1px 2px -1px rgba(15, 23, 42, 0.04);
+  --shadow-md: 0 4px 6px -1px rgba(15, 23, 42, 0.07), 0 2px 4px -2px rgba(15, 23, 42, 0.05);
+  --shadow-lg: 0 10px 15px -3px rgba(15, 23, 42, 0.08), 0 4px 6px -4px rgba(15, 23, 42, 0.04);
+  --shadow-xl: 0 20px 25px -5px rgba(15, 23, 42, 0.1), 0 8px 10px -6px rgba(15, 23, 42, 0.05);
 
-  /* 7 day accents — solid >=3:1 on white, white chip text >=4.5:1.
-     Hues preserve the original week order (violet→blue→green→amber→
-     orange→rose→indigo); the original pale pastels survive as *-soft. */
-  --day-mon:       #7c3aed;  --day-mon-soft: #ede9fe;  --day-mon-fg: #ffffff;
-  --day-tue:       #2563eb;  --day-tue-soft: #dbeafe;  --day-tue-fg: #ffffff;
-  --day-wed:       #047857;  --day-wed-soft: #d1fae5;  --day-wed-fg: #ffffff;
-  --day-thu:       #b45309;  --day-thu-soft: #fef3c7;  --day-thu-fg: #ffffff;
-  --day-fri:       #c2410c;  --day-fri-soft: #ffedd5;  --day-fri-fg: #ffffff;
-  --day-sat:       #be185d;  --day-sat-soft: #fce7f3;  --day-sat-fg: #ffffff;
-  --day-sun:       #4338ca;  --day-sun-soft: #e0e7ff;  --day-sun-fg: #ffffff;
+  /* 7 Day Accents — Refined modern palette */
+  --day-mon: #6366f1;  --day-mon-soft: #e0e7ff;  --day-mon-fg: #ffffff;
+  --day-tue: #0284c7;  --day-tue-soft: #e0f2fe;  --day-tue-fg: #ffffff;
+  --day-wed: #059669;  --day-wed-soft: #d1fae5;  --day-wed-fg: #ffffff;
+  --day-thu: #d97706;  --day-thu-soft: #fef3c7;  --day-thu-fg: #ffffff;
+  --day-fri: #e11d48;  --day-fri-soft: #ffe4e6;  --day-fri-fg: #ffffff;
+  --day-sat: #c026d3;  --day-sat-soft: #fae8ff;  --day-sat-fg: #ffffff;
+  --day-sun: #7c3aed;  --day-sun-soft: #ede9fe;  --day-sun-fg: #ffffff;
 }
 
 /* ============================================================
- * Dark theme — system preference
+ * Dark theme (System preference & forced data-theme="dark")
  * ============================================================ */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
     color-scheme: dark;
 
-    --bg-canvas:        #14171f;
-    --bg-surface:       #1c2030;
-    --bg-surface-raised: #232838;
-    --bg-subtle:        #181c2b;  /* recessed: darker than surface, distinct from raised */
-    --bg-sunken:        #11141c;
+    --bg-canvas:         #090d16;
+    --bg-surface:        #111726;
+    --bg-surface-raised: #182032;
+    --bg-subtle:         #1e293b;
+    --bg-sunken:         #0c111d;
 
-    --border-subtle:  #262c3d;
-    --border-default: #2f3548;
-    --border-strong:  #3f465c;
+    --border-subtle:  #1e293b;
+    --border-default: #2d3748;
+    --border-strong:  #475569;
 
-    --text-primary:   #e8eaf1;  /* ~14:1 on surface */
-    --text-secondary: #aab0c0;  /* ~7.6:1 */
-    --text-muted:     #828898;  /* ~4.9:1 */
+    --text-primary:   #f8fafc;
+    --text-secondary: #94a3b8;
+    --text-muted:     #64748b;
 
-    --accent:        #2dd4bf;
-    --accent-hover:  #5eead4;
-    --accent-active: #99f6e4;
-    --accent-subtle: #133e3a;  /* tint bg for accent chips, light text */
-    --accent-fg:     #0f1320;
+    --accent:        #14b8a6;
+    --accent-hover:  #2dd4bf;
+    --accent-active: #5eead4;
+    --accent-subtle: #134e4a;
+    --accent-fg:     #090d16;
 
-    --color-danger:  #fb923c;
+    --color-danger:  #f87171;
     --color-success: #34d399;
     --color-warning: #fbbf24;
+    --color-info:    #60a5fa;
 
-    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.40);
-    --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.45), 0 1px 2px rgba(0, 0, 0, 0.30);
-    --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.55), 0 2px 8px rgba(0, 0, 0, 0.40);
+    --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+    --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.4);
+    --shadow-md: 0 4px 12px 0 rgba(0, 0, 0, 0.5);
+    --shadow-lg: 0 12px 32px 0 rgba(0, 0, 0, 0.6);
+    --shadow-xl: 0 20px 40px 0 rgba(0, 0, 0, 0.7);
 
-    /* 7 day accents — lighter -400 shades, >=3:1 on the dark surface,
-       dark-ink chip text >=4.5:1. *-soft tints carry light text. */
-    --day-mon:       #a78bfa;  --day-mon-soft: #2a2545;  --day-mon-fg: #0f1320;
-    --day-tue:       #60a5fa;  --day-tue-soft: #1c2740;  --day-tue-fg: #0f1320;
-    --day-wed:       #34d399;  --day-wed-soft: #16302a;  --day-wed-fg: #0f1320;
-    --day-thu:       #fbbf24;  --day-thu-soft: #332517;  --day-thu-fg: #0f1320;
-    --day-fri:       #fb923c;  --day-fri-soft: #332010;  --day-fri-fg: #0f1320;
-    --day-sat:       #fb7185;  --day-sat-soft: #321520;  --day-sat-fg: #0f1320;
-    --day-sun:       #818cf8;  --day-sun-soft: #1d1d3b;  --day-sun-fg: #0f1320;
+    --day-mon: #818cf8;  --day-mon-soft: #1e1b4b;  --day-mon-fg: #090d16;
+    --day-tue: #38bdf8;  --day-tue-soft: #082f49;  --day-tue-fg: #090d16;
+    --day-wed: #34d399;  --day-wed-soft: #064e3b;  --day-wed-fg: #090d16;
+    --day-thu: #fbbf24;  --day-thu-soft: #451a03;  --day-thu-fg: #090d16;
+    --day-fri: #fb7185;  --day-fri-soft: #4c0519;  --day-fri-fg: #090d16;
+    --day-sat: #e879f9;  --day-sat-soft: #4a044e;  --day-sat-fg: #090d16;
+    --day-sun: #a78bfa;  --day-sun-soft: #2e1065;  --day-sun-fg: #090d16;
   }
 }
 
-/* ============================================================
- * Dark theme — forced (manual toggle wins)
- * --------------------------------------------------------------
- * NOTE: these values must stay in sync with the @media
- * (prefers-color-scheme: dark) block above. The duplication is
- * required: a manual data-theme="dark" must override the system
- * preference, and plain CSS can't share the declarations between
- * a media query and an attribute selector without a preprocessor.
- * ============================================================ */
 :root[data-theme='dark'] {
   color-scheme: dark;
 
-  --bg-canvas:        #14171f;
-  --bg-surface:       #1c2030;
-  --bg-surface-raised: #232838;
-  --bg-subtle:        #181c2b;  /* recessed: darker than surface, distinct from raised */
-  --bg-sunken:        #11141c;
+  --bg-canvas:         #090d16;
+  --bg-surface:        #111726;
+  --bg-surface-raised: #182032;
+  --bg-subtle:         #1e293b;
+  --bg-sunken:         #0c111d;
 
-  --border-subtle:  #262c3d;
-  --border-default: #2f3548;
-  --border-strong:  #3f465c;
+  --border-subtle:  #1e293b;
+  --border-default: #2d3748;
+  --border-strong:  #475569;
 
-  --text-primary:   #e8eaf1;
-  --text-secondary: #aab0c0;
-  --text-muted:     #828898;
+  --text-primary:   #f8fafc;
+  --text-secondary: #94a3b8;
+  --text-muted:     #64748b;
 
-  --accent:        #2dd4bf;
-  --accent-hover:  #5eead4;
-  --accent-active: #99f6e4;
-  --accent-subtle: #133e3a;
-  --accent-fg:     #0f1320;
+  --accent:        #14b8a6;
+  --accent-hover:  #2dd4bf;
+  --accent-active: #5eead4;
+  --accent-subtle: #134e4a;
+  --accent-fg:     #090d16;
 
-  --color-danger:  #fb923c;
+  --color-danger:  #f87171;
   --color-success: #34d399;
   --color-warning: #fbbf24;
+  --color-info:    #60a5fa;
 
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.40);
-  --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.45), 0 1px 2px rgba(0, 0, 0, 0.30);
-  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.55), 0 2px 8px rgba(0, 0, 0, 0.40);
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 12px 0 rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 12px 32px 0 rgba(0, 0, 0, 0.6);
+  --shadow-xl: 0 20px 40px 0 rgba(0, 0, 0, 0.7);
 
-  --day-mon:       #a78bfa;  --day-mon-soft: #2a2545;  --day-mon-fg: #0f1320;
-  --day-tue:       #60a5fa;  --day-tue-soft: #1c2740;  --day-tue-fg: #0f1320;
-  --day-wed:       #34d399;  --day-wed-soft: #16302a;  --day-wed-fg: #0f1320;
-  --day-thu:       #fbbf24;  --day-thu-soft: #332517;  --day-thu-fg: #0f1320;
-  --day-fri:       #fb923c;  --day-fri-soft: #332010;  --day-fri-fg: #0f1320;
-  --day-sat:       #fb7185;  --day-sat-soft: #321520;  --day-sat-fg: #0f1320;
-  --day-sun:       #818cf8;  --day-sun-soft: #1d1d3b;  --day-sun-fg: #0f1320;
+  --day-mon: #818cf8;  --day-mon-soft: #1e1b4b;  --day-mon-fg: #090d16;
+  --day-tue: #38bdf8;  --day-tue-soft: #082f49;  --day-tue-fg: #090d16;
+  --day-wed: #34d399;  --day-wed-soft: #064e3b;  --day-wed-fg: #090d16;
+  --day-thu: #fbbf24;  --day-thu-soft: #451a03;  --day-thu-fg: #090d16;
+  --day-fri: #fb7185;  --day-fri-soft: #4c0519;  --day-fri-fg: #090d16;
+  --day-sat: #e879f9;  --day-sat-soft: #4a044e;  --day-sat-fg: #090d16;
+  --day-sun: #a78bfa;  --day-sun-soft: #2e1065;  --day-sun-fg: #090d16;
 }
 
 /* ============================================================
- * Token-driven helpers (reusable across the app + this swatch)
+ * Token-driven helpers & Base Styling
  * ============================================================ */
 
-/* Base: tokens drive the document. */
 html {
   font-family: var(--font-sans);
-  font-size: 100%; /* honor the user's browser text-size preference — rem tokens scale with it */
+  font-size: 100%;
   background: var(--bg-canvas);
   color: var(--text-primary);
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
+  scroll-behavior: smooth;
 }
 
-/* Tabular numerals for macro/data columns. */
+/* Tabular numerals for clean macro alignment */
 .tnum {
   font-variant-numeric: tabular-nums;
   font-feature-settings: 'tnum' 1;
 }
 
-/* Surfaces */
-.surface        { background: var(--bg-surface); border: 1px solid var(--border-default); border-radius: var(--radius-lg); }
-.surface-raised { background: var(--bg-surface-raised); border: 1px solid var(--border-default); border-radius: var(--radius-lg); box-shadow: var(--shadow-md); }
-.surface-subtle { background: var(--bg-subtle); border-radius: var(--radius-lg); }
+/* Base Surfaces */
+.surface {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+}
+.surface-raised {
+  background: var(--bg-surface-raised);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+}
+.surface-subtle {
+  background: var(--bg-subtle);
+  border-radius: var(--radius-lg);
+}
 
-/* Elevation options — the two that replace claymorphism. */
-.elevate        { box-shadow: var(--shadow-md); }
-.elevate-lg     { box-shadow: var(--shadow-lg); }
-.elevate-border { border: 1px solid var(--border-strong); } /* border-only, no shadow */
+/* Elevation utilities */
+.elevate-xs { box-shadow: var(--shadow-xs); }
+.elevate-sm { box-shadow: var(--shadow-sm); }
+.elevate    { box-shadow: var(--shadow-md); }
+.elevate-lg { box-shadow: var(--shadow-lg); }
+.elevate-xl { box-shadow: var(--shadow-xl); }
 
-/* Focus — visible, >=3:1, keyboard-only. */
+/* Focus ring */
 .focus-ring:focus-visible {
   outline: none;
   box-shadow: var(--ring);
   border-radius: inherit;
 }
 
-/* Day accents — dot, left bar, chip. The color is never the text. */
+/* Day accent badges & indicators */
 .day-dot {
   display: inline-block;
-  width: 10px; height: 10px;
+  width: 8px;
+  height: 8px;
   border-radius: var(--radius-pill);
   background: var(--day-color);
   flex: none;
 }
 .day-bar {
-  border-left: 4px solid var(--day-color);
+  border-left: 3px solid var(--day-color);
 }
 .day-chip {
   display: inline-flex;
   align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-1) var(--space-3);
+  gap: var(--space-1);
+  padding: 2px var(--space-2);
   border-radius: var(--radius-pill);
   background: var(--day-color);
   color: var(--day-fg);
-  font-size: var(--font-size-small);
+  font-size: var(--font-size-caption);
   font-weight: var(--weight-semibold);
-  line-height: 1;
+  line-height: 1.2;
 }
 .day-chip-soft {
   display: inline-flex;
   align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-1) var(--space-3);
+  gap: var(--space-1);
+  padding: 2px var(--space-2);
   border-radius: var(--radius-pill);
   background: var(--day-soft);
   color: var(--text-primary);
-  font-size: var(--font-size-small);
+  font-size: var(--font-size-caption);
   font-weight: var(--weight-medium);
-  line-height: 1;
+  line-height: 1.2;
 }
 
-/* Reduced motion */
+/* Reduced motion preference */
 @media (prefers-reduced-motion: reduce) {
-  * { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

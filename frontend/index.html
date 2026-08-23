@@ -3,37 +3,68 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Meal Planner</title>
+    <title>Weekly Planner — MealPlanner</title>
     <link rel="icon" type="image/x-icon" href="/meal_logo.ico">
+    <meta name="description" content="Plan and track your weekly meals and macros across all five daily slots with dynamic nutrition summaries.">
     <meta name="application-name" content="Meal Planner">
 </head>
 <body class="min-h-screen flex flex-col bg-canvas text-primary font-sans">
-    <!-- Shared nav header + auth bootstrap injected here by src/layout.js -->
+    <!-- Shared navigation header injected by layout.js -->
     <div id="app-header"></div>
 
-    <main class="container mx-auto px-4 sm:px-6 py-8 sm:py-12 flex-1 w-full max-w-7xl">
-        <section>
-            <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-6">
+    <main class="container mx-auto px-4 sm:px-6 py-6 sm:py-8 flex-1 w-full max-w-[1600px]">
+        <!-- Hero & Controls Section -->
+        <section class="mb-6">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-6 border-b border-line">
                 <div>
-                    <h1 class="text-2xl md:text-3xl font-bold tracking-tight text-primary">Weekly Planner</h1>
-                    <p class="text-secondary mt-1 max-w-2xl">Plan five meal slots across the week and track macros per meal and per day.</p>
+                    <div class="flex items-center gap-2 mb-1">
+                        <span class="mp-badge mp-badge-accent">Weekly Planner</span>
+                        <span id="current-week-label" class="text-xs font-medium text-muted">Active Plan</span>
+                    </div>
+                    <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-primary">Meal Schedule &amp; Macros</h1>
+                    <p class="text-secondary text-sm mt-1 max-w-2xl">Organize 5 meal slots per day and monitor nutritional balance with real-time macro calculations.</p>
                 </div>
-                <div class="flex items-center gap-2">
-                    <button id="export-pdf-btn" type="button" class="mp-btn mp-btn-secondary focus-ring">
+                <div class="flex items-center gap-2.5 flex-wrap">
+                    <button id="export-pdf-btn" type="button" class="mp-btn mp-btn-secondary focus-ring" title="Export this week's plan as a printable PDF">
                         <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3v9m0 0l-3-3m3 3l3-3M4 14v2a1 1 0 001 1h10a1 1 0 001-1v-2"/></svg>
-                        Export as PDF
+                        Export PDF
                     </button>
+                    <a href="recipe-hub.html" class="mp-btn mp-btn-primary focus-ring">
+                        <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 4v12M4 10h12"/></svg>
+                        Browse Recipes
+                    </a>
                 </div>
             </div>
 
-            <!-- Planner grid + loading/empty/error states are rendered here by
-                 src/pages/weekly-planner.js (token-driven .mp-* components). -->
-            <div id="meal-plan-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5"></div>
+            <!-- Weekly Nutrition Overview Banner (Swipeable on mobile) -->
+            <div id="week-summary-banner" class="flex sm:grid overflow-x-auto sm:overflow-visible pb-2 sm:pb-0 snap-x no-scrollbar grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mt-4">
+                <!-- Dynamically populated by weekly-planner.js -->
+            </div>
+        </section>
+
+        <!-- Mobile Day Selector Pill Strip (visible on mobile only) -->
+        <div class="block md:hidden mb-4 sticky top-16 z-30 bg-canvas/95 backdrop-blur-md py-2 -mx-4 px-4 border-b border-line-subtle">
+            <div id="mobile-day-picker" class="mp-day-picker no-scrollbar">
+                <!-- Dynamically populated by weekly-planner.js -->
+            </div>
+        </div>
+
+        <!-- 7-Day Planner Grid -->
+        <section>
+            <div id="meal-plan-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-7 gap-3 2xl:gap-2.5"></div>
         </section>
     </main>
 
-    <footer class="bg-sunken text-secondary py-8 text-center text-sm">
-        <p>Your journey to healthy, convenient eating starts now.</p>
+    <footer class="bg-surface border-t border-line text-secondary py-6 text-center text-xs mt-auto">
+        <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
+            <p class="text-muted">MealPlanner • Material Flat Minimalist Nutrition Experience</p>
+            <div class="flex items-center gap-4 text-muted">
+                <a href="recipe-hub.html" class="hover:text-primary transition-colors">Recipes</a>
+                <a href="ingredients.html" class="hover:text-primary transition-colors">Ingredients</a>
+                <a href="shopping-list.html" class="hover:text-primary transition-colors">Shopping</a>
+                <a href="catalog.html" class="hover:text-primary transition-colors">Components</a>
+            </div>
+        </div>
     </footer>
 
     <script type="module" src="/src/pages/weekly-planner.js"></script>
