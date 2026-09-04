@@ -19,6 +19,25 @@ logger.setLevel(logging.DEBUG)
 ing_router = APIRouter(prefix="/ingredients", tags=["Ingredients"])
 
 
+# Definitional volume factors relative to ml (1 tbsp = 15 ml, 1 tsp = 5 ml,
+# 1 cup = 240 ml). Volume units convert exactly between each other.
+# 'g' is mass and 'nos' is a count: how many grams a tbsp/cup/nos of a food
+# weighs is food-specific (1 tbsp oil ~ 13.5 g, 1 tbsp flour ~ 8 g), so there is
+# NO correct generic factor for any conversion involving 'g' or 'nos'.
+_VOLUME_FACTORS_ML = {'ml': 1.0, 'tsp': 5.0, 'tbsp': 15.0, 'cup': 240.0}
+
+
+def _volume_unit_factor(old_unit: Optional[str], new_unit: Optional[str]) -> Optional[float]:
+    """Exact conversion factor for a volume-to-volume unit change, else None.
+
+    Returning None means the change is food-specific and no generic conversion
+    exists; callers must leave the numeric quantity untouched rather than guess.
+    """
+    if old_unit in _VOLUME_FACTORS_ML and new_unit in _VOLUME_FACTORS_ML:
+        return _VOLUME_FACTORS_ML[old_unit] / _VOLUME_FACTORS_ML[new_unit]
+    return None
+
+
 ## Ingredients
 @ing_router.get("", response_model=List[IngredientSchema])
 def get_ingredients_list(sort: Optional[str] = None, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
@@ -86,7 +105,10 @@ def update_ingredient(
     # if we updating the availability status ignore updating recipes
     logger.debug(f"Available {available}, Ingredient {db_ingredient.available}")
     if available != None or available is not db_ingredient.available:
-        # Get the new values from the request payload
+        # Get the new values from the request payload. serving_size is only the
+        # nutrition basis of the ingredient (nutrients are per serving_size of
+        # serving_unit); it is NOT stored in recipe rows, so it never triggers a
+        # recipe sync and recipe quantities must NOT be rescaled for it.
         update_data = {}
         if name is not None:
             update_data['name'] = name
@@ -95,34 +117,68 @@ def update_ingredient(
         if serving_size is not None:
             update_data['serving_size'] = serving_size
 
-        # 2. Check if name or unit, which are stored in recipes, have changed
-        should_sync_recipes = ('name' in update_data) or ('serving_unit' in update_data)
+        # Recipe ingredient rows store {name, quantity, serving_unit} where
+        # quantity is in RAW recipe units and the row references the ingredient
+        # by NAME, not by id. So a rename must propagate the new name, and a
+        # unit change must propagate the new unit, to every recipe that mentions
+        # this ingredient.
+        #
+        # Only sync when a value ACTUALLY changed: the edit UIs re-send the
+        # current name/unit/serving_size on every save, and re-scaling recipe
+        # quantities on a no-op save is what historically corrupted them
+        # (a blind x100 factor applied on each save).
+        old_name = db_ingredient.name
+        old_unit = db_ingredient.serving_unit
+        new_name = update_data.get('name')
+        new_unit = update_data.get('serving_unit')
+        name_changed = new_name is not None and new_name != old_name
+        unit_changed = new_unit is not None and new_unit != old_unit
 
-        if should_sync_recipes:
-            # Find all recipes containing the old ingredient name
-            # Note: This query might need to be adapted based on your exact JSON structure
+        if name_changed or unit_changed:
+            # Find all recipes (this user's + global) that might contain the
+            # ingredient; rows are matched by name below.
             recipes_to_update = db.query(Recipe).filter(
                     ((Recipe.user_id == current_user.id) | (Recipe.user_id == None))
                 ).all()
             logger.info(f"Recipes to update: {[r.name for r in recipes_to_update]}")
             for recipe in recipes_to_update:
-                # Create a new list for ingredients to avoid mutation issues
-                new_ingredients_list = []
+                recipe_changed = False
                 for ingredient_in_recipe in recipe.ingredients:
-                    if name.lower() == ingredient_in_recipe['name'].lower():
-                        ingredient_in_recipe['name'] = update_data["name"]
-                        ingredient_in_recipe['serving_unit'] = update_data['serving_unit']
-                        logger.info(f"{db_ingredient.serving_unit} ==> {update_data['serving_unit']}")
-                        multiply_factor = 0.01 if (db_ingredient.serving_unit in ['g','ml']  and update_data['serving_unit'] in ['nos','tbsp','tsp','cup']) else 100
-                        ingredient_in_recipe['quantity'] = ingredient_in_recipe['quantity']*multiply_factor
-                    new_ingredients_list.append(ingredient_in_recipe)
-                
-                # Re-assign the list to the recipe object
-                recipe.ingredients = new_ingredients_list
+                    # Match on the OLD name, case-insensitively and
+                    # whitespace-trimmed, the same way recipe availability and
+                    # shopping-list code match ingredient names.
+                    row_name = str(ingredient_in_recipe.get('name', '')).strip().lower()
+                    if row_name != old_name.strip().lower():
+                        continue
 
-                # Flag the JSON column as modified to ensure it's saved
-                logger.info(f"Flaging update for recipe: {recipe.name}")
-                flag_modified(recipe, "ingredients")
+                    if name_changed:
+                        # Rename only: keep the row's quantity and unit as-is.
+                        ingredient_in_recipe['name'] = new_name
+                    if unit_changed:
+                        factor = _volume_unit_factor(old_unit, new_unit)
+                        ingredient_in_recipe['serving_unit'] = new_unit
+                        if factor is None:
+                            # Food-specific conversion (g <-> volume/count, nos
+                            # <-> anything): no generic factor exists, so the
+                            # numeric quantity is deliberately left untouched
+                            # for the caller to repair, instead of being scaled
+                            # by an invented number.
+                            logger.warning(
+                                f"No generic conversion for unit change {old_unit} -> {new_unit} "
+                                f"of ingredient '{old_name}'; recipe '{recipe.name}' keeps "
+                                f"quantity {ingredient_in_recipe['quantity']} for row "
+                                f"'{ingredient_in_recipe['name']}' and needs manual repair"
+                            )
+                        else:
+                            ingredient_in_recipe['quantity'] = ingredient_in_recipe['quantity'] * factor
+                    recipe_changed = True
+
+                if recipe_changed:
+                    # Re-assign the list and flag the JSON column as modified to
+                    # ensure the mutated rows are persisted.
+                    recipe.ingredients = list(recipe.ingredients)
+                    flag_modified(recipe, "ingredients")
+                    logger.info(f"Synced ingredient '{old_name}' change into recipe: {recipe.name}")
 
     # 3. Update attributes only for the parameters that were provided
     if name is not None:
