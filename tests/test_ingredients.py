@@ -1,4 +1,7 @@
+import pytest
 from fastapi.testclient import TestClient
+
+from models import Recipe, RecipeMealType
 
 
 def test_add_list_update_delete_ingredient(test_client: TestClient, auth_headers):
@@ -67,13 +70,19 @@ def test_get_ingredient_unauthorized(test_client: TestClient):
 # Recipe sync on ingredient update (name / serving_unit / serving_size)
 # ---------------------------------------------------------------------------
 
-def _create_ingredient(client, headers, name, serving_unit, serving_size=None):
+def _create_ingredient(client, headers, name, serving_unit, serving_size=None, extra=None):
     params = {"name": name, "shelf_life": 5, "serving_unit": serving_unit}
     if serving_size is not None:
         params["serving_size"] = serving_size
     resp = client.post("/ingredients", params=params, headers=headers)
     assert resp.status_code == 201, resp.text
-    return resp.json()
+    ing = resp.json()
+    if extra:
+        # Nutrition values are only settable via PUT (POST takes no nutrition params).
+        resp = client.put(f"/ingredients/{ing['id']}", params=extra, headers=headers)
+        assert resp.status_code == 200, resp.text
+        ing = resp.json()
+    return ing
 
 
 def _create_recipe(client, headers, name, ingredients):
@@ -113,24 +122,91 @@ def test_rename_updates_recipe_rows_and_preserves_quantity(test_client, auth_hea
     assert rows == [{"name": "Almond Flakes", "quantity": 80, "serving_unit": "g"}]
 
 
-def test_unit_change_volume_to_volume_converts_exactly(test_client, auth_headers):
-    ing = _create_ingredient(test_client, auth_headers, "Olive Oil", "tbsp")
+def test_size_change_rescales_recipe_quantities(test_client, auth_headers):
+    ing = _create_ingredient(
+        test_client, auth_headers, "Sugar", "g", serving_size=100,
+        extra={"protein": 10, "energy": 400},
+    )
     recipe = _create_recipe(
         test_client,
         auth_headers,
-        "Dressing",
-        [{"name": "Olive Oil", "quantity": 2, "serving_unit": "tbsp"}],
+        "Cake",
+        [{"name": "Sugar", "quantity": 50, "serving_unit": "g"}],
+    )
+    # Nutrition per the trigger: protein 10 x 50 / 100 = 5
+    before = test_client.get(f"/recipes/{recipe['id']}", headers=auth_headers).json()
+
+    resp = test_client.put(f"/ingredients/{ing['id']}", params={"serving_size": 250}, headers=auth_headers)
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["serving_size"] == 250
+
+    rows = _get_recipe_rows(test_client, auth_headers, recipe["id"])
+    # Rescaled by new/old = 250/100 = x2.5, rounded to 4 decimals
+    assert rows[0]["quantity"] == 125
+    assert rows[0]["serving_unit"] == "g"
+
+    # Nutrition preserved by construction: 10 x 125 / 250 = 5
+    after = test_client.get(f"/recipes/{recipe['id']}", headers=auth_headers).json()
+    assert after["protein"] == pytest.approx(before["protein"])
+    assert after["energy"] == pytest.approx(before["energy"])
+    assert before["protein"] == pytest.approx(5.0)
+
+
+def test_unit_change_with_size_reentry_rescales(test_client, auth_headers):
+    # Ginger g/100 -> nos/1: recipe rows 20 g -> 0.2 nos (x1/100); nutrition
+    # is unchanged because the same ratio cancels in the trigger math.
+    ing = _create_ingredient(
+        test_client, auth_headers, "Ginger", "g", serving_size=100,
+        extra={"protein": 5, "energy": 80},
+    )
+    recipe = _create_recipe(
+        test_client,
+        auth_headers,
+        "Stir Fry",
+        [{"name": "ginger", "quantity": 20, "serving_unit": "g"}],
+    )
+    before = test_client.get(f"/recipes/{recipe['id']}", headers=auth_headers).json()
+
+    resp = test_client.put(
+        f"/ingredients/{ing['id']}",
+        params={"serving_unit": "nos", "serving_size": 1},
+        headers=auth_headers,
+    )
+    assert resp.status_code == 200, resp.text
+
+    rows = _get_recipe_rows(test_client, auth_headers, recipe["id"])
+    assert rows[0]["serving_unit"] == "nos"
+    assert rows[0]["quantity"] == pytest.approx(0.2)
+
+    after = test_client.get(f"/recipes/{recipe['id']}", headers=auth_headers).json()
+    assert after["protein"] == pytest.approx(before["protein"])
+    assert after["energy"] == pytest.approx(before["energy"])
+
+
+def test_unit_change_same_size_no_rescale(test_client, auth_headers):
+    # g/100 -> ml/100: same size means no numeric change, only a relabel.
+    ing = _create_ingredient(test_client, auth_headers, "Milk", "g", serving_size=100)
+    recipe = _create_recipe(
+        test_client,
+        auth_headers,
+        "Smoothie",
+        [{"name": "Milk", "quantity": 250, "serving_unit": "g"}],
     )
 
-    resp = test_client.put(f"/ingredients/{ing['id']}", params={"serving_unit": "ml"}, headers=auth_headers)
+    resp = test_client.put(
+        f"/ingredients/{ing['id']}",
+        params={"serving_unit": "ml", "serving_size": 100},
+        headers=auth_headers,
+    )
     assert resp.status_code == 200, resp.text
 
     rows = _get_recipe_rows(test_client, auth_headers, recipe["id"])
     assert rows[0]["serving_unit"] == "ml"
-    assert rows[0]["quantity"] == 30  # 2 tbsp = 30 ml, exact
+    assert rows[0]["quantity"] == 250
 
 
-def test_unit_change_to_nos_does_not_rescale_quantity(test_client, auth_headers):
+def test_unit_change_without_size_no_rescale(test_client, auth_headers):
+    # Unit alone does nothing numeric: PUT with only serving_unit relabels.
     ing = _create_ingredient(test_client, auth_headers, "Almonds", "g")
     recipe = _create_recipe(
         test_client,
@@ -143,27 +219,95 @@ def test_unit_change_to_nos_does_not_rescale_quantity(test_client, auth_headers)
     assert resp.status_code == 200, resp.text
 
     rows = _get_recipe_rows(test_client, auth_headers, recipe["id"])
-    # No generic g -> nos conversion exists: unit is updated, quantity is NOT
-    # multiplied by a blind factor (the old code scaled it x0.01 or x100).
     assert rows[0]["quantity"] == 80
     assert rows[0]["serving_unit"] == "nos"
 
 
-def test_serving_size_change_does_not_touch_recipes(test_client, auth_headers):
+def test_invalid_serving_size_rejected(test_client, auth_headers):
     ing = _create_ingredient(test_client, auth_headers, "Sugar", "g", serving_size=100)
+    for bad in ("0", "-5", "", "abc", "nan", "inf", "1e999"):
+        resp = test_client.put(f"/ingredients/{ing['id']}", params={"serving_size": bad}, headers=auth_headers)
+        assert resp.status_code == 400, f"{bad!r}: {resp.text}"
+        assert "positive number" in resp.json()["detail"]
+
+
+def test_availability_only_update_still_works(test_client, auth_headers):
+    # The pantry toggle PUTs only `available`; serving_size validation must
+    # not reject it.
+    ing = _create_ingredient(test_client, auth_headers, "Spinach", "g", serving_size=100)
+    resp = test_client.put(f"/ingredients/{ing['id']}", params={"available": "true"}, headers=auth_headers)
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["available"] is True
+
+
+def test_repeated_size_edits_compound_exactly(test_client, auth_headers):
+    # 100 -> 50 -> 25 compounds to exactly x0.25 on the recipe row, with
+    # stored values rounded to 4 decimals.
+    ing = _create_ingredient(test_client, auth_headers, "Oats", "g", serving_size=100)
     recipe = _create_recipe(
         test_client,
         auth_headers,
-        "Cake",
-        [{"name": "Sugar", "quantity": 50, "serving_unit": "g"}],
+        "Porridge",
+        [{"name": "Oats", "quantity": 7, "serving_unit": "g"}],
     )
 
-    resp = test_client.put(f"/ingredients/{ing['id']}", params={"serving_size": 250}, headers=auth_headers)
+    resp = test_client.put(f"/ingredients/{ing['id']}", params={"serving_size": 50}, headers=auth_headers)
     assert resp.status_code == 200, resp.text
-    assert resp.json()["serving_size"] == 250
+    rows = _get_recipe_rows(test_client, auth_headers, recipe["id"])
+    assert rows[0]["quantity"] == pytest.approx(3.5)
+
+    resp = test_client.put(f"/ingredients/{ing['id']}", params={"serving_size": 25}, headers=auth_headers)
+    assert resp.status_code == 200, resp.text
+    rows = _get_recipe_rows(test_client, auth_headers, recipe["id"])
+    assert rows[0]["quantity"] == pytest.approx(1.75)  # 7 x 0.25 exactly
+
+    # 4-decimal rounding at write time: a non-terminating ratio is truncated.
+    # old size is now 25, so the factor is 3/25 = 0.12.
+    resp = test_client.put(f"/ingredients/{ing['id']}", params={"serving_size": 3}, headers=auth_headers)
+    assert resp.status_code == 200, resp.text
+    rows = _get_recipe_rows(test_client, auth_headers, recipe["id"])
+    assert rows[0]["quantity"] == pytest.approx(0.21)  # 1.75 x 3/25
+
+
+def test_rescale_rounded_to_four_decimals(test_client, auth_headers):
+    # 1 x (33.333/100) = 0.33333... must be stored rounded to 4 decimals
+    ing = _create_ingredient(test_client, auth_headers, "Saffron", "g", serving_size=100)
+    recipe = _create_recipe(
+        test_client,
+        auth_headers,
+        "Paella",
+        [{"name": "Saffron", "quantity": 1, "serving_unit": "g"}],
+    )
+
+    resp = test_client.put(f"/ingredients/{ing['id']}", params={"serving_size": 33.333}, headers=auth_headers)
+    assert resp.status_code == 200, resp.text
 
     rows = _get_recipe_rows(test_client, auth_headers, recipe["id"])
-    assert rows == [{"name": "Sugar", "quantity": 50, "serving_unit": "g"}]
+    assert rows[0]["quantity"] == pytest.approx(0.3333)
+
+
+def test_size_change_rescales_global_recipe_too(test_client, auth_headers, db_session):
+    # Global recipes (user_id NULL) must be rescaled as well.
+    ing = _create_ingredient(test_client, auth_headers, "Salt", "g", serving_size=100)
+    global_recipe = Recipe(
+        name="Brine",
+        serves=2,
+        ingredients=[{"name": "salt", "quantity": 10, "serving_unit": "g"}],
+        instructions="dissolve",
+        meal_type=RecipeMealType.lunch,
+        is_vegetarian=True,
+        user_id=None,
+    )
+    db_session.add(global_recipe)
+    db_session.commit()
+
+    resp = test_client.put(f"/ingredients/{ing['id']}", params={"serving_size": 200}, headers=auth_headers)
+    assert resp.status_code == 200, resp.text
+
+    db_session.expire_all()
+    rows = global_recipe.ingredients
+    assert rows[0]["quantity"] == pytest.approx(20)
+    assert rows[0]["serving_unit"] == "g"
 
 
 def test_noop_resave_does_not_rescale_recipe_quantities(test_client, auth_headers):
@@ -197,9 +341,11 @@ def test_rename_and_unit_change_together(test_client, auth_headers):
         [{"name": "Wheat Flour", "quantity": 1, "serving_unit": "cup"}],
     )
 
+    # Unit and size re-entry arrive in the same request; the factor is
+    # computed from the DB's old size (cup defaults to 1), not a volume table.
     resp = test_client.put(
         f"/ingredients/{ing['id']}",
-        params={"name": "Whole Wheat Flour", "serving_unit": "tbsp"},
+        params={"name": "Whole Wheat Flour", "serving_unit": "tbsp", "serving_size": 16},
         headers=auth_headers,
     )
     assert resp.status_code == 200, resp.text
@@ -207,7 +353,8 @@ def test_rename_and_unit_change_together(test_client, auth_headers):
     rows = _get_recipe_rows(test_client, auth_headers, recipe["id"])
     assert rows[0]["name"] == "Whole Wheat Flour"
     assert rows[0]["serving_unit"] == "tbsp"
-    assert rows[0]["quantity"] == 16  # 1 cup = 16 tbsp, exact
+    # 1 cup x (16 / 1) = 16 tbsp — the size ratio, not a unit conversion.
+    assert rows[0]["quantity"] == 16
 
 
 def test_automatic_ingredient_expiration(test_client: TestClient, auth_headers, db_session):

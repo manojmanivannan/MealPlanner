@@ -16,7 +16,7 @@ The routers mount **without an `/api` prefix**. Nginx maps `location /api/ { pro
 |---|---|---|
 | `auth_router` | `/auth` | signup, login, `/me`; JWT issuing and the `get_current_user` dependency everything else uses |
 | `recipe_router` | `/recipes` | global + user recipe CRUD, `only_available` filter |
-| `ingredient_router` | `/ingredients` | pantry list with remaining-shelf-life, add/update/delete with recipe-sync side effects |
+| `ingredient_router` | `/ingredients` | pantry list with remaining-shelf-life, add/update/delete with recipe-sync side effects (rename, unit relabel, serving-size rescale — see [domain-logic.md](./domain-logic.md)) |
 | `plan_router` | `/weekly-plan` | get the full week as a nested dict, upsert one meal slot, PDF export |
 | `utilities_router` | `/utilities` | serving-unit list, per-day nutrition, shopping list |
 
@@ -35,7 +35,7 @@ All routers except `/auth/signup`, `/auth/login`, `/utilities/list-serving-units
 
 Two behaviors live in Postgres, not Python — created by SQLAlchemy DDL events at table creation:
 
-1. **`calculate_recipe_nutrients`** — `BEFORE INSERT OR UPDATE` on `recipes`. Recomputes all nutrition columns from the JSONB ingredient rows, scaling each ingredient's nutrients from its **nutrition basis** by the row quantity. Ingredient lookup prefers the owning user's ingredient row, falling back to any global ingredient with the same name; unmatched names contribute zero. This means the DB is authoritative for recipe nutrition — Python never sets those columns.
+1. **`calculate_recipe_nutrients`** — `BEFORE INSERT OR UPDATE` on `recipes`. Recomputes all nutrition columns from the JSONB ingredient rows, scaling each ingredient's nutrients from its **nutrition basis** by the row quantity (`nutrient × quantity / serving_size`; the row's unit is never read). Ingredient lookup prefers the owning user's ingredient row, falling back to any global ingredient with the same name; unmatched names contribute zero. This means the DB is authoritative for recipe nutrition — Python never sets those columns. Because a recipe row's quantity only means something relative to its ingredient's `serving_size`, `PUT /ingredients/{id}` rescales matching recipe rows by `new_size / old_size` whenever the size actually changes, preserving nutrition by construction (the ratio cancels in this trigger); a unit change only relabels rows. Details and pre-existing caveats in [domain-logic.md](./domain-logic.md).
 2. **`check_recipe_ids_exist`** — deferred constraint trigger on `weekly_plan.recipe_ids`, raising if any id is missing from `recipes`. A plan-slot write with a bogus recipe id fails at commit with a 400.
 
 ### Seeding (`setup_db.py`)

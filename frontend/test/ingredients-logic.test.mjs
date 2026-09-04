@@ -24,6 +24,8 @@ import {
   shelfLifeBadge,
   filterIngredients,
   validateIngredient,
+  defaultServingSize,
+  countRecipesUsingIngredient,
 } from '../src/pages/ingredients-logic.js'
 
 const sample = [
@@ -230,4 +232,41 @@ test('validateIngredient: multiple errors are reported together', () => {
   assert.ok(r.errors['name'])
   assert.ok(r.errors['shelf-life'])
   assert.ok(r.errors['serving-unit'])
+})
+/* --------------------------- serving-size helpers --------------------------- */
+
+test('defaultServingSize matches create-time defaults extended to volume units', () => {
+  assert.equal(defaultServingSize('g'), 100)
+  assert.equal(defaultServingSize('ml'), 100)
+  assert.equal(defaultServingSize('cup'), 240)
+  assert.equal(defaultServingSize('tbsp'), 1)
+  assert.equal(defaultServingSize('tsp'), 1)
+  assert.equal(defaultServingSize('nos'), 1)
+})
+
+test('countRecipesUsingIngredient matches case-insensitively and trimmed', () => {
+  const recipes = [
+    { name: 'A', ingredients: [{ name: ' Ginger ', quantity: 1 }] },
+    { name: 'B', ingredients: [{ name: 'ginger', quantity: 2 }, { name: 'garlic', quantity: 1 }] },
+    { name: 'C', ingredients: [{ name: 'Garlic', quantity: 1 }] },
+    { name: 'D', ingredients: [] },
+  ]
+  assert.equal(countRecipesUsingIngredient(recipes, 'ginger'), 2)
+  assert.equal(countRecipesUsingIngredient(recipes, '  GARLIC '), 2)
+  assert.equal(countRecipesUsingIngredient(recipes, 'pepper'), 0)
+  assert.equal(countRecipesUsingIngredient(recipes, ''), 0)
+  assert.equal(countRecipesUsingIngredient(null, 'ginger'), 0)
+})
+
+test('validateIngredient: requireServingSize makes serving_size mandatory and > 0', () => {
+  const base = { name: 'X', shelf_life: '5', serving_unit: 'g' }
+  // Add flow unchanged: missing size is still fine.
+  assert.equal(validateIngredient(base).valid, true)
+  // Edit flow: missing/empty is an error; 0 and negatives too.
+  assert.ok(validateIngredient(base, { requireServingSize: true }).errors['serving-size'])
+  assert.ok(validateIngredient({ ...base, serving_size: '' }, { requireServingSize: true }).errors['serving-size'])
+  assert.ok(validateIngredient({ ...base, serving_size: '0' }, { requireServingSize: true }).errors['serving-size'])
+  assert.ok(validateIngredient({ ...base, serving_size: '-2' }, { requireServingSize: true }).errors['serving-size'])
+  assert.ok(validateIngredient({ ...base, serving_size: '1e999' }, { requireServingSize: true }).errors['serving-size'])
+  assert.equal(validateIngredient({ ...base, serving_size: '250' }, { requireServingSize: true }).valid, true)
 })

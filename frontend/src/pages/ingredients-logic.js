@@ -12,6 +12,7 @@
  * here is pure (no document, no fetch, no localStorage, no mutation of its
  * arguments).
  */
+import { normalizeName } from './shopping-list-logic.js'
 
 /**
  * The six serving units the backend `ServingUnits` enum accepts
@@ -162,6 +163,39 @@ export function filterIngredients(ingredients, term) {
 }
 
 /**
+ * The serving_size a unit change pre-fills in the edit modal, matching the
+ * create-time defaults (backend `ingredient_router.add_ingredient`) extended
+ * to the volume units: bulk units are "per 100", a cup is 240 ml, discrete
+ * units are "per unit".
+ * @param {string} unit
+ * @returns {number}
+ */
+export function defaultServingSize(unit) {
+  if (unit === 'g' || unit === 'ml') return 100
+  if (unit === 'cup') return 240
+  return 1
+}
+
+/**
+ * How many recipes use an ingredient, matched the way the backend sync and
+ * the shopping list do: case-insensitive and trimmed against each recipe
+ * row's name (via the shopping list's `normalizeName`). The recipes come
+ * from `GET /recipes` (rows are `{name, quantity, serving_unit}`). Does not
+ * mutate the input.
+ * @param {Array<{ingredients?:Array<{name?:string}>}>} recipes
+ * @param {string} name
+ * @returns {number}
+ */
+export function countRecipesUsingIngredient(recipes, name) {
+  const target = normalizeName(name)
+  if (!target) return 0
+  return (recipes || []).filter((recipe) =>
+    Array.isArray(recipe.ingredients) &&
+    recipe.ingredients.some((row) => normalizeName(row.name) === target)
+  ).length
+}
+
+/**
  * Inline-validation rules for the add / edit form. Returns a `errors` map
  * keyed by the form field id suffix used in ingredients.js
  * (`name` | `shelf-life` | `serving-unit` | `serving-size`).
@@ -170,12 +204,15 @@ export function filterIngredients(ingredients, term) {
  *   • name — required (non-empty after trim)
  *   • shelf_life — required, a positive integer (days)
  *   • serving_unit — required and one of DEFAULT_UNITS
- *   • serving_size — when present, a number > 0
+ *   • serving_size — when present, a number > 0; required > 0 when
+ *     `options.requireServingSize` is set (the edit flow, where a size
+ *     change rescales recipe quantities)
  *
  * @param {{name?:string, shelf_life?:string|number, serving_unit?:string, serving_size?:string|number}} values
+ * @param {{requireServingSize?:boolean}} [options]
  * @returns {{valid:boolean, errors:Record<string,string>}}
  */
-export function validateIngredient(values) {
+export function validateIngredient(values, options = {}) {
   const errors = {}
 
   const name = (values.name || '').trim()
@@ -196,12 +233,17 @@ export function validateIngredient(values) {
     errors['serving-unit'] = 'Serving unit must be one of: ' + DEFAULT_UNITS.join(', ') + '.'
   }
 
-  // serving_size is optional in the form but the backend stores a number; if
-  // the user typed one it must be a positive number.
+  // serving_size is optional in the add form (the create endpoint defaults
+  // it); in the edit flow it is required — it is the anchor a recipe
+  // rescale divides by — and the user typed value must be a positive number.
   const sizeRaw = values.serving_size == null ? '' : String(values.serving_size).trim()
-  if (sizeRaw !== '') {
+  if (options.requireServingSize && sizeRaw === '') {
+    errors['serving-size'] = 'Serving size is required.'
+  } else if (sizeRaw !== '') {
     const size = Number(sizeRaw)
-    if (isNaN(size) || size <= 0) {
+    // Number.isFinite also rejects Infinity ('1e999' typed into a number
+    // input), which would poison the backend rescale like NaN would.
+    if (!Number.isFinite(size) || size <= 0) {
       errors['serving-size'] = 'Serving size must be a positive number.'
     }
   }

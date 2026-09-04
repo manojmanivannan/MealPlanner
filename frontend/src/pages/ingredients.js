@@ -19,6 +19,8 @@ import {
   shelfLifeBadge,
   filterIngredients,
   validateIngredient,
+  defaultServingSize,
+  countRecipesUsingIngredient,
 } from './ingredients-logic.js'
 
 /* ----------------------------- Constants ----------------------------- */
@@ -90,6 +92,10 @@ async function fetchJson(url, opts = {}) {
 
 async function fetchIngredients() {
   return fetchJson(`${API_BASE}/ingredients?sort=name`)
+}
+
+async function fetchRecipes() {
+  return fetchJson(`${API_BASE}/recipes`)
 }
 
 async function fetchServingUnits() {
@@ -437,11 +443,11 @@ function readCoreFields(panel) {
   }
 }
 
-function applyValidation(panel, extraErrors = {}) {
+function applyValidation(panel, extraErrors = {}, validationOptions = {}) {
   const values = { ...readCoreFields(panel) }
   const sizeInput = panel.querySelector('[data-field="serving-size"]')
   if (sizeInput) values.serving_size = sizeInput.value
-  const { errors } = validateIngredient(values)
+  const { errors } = validateIngredient(values, validationOptions)
   const all = { ...errors, ...extraErrors }
   clearFieldErrors(panel)
   for (const key of Object.keys(all)) setFieldError(panel, key, all[key])
@@ -557,7 +563,8 @@ async function openEditModal(id, returnFocus) {
           <p class="mp-error-text" data-err="serving-unit" style="display:none"></p>
         </div>
         <div class="mp-field sm:col-span-2">
-          <label class="mp-label" for="edit-serving-size">Serving size (grams/ml per serving, optional)</label>
+          <div data-elem="unit-change-banner" hidden class="mb-2 p-3 rounded-lg bg-amber-500/10 text-amber-700 dark:text-amber-400 text-xs leading-relaxed"></div>
+          <label class="mp-label" for="edit-serving-size" id="edit-serving-size-label">Serving size (${esc(initialUnit)} per serving)<span class="mp-req">*</span></label>
           <input id="edit-serving-size" type="number" min="0" step="any" class="mp-input focus-ring" data-field="serving-size" value="${ing.serving_size ?? ''}">
           <p class="mp-error-text" data-err="serving-size" style="display:none"></p>
         </div>
@@ -596,17 +603,77 @@ async function openEditModal(id, returnFocus) {
   })
 
   const unitSelect = ctrl.panel.querySelector('[data-field="serving-unit"]')
-  unitSelect.addEventListener('change', () => {
+  const sizeInput = ctrl.panel.querySelector('[data-field="serving-size"]')
+  const sizeLabel = ctrl.panel.querySelector('#edit-serving-size-label')
+  const banner = ctrl.panel.querySelector('[data-elem="unit-change-banner"]')
+  const originalSize = ing.serving_size ?? ''
+
+  // The ingredients page does not load recipes; the affected-recipe count in
+  // the unit-change banner lazily fetches them once per modal session.
+  let recipesPromise = null
+  function ensureRecipes() {
+    if (!recipesPromise) recipesPromise = fetchRecipes().catch(() => null)
+    return recipesPromise
+  }
+
+  // Tracks the value the modal last wrote into the size field, so a later
+  // unit change knows whether the user has typed their own value.
+  let lastAutoFill = originalSize
+
+  function updateSizeLabel(unit) {
+    if (sizeLabel) sizeLabel.innerHTML = `Serving size (${esc(unit)} per serving)<span class="mp-req">*</span>`
+  }
+
+  unitSelect.addEventListener('change', async () => {
     const u = unitSelect.value
     NUTRITION_FIELDS.forEach((f) => {
       const label = ctrl.panel.querySelector(`[data-label-for="${f.key}"]`)
       if (label) label.textContent = nutritionLabel(f, u)
     })
+    updateSizeLabel(u)
+
+    if (u === initialUnit) {
+      // Back to the original unit: no rescale is coming, so restore the
+      // original size — but only if the user hasn't typed their own value.
+      if (sizeInput.value === '' || sizeInput.value === lastAutoFill) {
+        sizeInput.value = originalSize
+        lastAutoFill = originalSize
+      }
+      banner.hidden = true
+      return
+    }
+
+    // Unit changed: the rescale factor flows through the serving_size, so
+    // re-confirm it. Pre-fill a unit-based suggestion unless the user has
+    // typed their own value since the last auto-fill.
+    if (sizeInput.value === '' || sizeInput.value === String(originalSize) || sizeInput.value === lastAutoFill) {
+      sizeInput.value = defaultServingSize(u)
+    }
+    lastAutoFill = sizeInput.value
+
+    banner.hidden = false
+    const suggested = sizeInput.value
+    const sizePart = originalSize
+      ? `their quantities will be rescaled by <strong>${esc(originalSize)} → ${esc(suggested)}</strong> (×${esc(String(Number(suggested) / Number(originalSize)))})`
+      : 'their quantities will be rescaled by the new serving size'
+    banner.innerHTML = `Serving unit changed to <strong>${esc(u)}</strong>. <span data-elem="banner-count">…</span> ${sizePart}. Confirm the new serving size.`
+
+    const recipes = await ensureRecipes()
+    const countEl = banner.querySelector('[data-elem="banner-count"]')
+    if (!countEl) return
+    if (recipes) {
+      const uses = countRecipesUsingIngredient(recipes, ing.name)
+      countEl.textContent = `${uses} ${uses === 1 ? 'recipe' : 'recipes'} use${uses === 1 ? 's' : ''} ${ing.name} and`
+      countEl.className = 'font-semibold'
+    } else {
+      // Count unavailable: keep the message name-only.
+      countEl.textContent = `the recipes using ${ing.name}`
+    }
   })
 
   const saveBtn = ctrl.panel.querySelector('[data-save]')
   saveBtn.addEventListener('click', async () => {
-    const { valid } = applyValidation(ctrl.panel)
+    const { valid } = applyValidation(ctrl.panel, {}, { requireServingSize: true })
     if (!valid) return
     const core = readCoreFields(ctrl.panel)
     const sizeVal = ctrl.panel.querySelector('[data-field="serving-size"]').value
@@ -614,7 +681,8 @@ async function openEditModal(id, returnFocus) {
       name: core.name.trim(),
       shelf_life: core.shelf_life,
       serving_unit: core.serving_unit,
-      serving_size: sizeVal === '' ? '' : sizeVal,
+      // Required by validation now, so always sent as a number.
+      serving_size: sizeVal,
     }
     NUTRITION_FIELDS.forEach((f) => {
       const inp = ctrl.panel.querySelector(`[data-nut-field="${f.key}"]`)

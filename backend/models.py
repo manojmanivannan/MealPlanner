@@ -170,7 +170,7 @@ calculate_nutrition_func = DDL("""
         total_sodium_mg FLOAT := 0.0;
         total_vitamin_c_mg FLOAT := 0.0;
     BEGIN
-        FOR ing_record IN SELECT * FROM jsonb_to_recordset(NEW.ingredients) AS x(name text, quantity float, unit text)
+        FOR ing_record IN SELECT * FROM jsonb_to_recordset(NEW.ingredients) AS x(name text, quantity float, serving_unit text)
         LOOP
             -- If recipe is user-specific, prefer that user's ingredient values; else fall back to any matching name
             IF NEW.user_id IS NOT NULL THEN

@@ -1,5 +1,6 @@
 from fastapi import APIRouter
 from fastapi import Depends, HTTPException, Response, status, Query
+import math
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import flag_modified
 from typing import List
@@ -19,23 +20,25 @@ logger.setLevel(logging.DEBUG)
 ing_router = APIRouter(prefix="/ingredients", tags=["Ingredients"])
 
 
-# Definitional volume factors relative to ml (1 tbsp = 15 ml, 1 tsp = 5 ml,
-# 1 cup = 240 ml). Volume units convert exactly between each other.
-# 'g' is mass and 'nos' is a count: how many grams a tbsp/cup/nos of a food
-# weighs is food-specific (1 tbsp oil ~ 13.5 g, 1 tbsp flour ~ 8 g), so there is
-# NO correct generic factor for any conversion involving 'g' or 'nos'.
-_VOLUME_FACTORS_ML = {'ml': 1.0, 'tsp': 5.0, 'tbsp': 15.0, 'cup': 240.0}
+def _parse_serving_size(raw: Optional[str]) -> Optional[float]:
+    """Validate an incoming serving_size when the parameter is provided.
 
-
-def _volume_unit_factor(old_unit: Optional[str], new_unit: Optional[str]) -> Optional[float]:
-    """Exact conversion factor for a volume-to-volume unit change, else None.
-
-    Returning None means the change is food-specific and no generic conversion
-    exists; callers must leave the numeric quantity untouched rather than guess.
+    The serving_size is the nutrition anchor (the trigger divides the recipe
+    row's quantity by it), so a provided value must parse to a number > 0 —
+    null/zero would poison that division, and NaN/Infinity would poison it
+    worse (NaN stored in the column, or NaN quantities written into recipe
+    JSONB). Absence (None) stays allowed: the availability toggle PUTs only
+    `available`.
     """
-    if old_unit in _VOLUME_FACTORS_ML and new_unit in _VOLUME_FACTORS_ML:
-        return _VOLUME_FACTORS_ML[old_unit] / _VOLUME_FACTORS_ML[new_unit]
-    return None
+    if raw is None:
+        return None
+    try:
+        size = float(str(raw).strip())
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=400, detail="Serving size must be a positive number.")
+    if not math.isfinite(size) or size <= 0:
+        raise HTTPException(status_code=400, detail="Serving size must be a positive number.")
+    return size
 
 
 ## Ingredients
@@ -75,7 +78,7 @@ def update_ingredient(
     available: Optional[bool] = None,
     shelf_life: Optional[int] = None,
     serving_unit: Optional[ServingUnits] = None,
-    serving_size: Optional[float] = None,
+    serving_size: Optional[str] = None,
     energy: Optional[float] = None,
     protein: Optional[float] = None,
     carbs: Optional[float] = None,
@@ -101,21 +104,24 @@ def update_ingredient(
         raise HTTPException(status_code=404, detail="Ingredient not found")
 
     logger.info(f"Updating ingredient ID: {ingredient_id}: {db_ingredient.name}")
-    
+
+    # serving_size arrives as a string (it may be sent empty by older callers)
+    # and is validated up front: when provided it must be a number > 0, else 400.
+    parsed_serving_size = _parse_serving_size(serving_size)
     # if we updating the availability status ignore updating recipes
     logger.debug(f"Available {available}, Ingredient {db_ingredient.available}")
     if available != None or available is not db_ingredient.available:
-        # Get the new values from the request payload. serving_size is only the
+        # Get the new values from the request payload. serving_size is the
         # nutrition basis of the ingredient (nutrients are per serving_size of
-        # serving_unit); it is NOT stored in recipe rows, so it never triggers a
-        # recipe sync and recipe quantities must NOT be rescaled for it.
+        # serving_unit); recipe rows don't store it, but a change to it DOES
+        # rescale their quantities so each recipe's nutrition is preserved.
         update_data = {}
         if name is not None:
             update_data['name'] = name
         if serving_unit is not None:
             update_data['serving_unit'] = getattr(serving_unit, 'value', serving_unit)
         if serving_size is not None:
-            update_data['serving_size'] = serving_size
+            update_data['serving_size'] = parsed_serving_size
 
         # Recipe ingredient rows store {name, quantity, serving_unit} where
         # quantity is in RAW recipe units and the row references the ingredient
@@ -129,12 +135,17 @@ def update_ingredient(
         # (a blind x100 factor applied on each save).
         old_name = db_ingredient.name
         old_unit = db_ingredient.serving_unit
+        # serving_size is Numeric, so the DB hands us a Decimal; the factor
+        # math needs a float.
+        old_size = float(db_ingredient.serving_size) if db_ingredient.serving_size is not None else None
         new_name = update_data.get('name')
         new_unit = update_data.get('serving_unit')
+        new_size = update_data.get('serving_size')
         name_changed = new_name is not None and new_name != old_name
         unit_changed = new_unit is not None and new_unit != old_unit
+        size_changed = new_size is not None and new_size != old_size
 
-        if name_changed or unit_changed:
+        if name_changed or unit_changed or size_changed:
             # Find all recipes (this user's + global) that might contain the
             # ingredient; rows are matched by name below.
             recipes_to_update = db.query(Recipe).filter(
@@ -154,23 +165,33 @@ def update_ingredient(
                     if name_changed:
                         # Rename only: keep the row's quantity and unit as-is.
                         ingredient_in_recipe['name'] = new_name
-                    if unit_changed:
-                        factor = _volume_unit_factor(old_unit, new_unit)
-                        ingredient_in_recipe['serving_unit'] = new_unit
-                        if factor is None:
-                            # Food-specific conversion (g <-> volume/count, nos
-                            # <-> anything): no generic factor exists, so the
-                            # numeric quantity is deliberately left untouched
-                            # for the caller to repair, instead of being scaled
-                            # by an invented number.
-                            logger.warning(
-                                f"No generic conversion for unit change {old_unit} -> {new_unit} "
-                                f"of ingredient '{old_name}'; recipe '{recipe.name}' keeps "
-                                f"quantity {ingredient_in_recipe['quantity']} for row "
-                                f"'{ingredient_in_recipe['name']}' and needs manual repair"
-                            )
+                    if size_changed:
+                        # A recipe row's quantity only means something relative
+                        # to the ingredient's serving_size: the nutrition
+                        # trigger computes nutrient x quantity / serving_size.
+                        # Rescaling every matching row by new_size / old_size
+                        # therefore preserves each recipe's nutrition by
+                        # construction — the ratio cancels in the trigger math.
+                        # The unit change (if any) travels in the same request;
+                        # the factor is computed from the DB's old size.
+                        if old_size:
+                            factor = new_size / old_size
+                            ingredient_in_recipe['quantity'] = round(ingredient_in_recipe['quantity'] * factor, 4)
                         else:
-                            ingredient_in_recipe['quantity'] = ingredient_in_recipe['quantity'] * factor
+                            # Legacy row with no usable old size: there is no
+                            # meaningful factor, so leave the quantity alone.
+                            logger.warning(
+                                f"Ingredient '{old_name}' had no usable serving_size "
+                                f"({old_size!r}); recipe '{recipe.name}' keeps "
+                                f"quantity {ingredient_in_recipe['quantity']} for row "
+                                f"'{ingredient_in_recipe['name']}'"
+                            )
+                    if unit_changed:
+                        # Unit change relabels the rows only; any numeric
+                        # effect flows exclusively through the size ratio above
+                        # (the UI forces the serving_size to be re-confirmed
+                        # whenever the unit changes).
+                        ingredient_in_recipe['serving_unit'] = new_unit
                     recipe_changed = True
 
                 if recipe_changed:
@@ -193,7 +214,7 @@ def update_ingredient(
     if serving_unit is not None:
         db_ingredient.serving_unit = getattr(serving_unit, 'value', serving_unit)
     if serving_size is not None:
-        db_ingredient.serving_size = serving_size
+        db_ingredient.serving_size = parsed_serving_size
     if energy is not None:
         db_ingredient.energy = energy
     if protein is not None:
