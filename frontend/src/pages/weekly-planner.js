@@ -405,7 +405,7 @@ function dayCard(day) {
     }
     const n = sumNutrition(ids)
     addInto(dayTotals, n)
-    return mealSlot(day, meal, ids, n)
+    return mealSlot(day, meal, ids)
   }).join('')
 
   return `
@@ -436,7 +436,7 @@ function dayCard(day) {
 
 /* ----------------------------- Meal Slot ------------------------------ */
 
-function mealSlot(day, meal, ids, slotNutrition) {
+function mealSlot(day, meal, ids) {
   const label = MEAL_LABELS[meal] || meal.replace('_', ' ')
   const icon = MEAL_ICONS[meal] || '🍽️'
   const occupied = ids.length > 0
@@ -506,12 +506,6 @@ function mealSlot(day, meal, ids, slotNutrition) {
           </button>
         `}
       </div>
-
-      ${ids.length > 1 ? `
-        <div class="flex items-center justify-between text-[10px] text-muted font-medium pt-1 px-1">
-          <span>Slot Total:</span>
-          <span class="font-bold text-primary tnum">${fmt(slotNutrition.energy, 0)} kcal · ${fmt(slotNutrition.protein, 1)}g P</span>
-        </div>` : ''}
     </div>`
 }
 

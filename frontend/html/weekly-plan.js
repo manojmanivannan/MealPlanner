@@ -71,41 +71,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 let recipeIds = weeklyPlan[day]?.[meal] || [];
                 if (!Array.isArray(recipeIds)) recipeIds = recipeIds ? [recipeIds] : [];
                 
-                const mealNutrition = { protein: 0, carbs: 0, fat: 0, fiber: 0, energy: 0 };
-
                 const recipeDetails = recipeIds.map(rid => {
                     const recipe = recipes.find(r => r.id === rid);
                     if (recipe) {
-                        // Add this recipe's nutrition to the meal's total
-                        mealNutrition.protein += (recipe.protein/recipe.serves) || 0;
-                        mealNutrition.carbs += (recipe.carbs/recipe.serves) || 0;
-                        mealNutrition.fat += (recipe.fat/recipe.serves) || 0;
-                        mealNutrition.fiber += (recipe.fiber/recipe.serves) || 0;
-                        mealNutrition.energy += (recipe.energy/recipe.serves) || 0;
+                        // Add this recipe's nutrition to the day's total
+                        dayTotals.protein += (recipe.protein/recipe.serves) || 0;
+                        dayTotals.carbs += (recipe.carbs/recipe.serves) || 0;
+                        dayTotals.fat += (recipe.fat/recipe.serves) || 0;
+                        dayTotals.fiber += (recipe.fiber/recipe.serves) || 0;
+                        dayTotals.energy += (recipe.energy/recipe.serves) || 0;
                     }
                     return recipe;
                 }).filter(Boolean); // Filter out any nulls if a recipe wasn't found
 
-                // Add the meal's nutrition to the day's grand total
-                dayTotals.protein += mealNutrition.protein;
-                dayTotals.carbs += mealNutrition.carbs;
-                dayTotals.fat += mealNutrition.fat;
-                dayTotals.fiber += mealNutrition.fiber;
-                dayTotals.energy += mealNutrition.energy;
-
-                const recipeNameSpans = recipeDetails.map(recipe => 
+                const recipeNameSpans = recipeDetails.map(recipe =>
                     `<span class='font-extrabold text-base text-teal-800 cursor-pointer hover:underline recipe-link' data-recipe-id='${recipe.id}'>${recipe.name}</span>`
                 ).join(', ');
-                
-                // HTML for the meal's nutrition breakdown
-                const mealNutritionHTML = recipeIds.length > 0 ? `
-                    <div class="ml-2 mt-1 text-stone-500">
-                        <p class="text-[9px] text-gray-450">
-                            E: ${mealNutrition.energy.toFixed(0)}kcal | Pr: ${mealNutrition.protein.toFixed(1)}g | Ca: ${mealNutrition.carbs.toFixed(1)}g | Fa: ${mealNutrition.fat.toFixed(1)}g | Fb: ${mealNutrition.fiber.toFixed(0)}g
-                        </p>
-                    </div>
-                ` : '';
-
                 const buttonsHTML = recipeIds.length ? `
                     <div class="flex items-center space-x-1">
                         <button class="text-[10px] px-1.5 py-0.5 rounded font-semibold transition bg-orange-100 text-orange-700 hover:bg-orange-200" type="button" onclick="window.selectRecipeForSlot('${day}','${meal}')">Change</button>
@@ -124,7 +105,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         <div class="ml-2 recipe-names-container">
                             ${recipeNameSpans || '<span class="text-stone-400">No recipe</span>'}
                         </div>
-                        ${mealNutritionHTML}
                     </div>
                 `;
             }).join('');
