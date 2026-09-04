@@ -5,7 +5,7 @@ id,day,meal_type,recipe_ids
 30,Friday,dinner,{14}
 29,Friday,snack,{}
 6,Monday,pre_breakfast,{54}
-7,Monday,breakfast,"{1,3}"
+7,Monday,breakfast,{1}
 8,Monday,lunch,{24}
 10,Monday,dinner,{}
 9,Monday,snack,{}
