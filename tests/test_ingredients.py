@@ -251,6 +251,31 @@ def test_availability_only_update_still_works(test_client, auth_headers):
     assert resp.json()["available"] is True
 
 
+def test_availability_only_update_leaves_recipe_rows_untouched(test_client, auth_headers):
+    # #46: an availability-only PUT carries nothing to sync — the sync block
+    # runs on every update but its change detection (name/unit/size all
+    # omitted here) must keep it inert, so recipe rows stay exactly as they
+    # were, in both toggle directions.
+    ing = _create_ingredient(test_client, auth_headers, "Kale", "g", serving_size=100)
+    recipe = _create_recipe(
+        test_client,
+        auth_headers,
+        "Salad",
+        [{"name": "Kale", "quantity": 50, "serving_unit": "g"}],
+    )
+
+    resp = test_client.put(f"/ingredients/{ing['id']}", params={"available": "true"}, headers=auth_headers)
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["available"] is True
+
+    resp = test_client.put(f"/ingredients/{ing['id']}", params={"available": "false"}, headers=auth_headers)
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["available"] is False
+
+    rows = _get_recipe_rows(test_client, auth_headers, recipe["id"])
+    assert rows == [{"name": "Kale", "quantity": 50, "serving_unit": "g"}]
+
+
 def test_repeated_size_edits_compound_exactly(test_client, auth_headers):
     # 100 -> 50 -> 25 compounds to exactly x0.25 on the recipe row, with
     # stored values rounded to 8 decimal places.
