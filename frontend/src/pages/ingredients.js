@@ -623,9 +623,11 @@ async function openEditModal(id, returnFocus) {
   // event hands ownership to the user, until the modal writes again.
   let lastAutoFill = String(originalSize)
 
-  // Resolved banner count markup, null while the recipe fetch is pending.
-  // Cached because the count depends only on the ingredient, not the unit.
-  let bannerCountText = null
+  // Resolved affected-recipe count, null while the fetch is pending. Cached
+  // because the count depends only on the ingredient, not the unit. When the
+  // fetch fails the count stays unknown; the copy falls back to name-only.
+  let bannerUses = null
+  let bannerCountUnavailable = false
 
   function renderBanner() {
     if (banner.hidden) return
@@ -636,8 +638,12 @@ async function openEditModal(id, returnFocus) {
     const sizePart = factor
       ? `their quantities will be rescaled by <strong>${esc(factor)}</strong>`
       : 'their quantities will be rescaled by the new serving size'
-    const countPart = bannerCountText == null ? '…' : esc(bannerCountText)
-    const countClass = bannerCountText == null ? '' : ' font-semibold'
+    const countPart = bannerCountUnavailable
+      ? esc(`the recipes using ${ing.name}`)
+      : bannerUses == null
+        ? '…'
+        : esc(`${bannerUses} ${bannerUses === 1 ? 'recipe' : 'recipes'} use${bannerUses === 1 ? 's' : ''} ${ing.name} and`)
+    const countClass = bannerUses == null && !bannerCountUnavailable ? '' : ' font-semibold'
     // The banner tracks a coming rescale, which a serving-size change alone
     // can trigger (no unit change involved) — only claim a unit change when
     // the unit actually differs from the initial one.
@@ -651,21 +657,25 @@ async function openEditModal(id, returnFocus) {
   // serving size that differs from the stored one rescales, unit change or
   // not. Previously the banner was tied to the unit select, so switching the
   // unit back to the initial one hid the warning while a user-typed size
-  // still rescaled recipes on save.
+  // still rescaled recipes on save. A resolved count of 0 also hides it —
+  // the backend sync matches recipe rows by name, so with no matching rows
+  // nothing is rescaled and there is nothing to warn about.
   function refreshBanner() {
-    const rescales = servingSizeWillRescale(sizeInput.value, originalSize)
+    const rescales = servingSizeWillRescale(sizeInput.value, originalSize) && bannerUses !== 0
     banner.hidden = !rescales
     if (!rescales) return
     renderBanner()
+    // The count resolves once per modal session; later renders only recompute
+    // the factor text, so don't re-attach the fetch for every keystroke.
+    if (bannerUses != null || bannerCountUnavailable) return
     ensureRecipes().then((recipes) => {
       if (recipes) {
-        const uses = countRecipesUsingIngredient(recipes, ing.name)
-        bannerCountText = `${uses} ${uses === 1 ? 'recipe' : 'recipes'} use${uses === 1 ? 's' : ''} ${ing.name} and`
+        bannerUses = countRecipesUsingIngredient(recipes, ing.name)
       } else {
         // Count unavailable: keep the message name-only.
-        bannerCountText = `the recipes using ${ing.name}`
+        bannerCountUnavailable = true
       }
-      renderBanner()
+      refreshBanner()
     })
   }
 

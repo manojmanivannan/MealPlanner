@@ -216,21 +216,38 @@ export function resolveServingSizeOnUnitChange({
 }
 
 /**
+ * The stored serving size as a usable rescale factor (a finite number > 0),
+ * or null when there is none ('' / NULL / non-numeric / ≤ 0). The single
+ * definition of "usable original size" shared by the banner's visibility
+ * (servingSizeWillRescale) and its factor text (formatRescaleFactor), so
+ * the two cannot disagree about which states are rescale-able.
+ * @param {string|number|null} originalSize - the ingredient's stored serving_size
+ * @returns {number|null}
+ */
+function usableOriginalSize(originalSize) {
+  if (originalSize === '' || originalSize == null) return null
+  const orig = Number(originalSize)
+  return Number.isFinite(orig) && orig > 0 ? orig : null
+}
+
+/**
  * Whether SAVING the current modal state will rescale recipe quantities:
  * the backend rescales matching recipe rows whenever the saved serving_size
  * differs from the stored one — a unit change is NOT required. A NULL
  * original size (no usable factor) and an empty/invalid current value never
- * rescale (the backend leaves quantities alone and warns).
+ * rescale (the backend leaves quantities alone and warns), and neither does
+ * a current value the save path rejects (serving size must be > 0) — the
+ * banner must not promise a rescale the save cannot apply.
  * @param {string|number} current - the value currently in the size field
  * @param {string|number} originalSize - the ingredient's stored serving_size ('' when NULL)
  * @returns {boolean}
  */
 export function servingSizeWillRescale(current, originalSize) {
-  const orig = Number(originalSize)
-  if (originalSize === '' || originalSize == null || !Number.isFinite(orig) || orig <= 0) return false
+  const orig = usableOriginalSize(originalSize)
+  if (orig == null) return false
   if (current === '' || current == null) return false
   const cur = Number(current)
-  return Number.isFinite(cur) && cur !== orig
+  return Number.isFinite(cur) && cur > 0 && cur !== orig
 }
 
 /**
@@ -242,16 +259,16 @@ export function servingSizeWillRescale(current, originalSize) {
  * @param {string|number} originalSize - the ingredient's stored serving_size ('' when NULL)
  * @param {string|number} suggested - the value currently in the size field
  * @returns {string} the factor text, '' with no usable original size, or
- *   the range without a ×ratio when the ratio isn't finite.
+ *   the range without a ×ratio when the suggested value isn't save-valid.
  */
 export function formatRescaleFactor(originalSize, suggested) {
-  const orig = Number(originalSize)
-  if (originalSize === '' || originalSize == null || !Number.isFinite(orig)) return ''
+  const orig = usableOriginalSize(originalSize)
+  if (orig == null) return ''
   const cur = Number(suggested)
-  // An empty/invalid suggested value yields no ratio (Number('') is 0, not
-  // a factor). The banner is hidden in this state anyway —
-  // servingSizeWillRescale is false — so keep the range text only.
-  if (suggested === '' || suggested == null || !Number.isFinite(cur)) {
+  // An empty/invalid or non-positive suggested value yields no ratio
+  // (Number('') is 0, not a factor). The banner is hidden in these states
+  // anyway — servingSizeWillRescale is false — so keep the range text only.
+  if (suggested === '' || suggested == null || !Number.isFinite(cur) || cur <= 0) {
     return `${originalSize} → ${suggested}`
   }
   return `${originalSize} → ${suggested} (×${cur / orig})`

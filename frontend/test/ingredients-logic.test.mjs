@@ -340,6 +340,10 @@ test('servingSizeWillRescale tracks any size change, unit change or not', () => 
   assert.equal(servingSizeWillRescale('240', '100'), true)
   // Empty current value: validation blocks the save, nothing rescales.
   assert.equal(servingSizeWillRescale('', '100'), false)
+  // A size the save path rejects (must be > 0) can never be saved, so
+  // nothing rescales — the banner must not promise one.
+  assert.equal(servingSizeWillRescale('0', '100'), false)
+  assert.equal(servingSizeWillRescale('-5', '100'), false)
   // NULL original size: the backend has no usable factor and only warns.
   assert.equal(servingSizeWillRescale('240', ''), false)
   assert.equal(servingSizeWillRescale('240', null), false)
@@ -366,6 +370,9 @@ test('formatRescaleFactor degrades without inventing a factor', () => {
   // the banner is hidden in that state anyway (servingSizeWillRescale).
   assert.equal(formatRescaleFactor('100', 'abc'), '100 → abc')
   assert.equal(formatRescaleFactor('100', ''), '100 → ')
+  // Number('') is 0, not a factor — a save-invalid size gets no invented ratio.
+  assert.equal(formatRescaleFactor('100', '0'), '100 → 0')
+  assert.equal(formatRescaleFactor('100', '-2'), '100 → -2')
 })
 
 test('validateIngredient: requireServingSize makes serving_size mandatory and > 0', () => {
