@@ -1,5 +1,7 @@
 from fastapi.testclient import TestClient
 
+from models import Ingredient
+
 
 def test_recipe_crud(test_client: TestClient, auth_headers):
     # Seed one ingredient referenced in recipe nutritional trigger (optional; trigger tolerates missing)
@@ -166,3 +168,81 @@ def test_recipes_by_availability(test_client: TestClient, auth_headers):
 
 
 
+
+
+def _login_headers(test_client: TestClient, email: str, password: str):
+    resp = test_client.post(
+        "/auth/login",
+        data={"username": email, "password": password},
+        headers={"Content-Type": "application/x-www-form-urlencoded"},
+    )
+    return {"Authorization": f"Bearer {resp.json()['access_token']}"}
+
+
+def test_nutrition_fallback_uses_global_stock_only(test_client: TestClient, auth_headers, db_session):
+    # Two users. User B owns ingredients user A's recipes also name; the
+    # trigger must fall back to global stock only, never to another user's
+    # row (#47). B signs up before A has any ingredients, so the signup
+    # starter-pack clone copies nothing.
+    b_signup = test_client.post("/auth/signup", json={"email": "b@example.com", "password": "pass1234"})
+    assert b_signup.status_code == 201
+    b_headers = _login_headers(test_client, "b@example.com", "pass1234")
+
+    # B's "Paprika": 99 g protein per 100 g — must never feed A's recipe.
+    resp = test_client.post(
+        "/ingredients",
+        params={"name": "Paprika", "shelf_life": 5, "serving_unit": "g"},
+        headers=b_headers,
+    )
+    assert resp.status_code == 201
+    b_paprika_id = resp.json()["id"]
+    resp = test_client.put(f"/ingredients/{b_paprika_id}", params={"protein": "99"}, headers=b_headers)
+    assert resp.status_code == 200
+
+    # Global stock "Paprika" (user_id NULL): 5 g protein per 100 g. Inserted
+    # directly — the API has no global-ingredient route.
+    db_session.add(Ingredient(user_id=None, name="Paprika", shelf_life=5, serving_unit="g", serving_size=100, protein=5))
+    db_session.commit()
+
+    # A's recipe row matches the global basis: 5 * 100 / 100 = 5, not 99.
+    resp = test_client.post(
+        "/recipes",
+        json={
+            "name": "A Paprika Salad",
+            "serves": 1,
+            "ingredients": [{"name": "Paprika", "quantity": 100, "serving_unit": "g"}],
+            "instructions": "Mix",
+            "meal_type": "lunch",
+            "is_vegetarian": True,
+        },
+        headers=auth_headers,
+    )
+    assert resp.status_code == 201
+    assert resp.json()["protein"] == 5
+
+    # "Nutmeg" exists only in B's pantry (99 g protein per 100 g): no global
+    # row, so A's row contributes zero instead of inheriting B's values.
+    resp = test_client.post(
+        "/ingredients",
+        params={"name": "Nutmeg", "shelf_life": 5, "serving_unit": "g"},
+        headers=b_headers,
+    )
+    assert resp.status_code == 201
+    b_nutmeg_id = resp.json()["id"]
+    resp = test_client.put(f"/ingredients/{b_nutmeg_id}", params={"protein": "99"}, headers=b_headers)
+    assert resp.status_code == 200
+
+    resp = test_client.post(
+        "/recipes",
+        json={
+            "name": "A Nutmeg Cake",
+            "serves": 1,
+            "ingredients": [{"name": "Nutmeg", "quantity": 100, "serving_unit": "g"}],
+            "instructions": "Bake",
+            "meal_type": "dinner",
+            "is_vegetarian": True,
+        },
+        headers=auth_headers,
+    )
+    assert resp.status_code == 201
+    assert resp.json()["protein"] == 0

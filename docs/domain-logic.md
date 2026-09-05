@@ -26,9 +26,11 @@ Recipe ingredient rows (`{name, quantity, serving_unit}` in the recipe's JSONB) 
 
 The nutrition trigger's ingredient lookup follows the same rule: prefer the owning user's ingredient row, fall back to global stock. Unmatched names silently contribute zero — a recipe ingredient with no matching pantry entry still works, but its nutrition is absent.
 
+**Known deviation:** `PUT /ingredients/{id}` filters ownership (`Ingredient.user_id == current_user.id`), so **no user can edit a global ingredient through the API**. Consequence: a global ingredient's serving size can never change via the app, and the rescale's non-propagation to other users' fallback recipes is currently unreachable — a global ingredient is effectively frozen (creatable only outside the API). If global-ingredient editing is ever opened up, the rescale must consider other users' recipes too.
+
 **Pre-existing issues left untouched by the serving-size-rescale slice** (flagged, deliberately not fixed):
-- The trigger's fallback lookup (`models.py`) is not restricted to global stock: if the owning user has no ingredient with that name, it falls back to **any** user's ingredient row with the same name, so another user's values could feed a recipe's nutrition (and a serving-size rescale of a shared global recipe is then computed against the editing user's basis while the trigger reads a different user's).
-- The trigger also matches recipe rows **case-sensitively** (`WHERE name = ing_record.name`), while the ingredient-sync rescale matches case-insensitively. For a row spelled differently from the ingredient (row `ginger`, ingredient `Ginger`) the rescale's nutrition-preservation guarantee doesn't hold: the trigger either finds no ingredient (the row contributes zero, before and after) or — via the cross-user fallback — a different ingredient's basis, so the nutrition moves by the rescale factor.
+- The trigger also matches recipe rows **case-sensitively** (`WHERE name = ing_record.name`), while the ingredient-sync rescale matches case-insensitively. For a row spelled differently from the ingredient (row `ginger`, ingredient `Ginger`) the rescale's nutrition-preservation guarantee doesn't hold: the trigger either finds no ingredient (the row contributes zero, before and after) or finds a differently-cased ingredient's basis, so the nutrition moves by the rescale factor.
+- The companion deviation — the trigger's fallback not being restricted to global stock, letting another user's ingredient values feed a recipe's nutrition — was fixed in #47: the fallback now selects only `user_id IS NULL` rows.
 
 ## Shopping list derivation
 

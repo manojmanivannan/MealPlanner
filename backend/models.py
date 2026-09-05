@@ -172,12 +172,15 @@ calculate_nutrition_func = DDL("""
     BEGIN
         FOR ing_record IN SELECT * FROM jsonb_to_recordset(NEW.ingredients) AS x(name text, quantity float, serving_unit text)
         LOOP
-            -- If recipe is user-specific, prefer that user's ingredient values; else fall back to any matching name
+            -- If recipe is user-specific, prefer that user's ingredient values;
+            -- else fall back to global stock only (user_id IS NULL) — never to
+            -- another user's row. The partial unique index on bare name for
+            -- global rows makes this fallback deterministic.
             IF NEW.user_id IS NOT NULL THEN
                 SELECT * INTO nutrient_data FROM ingredients WHERE name = ing_record.name AND user_id = NEW.user_id LIMIT 1;
             END IF;
             IF NOT FOUND THEN
-                SELECT * INTO nutrient_data FROM ingredients WHERE name = ing_record.name LIMIT 1;
+                SELECT * INTO nutrient_data FROM ingredients WHERE name = ing_record.name AND user_id IS NULL LIMIT 1;
             END IF;
             IF FOUND THEN
                 -- Each per-row contribution is COALESCEd to 0: an
