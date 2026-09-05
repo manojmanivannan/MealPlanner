@@ -409,4 +409,103 @@ def test_automatic_ingredient_expiration(test_client: TestClient, auth_headers, 
     assert lettuce["available"] is False
 
 
+# ---------------------------------------------------------------------------
+# Cleared / omitted nutrition fields on PUT (#41)
+#
+# The edit modal sends every nutrition field on every save; a cleared one
+# arrives as an empty string. `Optional[float]` 422s that before the handler
+# runs, and even if it didn't, every setter was `if x is not None`, so there
+# was no way to unset a nutrition value at all. The contract:
+#   • omitted param  → leave the stored value untouched
+#   • empty string   → clear the stored value to NULL
+#   • non-numeric    → 400 with the field named
+# ---------------------------------------------------------------------------
+
+def test_cleared_nutrition_field_becomes_null(test_client, auth_headers):
+    ing = _create_ingredient(test_client, auth_headers, "Peanut Butter", "g", serving_size=100)
+    resp = test_client.put(
+        f"/ingredients/{ing['id']}", params={"energy": 588, "protein": 25}, headers=auth_headers
+    )
+    assert resp.status_code == 200, resp.text
+
+    # Clearing: empty string → NULL, echoed back as null in the response.
+    resp = test_client.put(
+        f"/ingredients/{ing['id']}", params={"energy": "", "protein": ""}, headers=auth_headers
+    )
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["energy"] is None
+    assert body["protein"] is None
+
+    # The cleared state round-trips through the list schema.
+    listed = test_client.get("/ingredients", headers=auth_headers).json()
+    row = next(i for i in listed if i["id"] == ing["id"])
+    assert row["energy"] is None
+    assert row["protein"] is None
+
+
+def test_edit_modal_payload_with_mixed_cleared_fields_saves(test_client, auth_headers):
+    # The full edit-modal payload: macros filled, minerals cleared. The
+    # cleared ones must not 422 the whole save.
+    ing = _create_ingredient(test_client, auth_headers, "Chia", "g", serving_size=100)
+    params = {"name": "Chia Seeds", "serving_unit": "g", "serving_size": 100}
+    nutrition_keys = (
+        "energy", "protein", "carbs", "fat", "fiber",
+        "iron_mg", "magnesium_mg", "calcium_mg", "potassium_mg", "sodium_mg", "vitamin_c_mg",
+    )
+    for key in nutrition_keys:
+        params[key] = "486" if key == "energy" else ""
+    resp = test_client.put(f"/ingredients/{ing['id']}", params=params, headers=auth_headers)
+    assert resp.status_code == 200, resp.text
+
+    body = resp.json()
+    assert body["energy"] == 486
+    for key in ("protein", "iron_mg", "vitamin_c_mg"):
+        assert body[key] is None
+
+
+def test_omitted_nutrition_fields_left_untouched(test_client, auth_headers):
+    # A partial update (the pantry toggle PUTs only `available`) must neither
+    # clear nor change stored nutrition.
+    ing = _create_ingredient(test_client, auth_headers, "Tofu", "g", serving_size=100)
+    resp = test_client.put(f"/ingredients/{ing['id']}", params={"protein": 8}, headers=auth_headers)
+    assert resp.status_code == 200, resp.text
+
+    resp = test_client.put(f"/ingredients/{ing['id']}", params={"available": "true"}, headers=auth_headers)
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["protein"] == 8
+
+
+def test_invalid_nutrition_value_rejected(test_client, auth_headers):
+    ing = _create_ingredient(test_client, auth_headers, "Olive Oil", "g", serving_size=100)
+    for bad in ("abc", "nan", "inf", "1e999"):
+        resp = test_client.put(f"/ingredients/{ing['id']}", params={"energy": bad}, headers=auth_headers)
+        assert resp.status_code == 400, f"{bad!r}: {resp.text}"
+        assert "energy" in resp.json()["detail"].lower()
+
+
+def test_recipe_nutrition_tolerates_null_ingredient_nutrient(test_client, auth_headers):
+    # A cleared (NULL) nutrient must contribute 0 to recipe nutrition. The
+    # trigger adds per-row contributions, and plpgsql addition propagates
+    # NULL — without a COALESCE, one cleared field NULLs the recipe's totals.
+    ing = _create_ingredient(test_client, auth_headers, "Cocoa", "g", serving_size=100)
+    test_client.put(f"/ingredients/{ing['id']}", params={"energy": 228}, headers=auth_headers)
+    recipe = _create_recipe(
+        test_client, auth_headers, "Hot Cocoa", [{"name": "Cocoa", "quantity": 50, "serving_unit": "g"}]
+    )
+    # 228 kcal/100g x 50 g / 100 = 114
+    assert test_client.get(f"/recipes/{recipe['id']}", headers=auth_headers).json()["energy"] == pytest.approx(114)
+
+    # Clear energy to NULL, then create a fresh recipe so the trigger
+    # recomputes from the cleared value.
+    resp = test_client.put(f"/ingredients/{ing['id']}", params={"energy": ""}, headers=auth_headers)
+    assert resp.status_code == 200, resp.text
+
+    recipe2 = _create_recipe(
+        test_client, auth_headers, "Hot Cocoa 2", [{"name": "Cocoa", "quantity": 50, "serving_unit": "g"}]
+    )
+    after = test_client.get(f"/recipes/{recipe2['id']}", headers=auth_headers).json()
+    assert after["energy"] == pytest.approx(0)
+
+
 

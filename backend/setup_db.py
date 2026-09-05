@@ -10,7 +10,10 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.sql import text
 
 from database import engine, Base, SessionLocal
-from models import Ingredient, Recipe, WeeklyPlan, RecipeMealType, User
+from models import (
+    Ingredient, Recipe, WeeklyPlan, RecipeMealType, User,
+    calculate_nutrition_func, check_recipe_ids_func,
+)
 from sqlalchemy import text as sa_text
 from passlib.context import CryptContext
 
@@ -180,8 +183,17 @@ def setup_database() -> None:
         print("Schema and triggers created successfully.")
 
         # Ensure new micronutrient columns exist for existing databases
-        
+
         with engine.connect() as conn:
+            # Re-apply trigger function definitions. create_all only fires the
+            # models.py DDL events when it actually creates the tables, so an
+            # existing database keeps whichever function version it was created
+            # with (e.g. the pre-COALESCE nutrition trigger that propagates a
+            # cleared ingredient nutrient into NULL recipe totals). Both are
+            # CREATE OR REPLACE, so re-running is idempotent; the CREATE
+            # TRIGGER statements must NOT be re-run (duplicate trigger error).
+            for trigger_func in (calculate_nutrition_func, check_recipe_ids_func):
+                conn.execute(trigger_func)
             # print("Ensuring micronutrient columns exist on 'ingredients' table...")
             # conn.execute(sa_text("""
             #     ALTER TABLE IF EXISTS ingredients 

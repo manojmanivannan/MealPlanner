@@ -64,17 +64,20 @@ class IngredientSchema(BaseModel):
     last_available: Optional[datetime.datetime]
     serving_unit: ServingUnits
     serving_size: float
-    energy: float
-    protein: float
-    carbs: float
-    fat: float
-    fiber: float
-    iron_mg: float
-    magnesium_mg: float
-    calcium_mg: float
-    potassium_mg: float
-    sodium_mg: float
-    vitamin_c_mg: float
+    # Nutrition is nullable: a cleared field (empty string on PUT) is stored
+    # as NULL, and the schema must echo that back as null instead of failing
+    # validation (#41). The edit modal renders null as an empty input.
+    energy: Optional[float] = None
+    protein: Optional[float] = None
+    carbs: Optional[float] = None
+    fat: Optional[float] = None
+    fiber: Optional[float] = None
+    iron_mg: Optional[float] = None
+    magnesium_mg: Optional[float] = None
+    calcium_mg: Optional[float] = None
+    potassium_mg: Optional[float] = None
+    sodium_mg: Optional[float] = None
+    vitamin_c_mg: Optional[float] = None
     remaining_shelf_life: Optional[int] = None
 
 class IngredientUpdateSchema(BaseModel):

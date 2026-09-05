@@ -180,17 +180,22 @@ calculate_nutrition_func = DDL("""
                 SELECT * INTO nutrient_data FROM ingredients WHERE name = ing_record.name LIMIT 1;
             END IF;
             IF FOUND THEN
-                total_protein := total_protein + (nutrient_data.protein * ing_record.quantity / nutrient_data.serving_size);
-                total_carbs := total_carbs + (nutrient_data.carbs * ing_record.quantity/ nutrient_data.serving_size);
-                total_fat := total_fat + (nutrient_data.fat * ing_record.quantity/ nutrient_data.serving_size);
-                total_fiber := total_fiber + (nutrient_data.fiber * ing_record.quantity/ nutrient_data.serving_size);
-                total_energy := total_energy + (nutrient_data.energy * ing_record.quantity/ nutrient_data.serving_size);
-                total_iron_mg := total_iron_mg + (nutrient_data.iron_mg * ing_record.quantity/ nutrient_data.serving_size);
-                total_magnesium_mg := total_magnesium_mg + (nutrient_data.magnesium_mg * ing_record.quantity/ nutrient_data.serving_size);
-                total_calcium_mg := total_calcium_mg + (nutrient_data.calcium_mg * ing_record.quantity/ nutrient_data.serving_size);
-                total_potassium_mg := total_potassium_mg + (nutrient_data.potassium_mg * ing_record.quantity/ nutrient_data.serving_size);
-                total_sodium_mg := total_sodium_mg + (nutrient_data.sodium_mg * ing_record.quantity/ nutrient_data.serving_size);
-                total_vitamin_c_mg := total_vitamin_c_mg + (nutrient_data.vitamin_c_mg * ing_record.quantity/ nutrient_data.serving_size);
+                -- Each per-row contribution is COALESCEd to 0: an
+                -- ingredient nutrient or serving_size can be NULL (cleared
+                -- via PUT #41), and plain plpgsql addition would propagate
+                -- that NULL into the recipe's totals. NULLIF also guards a
+                -- zero serving_size against a division error.
+                total_protein := total_protein + COALESCE(nutrient_data.protein * ing_record.quantity / NULLIF(nutrient_data.serving_size, 0), 0.0);
+                total_carbs := total_carbs + COALESCE(nutrient_data.carbs * ing_record.quantity / NULLIF(nutrient_data.serving_size, 0), 0.0);
+                total_fat := total_fat + COALESCE(nutrient_data.fat * ing_record.quantity / NULLIF(nutrient_data.serving_size, 0), 0.0);
+                total_fiber := total_fiber + COALESCE(nutrient_data.fiber * ing_record.quantity / NULLIF(nutrient_data.serving_size, 0), 0.0);
+                total_energy := total_energy + COALESCE(nutrient_data.energy * ing_record.quantity / NULLIF(nutrient_data.serving_size, 0), 0.0);
+                total_iron_mg := total_iron_mg + COALESCE(nutrient_data.iron_mg * ing_record.quantity / NULLIF(nutrient_data.serving_size, 0), 0.0);
+                total_magnesium_mg := total_magnesium_mg + COALESCE(nutrient_data.magnesium_mg * ing_record.quantity / NULLIF(nutrient_data.serving_size, 0), 0.0);
+                total_calcium_mg := total_calcium_mg + COALESCE(nutrient_data.calcium_mg * ing_record.quantity / NULLIF(nutrient_data.serving_size, 0), 0.0);
+                total_potassium_mg := total_potassium_mg + COALESCE(nutrient_data.potassium_mg * ing_record.quantity / NULLIF(nutrient_data.serving_size, 0), 0.0);
+                total_sodium_mg := total_sodium_mg + COALESCE(nutrient_data.sodium_mg * ing_record.quantity / NULLIF(nutrient_data.serving_size, 0), 0.0);
+                total_vitamin_c_mg := total_vitamin_c_mg + COALESCE(nutrient_data.vitamin_c_mg * ing_record.quantity / NULLIF(nutrient_data.serving_size, 0), 0.0);
             ELSE
             END IF;
         END LOOP;

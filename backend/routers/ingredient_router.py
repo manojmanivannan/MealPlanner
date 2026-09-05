@@ -41,6 +41,37 @@ def _parse_serving_size(raw: Optional[str]) -> Optional[float]:
     return size
 
 
+# Sentinel distinguishing "param omitted" from "param sent empty". A query
+# param that is absent arrives as None; one sent as an empty string arrives
+# as ''. Only the empty string clears a stored value.
+_NUTRITION_UNSET = object()
+
+
+def _parse_nutrition(raw: Optional[str], field: str):
+    """Parse one nutrition query param into UNSET / None / float.
+
+    The nutrition params arrive as strings: the edit modal sends every
+    nutrition field on every save, and a cleared field arrives as an empty
+    string, which an `Optional[float]` query param would 422 before this
+    handler runs (#41). So they are parsed here instead:
+      • omitted (None)  → _NUTRITION_UNSET: leave the stored value untouched
+      • empty string    → None: clear the stored value to NULL
+      • otherwise       → the parsed float; non-numeric or non-finite → 400
+    """
+    if raw is None:
+        return _NUTRITION_UNSET
+    text = str(raw).strip()
+    if text == '':
+        return None
+    try:
+        value = float(text)
+    except ValueError:
+        raise HTTPException(status_code=400, detail=f"{field} must be a number.")
+    if not math.isfinite(value):
+        raise HTTPException(status_code=400, detail=f"{field} must be a finite number.")
+    return value
+
+
 ## Ingredients
 @ing_router.get("", response_model=List[IngredientSchema])
 def get_ingredients_list(sort: Optional[str] = None, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
@@ -79,17 +110,20 @@ def update_ingredient(
     shelf_life: Optional[int] = None,
     serving_unit: Optional[ServingUnits] = None,
     serving_size: Optional[str] = None,
-    energy: Optional[float] = None,
-    protein: Optional[float] = None,
-    carbs: Optional[float] = None,
-    fat: Optional[float] = None,
-    fiber: Optional[float] = None,
-    iron_mg: Optional[float] = None,
-    magnesium_mg: Optional[float] = None,
-    calcium_mg: Optional[float] = None,
-    potassium_mg: Optional[float] = None,
-    sodium_mg: Optional[float] = None,
-    vitamin_c_mg: Optional[float] = None
+    # Nutrition arrives as strings so a cleared field (empty string) can
+    # mean "unset to NULL" instead of a float-parse 422 (#41); parsed by
+    # _parse_nutrition below.
+    energy: Optional[str] = None,
+    protein: Optional[str] = None,
+    carbs: Optional[str] = None,
+    fat: Optional[str] = None,
+    fiber: Optional[str] = None,
+    iron_mg: Optional[str] = None,
+    magnesium_mg: Optional[str] = None,
+    calcium_mg: Optional[str] = None,
+    potassium_mg: Optional[str] = None,
+    sodium_mg: Optional[str] = None,
+    vitamin_c_mg: Optional[str] = None
     ):
     """
     Updates one or more fields of a specific ingredient.
@@ -105,9 +139,23 @@ def update_ingredient(
 
     logger.info(f"Updating ingredient ID: {ingredient_id}: {db_ingredient.name}")
 
-    # serving_size arrives as a string (it may be sent empty by older callers)
-    # and is validated up front: when provided it must be a number > 0, else 400.
+    # serving_size arrives as a string and is validated up front: when
+    # provided it must be a number > 0, else 400 (an empty string is rejected,
+    # not silently ignored — it is the nutrition anchor).
     parsed_serving_size = _parse_serving_size(serving_size)
+    # Parse the nutrition params before any DB writes so a bad value fails
+    # fast with a 400 (a non-finite float would poison the Numeric columns;
+    # an unparseable one used to 422 before the handler ran, #41).
+    raw_nutrition = {
+        'energy': energy, 'protein': protein, 'carbs': carbs, 'fat': fat, 'fiber': fiber,
+        'iron_mg': iron_mg, 'magnesium_mg': magnesium_mg, 'calcium_mg': calcium_mg,
+        'potassium_mg': potassium_mg, 'sodium_mg': sodium_mg, 'vitamin_c_mg': vitamin_c_mg,
+    }
+    parsed_nutrition = {}
+    for key, raw in raw_nutrition.items():
+        parsed = _parse_nutrition(raw, key)
+        if parsed is not _NUTRITION_UNSET:
+            parsed_nutrition[key] = parsed
     logger.debug(f"Available {available}, Ingredient {db_ingredient.available}")
     # Recipe sync runs for every update: only availability toggles carry
     # nothing to sync, and the change detection below keeps no-op saves
@@ -178,8 +226,18 @@ def update_ingredient(
                     # The unit change (if any) travels in the same request;
                     # the factor is computed from the DB's old size.
                     if old_size:
-                        factor = new_size / old_size
-                        ingredient_in_recipe['quantity'] = round(ingredient_in_recipe['quantity'] * factor, 4)
+                        quantity = ingredient_in_recipe.get('quantity')
+                        if isinstance(quantity, (int, float)) and not isinstance(quantity, bool):
+                            factor = new_size / old_size
+                            ingredient_in_recipe['quantity'] = round(quantity * factor, 4)
+                        else:
+                            # Missing or non-numeric quantity (legacy/hand-edited
+                            # JSONB): no meaningful factor — leave it and log.
+                            logger.warning(
+                                f"Recipe '{recipe.name}' row "
+                                f"'{ingredient_in_recipe.get('name')}' has non-numeric "
+                                f"quantity {quantity!r}; not rescaled"
+                            )
                     else:
                         # Legacy row with no usable old size: there is no
                         # meaningful factor, so leave the quantity alone.
@@ -205,8 +263,11 @@ def update_ingredient(
                 logger.info(f"Synced ingredient '{old_name}' change into recipe: {recipe.name}")
 
     # 3. Update attributes only for the parameters that were provided
-    if name is not None:
-        db_ingredient.name = name
+    # name / serving_unit / serving_size were already parsed into update_data
+    # for change detection — assign them from there instead of repeating the
+    # per-field bookkeeping.
+    for key, value in update_data.items():
+        setattr(db_ingredient, key, value)
     if available is not None:
         db_ingredient.available = available
         # If marking as available, update the timestamp
@@ -214,32 +275,11 @@ def update_ingredient(
             db_ingredient.last_available = datetime.datetime.utcnow()
     if shelf_life is not None:
         db_ingredient.shelf_life = shelf_life
-    if serving_unit is not None:
-        db_ingredient.serving_unit = getattr(serving_unit, 'value', serving_unit)
-    if serving_size is not None:
-        db_ingredient.serving_size = parsed_serving_size
-    if energy is not None:
-        db_ingredient.energy = energy
-    if protein is not None:
-        db_ingredient.protein = protein
-    if carbs is not None:
-        db_ingredient.carbs = carbs
-    if fat is not None:
-        db_ingredient.fat = fat
-    if fiber is not None:
-        db_ingredient.fiber = fiber
-    if iron_mg is not None:
-        db_ingredient.iron_mg = iron_mg
-    if magnesium_mg is not None:
-        db_ingredient.magnesium_mg = magnesium_mg
-    if calcium_mg is not None:
-        db_ingredient.calcium_mg = calcium_mg
-    if potassium_mg is not None:
-        db_ingredient.potassium_mg = potassium_mg
-    if sodium_mg is not None:
-        db_ingredient.sodium_mg = sodium_mg
-    if vitamin_c_mg is not None:
-        db_ingredient.vitamin_c_mg = vitamin_c_mg
+    # Nutrition values were parsed up front: a provided value sets the
+    # column (including NULL for an empty string, i.e. cleared), an omitted
+    # param is absent from parsed_nutrition and leaves the column as-is.
+    for key, value in parsed_nutrition.items():
+        setattr(db_ingredient, key, value)
     
 
     try:

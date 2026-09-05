@@ -693,6 +693,18 @@ async function openEditModal(id, returnFocus) {
   saveBtn.addEventListener('click', async () => {
     const { valid } = applyValidation(ctrl.panel, {}, { requireServingSize: true })
     if (!valid) return
+    // A number input mid-typing (e.g. "5e") reports value '' with badInput:
+    // sending that would silently CLEAR the stored nutrition value instead
+    // of saving what the user sees. Nutrition fields have no inline
+    // validation, so guard here.
+    const badInput = NUTRITION_FIELDS.some((f) => {
+      const inp = ctrl.panel.querySelector(`[data-nut-field="${f.key}"]`)
+      return inp && inp.validity && inp.validity.badInput
+    })
+    if (badInput) {
+      toast.error('A nutrition field contains an incomplete number. Finish typing it or clear the field completely before saving.', { title: 'Check nutrition values' })
+      return
+    }
     const core = readCoreFields(ctrl.panel)
     const sizeVal = ctrl.panel.querySelector('[data-field="serving-size"]').value
     const params = {
@@ -702,9 +714,12 @@ async function openEditModal(id, returnFocus) {
       // Required by validation now, so always sent as a number.
       serving_size: sizeVal,
     }
+    // Every nutrition field is re-sent on each save; a cleared field is
+    // sent as an empty string, which the backend PUT treats as "unset to
+    // NULL" (#41) — not as a parse error or a no-op.
     NUTRITION_FIELDS.forEach((f) => {
       const inp = ctrl.panel.querySelector(`[data-nut-field="${f.key}"]`)
-      if (inp) params[f.key] = inp.value === '' ? '' : inp.value
+      if (inp) params[f.key] = inp.value
     })
 
     saveBtn.dataset.loading = 'true'
