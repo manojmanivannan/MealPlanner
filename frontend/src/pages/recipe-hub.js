@@ -8,6 +8,7 @@
 import { mountLayout } from '../bootstrap.js'
 import { openModal } from '../components/modal.js'
 import { toast } from '../components/toast.js'
+import { formatQuantity } from './shopping-list-logic.js'
 import {
   CATEGORIES, PLANNABLE_SLOTS, SLOT_LABELS, MEAL_TYPE_LABELS,
   filterRecipes, suggestSlot, isHubOnlyMealType, defaultMealTypeForCategory,
@@ -411,7 +412,7 @@ function showRecipeDetails(id, returnFocus) {
   const n = perRecipe(recipe)
 
   const ingr = (Array.isArray(recipe.ingredients) ? recipe.ingredients : [])
-    .map((i) => `<span class="inline-flex items-center px-2.5 py-1 bg-subtle border border-line rounded-lg text-xs font-medium text-primary">${i.quantity} ${i.serving_unit} ${esc(i.name)}</span>`)
+    .map((i) => `<span class="inline-flex items-center px-2.5 py-1 bg-subtle border border-line rounded-lg text-xs font-medium text-primary">${formatQuantity(i.quantity)} ${i.serving_unit} ${esc(i.name)}</span>`)
     .join(' ') || '<span class="text-muted">—</span>'
   const instr = esc((recipe.instructions || '').trim()) || '<span class="text-muted">No instructions provided.</span>'
 

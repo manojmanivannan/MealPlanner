@@ -260,7 +260,18 @@ def update_ingredient(
                     quantity = ingredient_in_recipe.get('quantity')
                     if isinstance(quantity, (int, float)) and not isinstance(quantity, bool):
                         factor = new_size / old_size
-                        ingredient_in_recipe['quantity'] = round(quantity * factor, 4)
+                        # Stored rounded to 8 decimals: the JSONB float
+                        # column carries the digits, and write-time rounding
+                        # must stay far below display precision or it bites
+                        # twice — 4 decimals stored a 4 mg spice row
+                        # downsized 100 -> 1 as exactly 0.0 (zero nutrition,
+                        # zero shopping-list quantity), and each edit rounded
+                        # the previous truncation again, compounding drift
+                        # monotonically (#44). 8 decimals keeps a single
+                        # edit's error ≤ 5e-9 absolute and cleans float
+                        # multiplication artifacts (…0002 -> exact) without
+                        # ever collapsing a real quantity to zero.
+                        ingredient_in_recipe['quantity'] = round(quantity * factor, 8)
                     else:
                         # Missing or non-numeric quantity (legacy/hand-edited
                         # JSONB): no meaningful factor — leave it and log.

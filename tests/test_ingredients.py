@@ -253,7 +253,7 @@ def test_availability_only_update_still_works(test_client, auth_headers):
 
 def test_repeated_size_edits_compound_exactly(test_client, auth_headers):
     # 100 -> 50 -> 25 compounds to exactly x0.25 on the recipe row, with
-    # stored values rounded to 4 decimals.
+    # stored values rounded to 8 decimal places.
     ing = _create_ingredient(test_client, auth_headers, "Oats", "g", serving_size=100)
     recipe = _create_recipe(
         test_client,
@@ -272,16 +272,19 @@ def test_repeated_size_edits_compound_exactly(test_client, auth_headers):
     rows = _get_recipe_rows(test_client, auth_headers, recipe["id"])
     assert rows[0]["quantity"] == pytest.approx(1.75)  # 7 x 0.25 exactly
 
-    # 4-decimal rounding at write time: a non-terminating ratio is truncated.
-    # old size is now 25, so the factor is 3/25 = 0.12.
+    # Write-time rounding: a non-terminating ratio is truncated, but far
+    # below display precision. old size is now 25, so the factor is 3/25 = 0.12.
     resp = test_client.put(f"/ingredients/{ing['id']}", params={"serving_size": 3}, headers=auth_headers)
     assert resp.status_code == 200, resp.text
     rows = _get_recipe_rows(test_client, auth_headers, recipe["id"])
     assert rows[0]["quantity"] == pytest.approx(0.21)  # 1.75 x 3/25
 
 
-def test_rescale_rounded_to_four_decimals(test_client, auth_headers):
-    # 1 x (33.333/100) = 0.33333... must be stored rounded to 4 decimals
+def test_rescale_rounded_to_eight_decimals(test_client, auth_headers):
+    # Write-time rounding is 8 decimals (#44): enough to keep drift far below
+    # display precision, and it can no longer truncate a real quantity away.
+    # 1 x (33.333/100) = 0.33333 exactly — 4-decimal storage used to keep
+    # only 0.3333 (~0.09% drift, compounding across edits).
     ing = _create_ingredient(test_client, auth_headers, "Saffron", "g", serving_size=100)
     recipe = _create_recipe(
         test_client,
@@ -294,7 +297,82 @@ def test_rescale_rounded_to_four_decimals(test_client, auth_headers):
     assert resp.status_code == 200, resp.text
 
     rows = _get_recipe_rows(test_client, auth_headers, recipe["id"])
-    assert rows[0]["quantity"] == pytest.approx(0.3333)
+    assert rows[0]["quantity"] == pytest.approx(0.33333)
+
+    # A row whose ideal has a 9th decimal is truncated at the 8th:
+    # 0.3333 x (33.333/100) = 0.111098889 -> stored 0.11109889.
+    ing2 = _create_ingredient(test_client, auth_headers, "Sumac", "g", serving_size=100)
+    recipe2 = _create_recipe(
+        test_client,
+        auth_headers,
+        "Fattoush",
+        [{"name": "Sumac", "quantity": 0.3333, "serving_unit": "g"}],
+    )
+    resp = test_client.put(f"/ingredients/{ing2['id']}", params={"serving_size": 33.333}, headers=auth_headers)
+    assert resp.status_code == 200, resp.text
+
+    rows = _get_recipe_rows(test_client, auth_headers, recipe2["id"])
+    assert rows[0]["quantity"] == 0.11109889
+
+
+def test_tiny_quantity_rescale_does_not_collapse_to_zero(test_client, auth_headers):
+    # A 4 mg spice row downsized 100 -> 1 yields 0.00004. Rounding that to 4
+    # decimals stored exactly 0.0, so the row contributed zero nutrition to
+    # every recipe and showed 0 on the shopping list (#44). The stored
+    # quantity must survive at 8-decimal precision and keep its nutrition.
+    ing = _create_ingredient(
+        test_client, auth_headers, "Cardamom", "g", serving_size=100,
+        extra={"protein": 500},  # 0.02 protein in the 4 mg row
+    )
+    recipe = _create_recipe(
+        test_client,
+        auth_headers,
+        "Chai",
+        [{"name": "Cardamom", "quantity": 0.004, "serving_unit": "g"}],
+    )
+    before = test_client.get(f"/recipes/{recipe['id']}", headers=auth_headers).json()
+    assert before["protein"] == pytest.approx(0.02)
+
+    resp = test_client.put(f"/ingredients/{ing['id']}", params={"serving_size": 1}, headers=auth_headers)
+    assert resp.status_code == 200, resp.text
+
+    rows = _get_recipe_rows(test_client, auth_headers, recipe["id"])
+    assert rows[0]["quantity"] == pytest.approx(0.00004)
+    assert rows[0]["quantity"] != 0
+
+    # Nutrition preserved by construction: 500 x 0.00004 / 1 = 0.02
+    after = test_client.get(f"/recipes/{recipe['id']}", headers=auth_headers).json()
+    assert after["protein"] == pytest.approx(before["protein"])
+
+
+def test_repeated_size_edits_compounded_error_within_tolerance(test_client, auth_headers):
+    # Each write rounds the stored quantity, so the error of one edit becomes
+    # the input of the next. A 1 g row rescaled 100 -> 33.333 -> 66.666 ->
+    # 12.345 -> 12.5 must land within 1e-6 of the ideal 1 x 12.5 / 100 = 0.125;
+    # 4-decimal storage compounded to 0.1249 (a 1e-4 drift) on this chain (#44).
+    ing = _create_ingredient(
+        test_client, auth_headers, "Sumac", "g", serving_size=100,
+        extra={"protein": 100},
+    )
+    recipe = _create_recipe(
+        test_client,
+        auth_headers,
+        "Fattoush",
+        [{"name": "Sumac", "quantity": 1, "serving_unit": "g"}],
+    )
+    before = test_client.get(f"/recipes/{recipe['id']}", headers=auth_headers).json()
+    assert before["protein"] == pytest.approx(1.0)
+
+    for size in (33.333, 66.666, 12.345, 12.5):
+        resp = test_client.put(f"/ingredients/{ing['id']}", params={"serving_size": size}, headers=auth_headers)
+        assert resp.status_code == 200, resp.text
+
+    rows = _get_recipe_rows(test_client, auth_headers, recipe["id"])
+    assert rows[0]["quantity"] == pytest.approx(0.125, abs=1e-6)
+
+    # Nutrition drifts by the same compounded factor, so it must stay whole.
+    after = test_client.get(f"/recipes/{recipe['id']}", headers=auth_headers).json()
+    assert after["protein"] == pytest.approx(before["protein"], abs=1e-4)
 
 
 def test_size_change_rescales_global_recipe_too(test_client, auth_headers, db_session):
