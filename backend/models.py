@@ -158,6 +158,7 @@ calculate_nutrition_func = DDL("""
     DECLARE
         ing_record RECORD;
         nutrient_data RECORD;
+        found_match BOOLEAN;
         total_protein FLOAT := 0.0; 
         total_carbs FLOAT := 0.0;
         total_fat FLOAT := 0.0; 
@@ -176,13 +177,23 @@ calculate_nutrition_func = DDL("""
             -- else fall back to global stock only (user_id IS NULL) — never to
             -- another user's row. The partial unique index on bare name for
             -- global rows makes this fallback deterministic.
+            -- Track the match in a flag instead of FOUND: for a global recipe
+            -- the user-scoped SELECT is skipped, so FOUND would stay true from
+            -- the previous loop iteration and every lookup after the first
+            -- would be skipped, accumulating later rows with the earlier
+            -- row's basis. (Cannot test `nutrient_data IS NULL` either: a
+            -- composite is NOT NULL only when *all* its fields are, and a
+            -- global ingredient row has a NULL user_id.)
+            found_match := false;
             IF NEW.user_id IS NOT NULL THEN
                 SELECT * INTO nutrient_data FROM ingredients WHERE name = ing_record.name AND user_id = NEW.user_id LIMIT 1;
+                found_match := FOUND;
             END IF;
-            IF NOT FOUND THEN
+            IF NOT found_match THEN
                 SELECT * INTO nutrient_data FROM ingredients WHERE name = ing_record.name AND user_id IS NULL LIMIT 1;
+                found_match := FOUND;
             END IF;
-            IF FOUND THEN
+            IF found_match THEN
                 -- Each per-row contribution is COALESCEd to 0: an
                 -- ingredient nutrient or serving_size can be NULL (cleared
                 -- via PUT #41), and plain plpgsql addition would propagate

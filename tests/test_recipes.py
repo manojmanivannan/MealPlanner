@@ -1,6 +1,6 @@
 from fastapi.testclient import TestClient
 
-from models import Ingredient
+from models import Ingredient, Recipe
 
 
 def test_recipe_crud(test_client: TestClient, auth_headers):
@@ -246,3 +246,35 @@ def test_nutrition_fallback_uses_global_stock_only(test_client: TestClient, auth
     )
     assert resp.status_code == 201
     assert resp.json()["protein"] == 0
+
+
+def test_global_recipe_each_row_uses_own_ingredient(test_client: TestClient, auth_headers, db_session):
+    # Regression for the plpgsql FOUND flag: for a global recipe (user_id
+    # NULL) the user-scoped lookup is skipped, so FOUND stayed true from the
+    # previous loop iteration and every fallback lookup after the first was
+    # skipped — later rows were computed with the first row's ingredient.
+    # The API cannot create global recipes or ingredients, so insert directly.
+    db_session.add_all([
+        Ingredient(user_id=None, name="Lettuce", shelf_life=5, serving_unit="g", serving_size=100, protein=10),
+        Ingredient(user_id=None, name="Salt", shelf_life=5, serving_unit="g", serving_size=100, protein=50),
+    ])
+    db_session.commit()
+
+    recipe = Recipe(
+        name="Global Salad",
+        serves=1,
+        ingredients=[
+            {"name": "Lettuce", "quantity": 100, "serving_unit": "g"},
+            {"name": "Salt", "quantity": 100, "serving_unit": "g"},
+        ],
+        instructions="Mix",
+        meal_type="lunch",
+        is_vegetarian=True,
+        user_id=None,
+    )
+    db_session.add(recipe)
+    db_session.commit()
+    db_session.refresh(recipe)
+
+    # 10 * 100/100 + 50 * 100/100 = 60 (the stale-FOUND bug yielded 20)
+    assert float(recipe.protein) == 60
