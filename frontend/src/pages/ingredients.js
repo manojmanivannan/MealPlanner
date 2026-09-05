@@ -19,7 +19,7 @@ import {
   shelfLifeBadge,
   filterIngredients,
   validateIngredient,
-  defaultServingSize,
+  resolveServingSizeOnUnitChange,
   countRecipesUsingIngredient,
 } from './ingredients-logic.js'
 
@@ -617,8 +617,31 @@ async function openEditModal(id, returnFocus) {
   }
 
   // Tracks the value the modal last wrote into the size field, so a later
-  // unit change knows whether the user has typed their own value.
-  let lastAutoFill = originalSize
+  // unit change knows whether the user has typed their own value. Any input
+  // event hands ownership to the user, until the modal writes again.
+  let lastAutoFill = String(originalSize)
+
+  // Resolved banner count markup, null while the recipe fetch is pending.
+  // Cached because the count depends only on the ingredient, not the unit.
+  let bannerCountText = null
+
+  function renderBanner() {
+    if (banner.hidden) return
+    const suggested = sizeInput.value
+    const ratio = Number(suggested) / Number(originalSize)
+    const sizePart = originalSize
+      ? `their quantities will be rescaled by <strong>${esc(originalSize)} → ${esc(suggested)}</strong>${Number.isFinite(ratio) ? ` (×${esc(String(ratio))})` : ''}`
+      : 'their quantities will be rescaled by the new serving size'
+    const countPart = bannerCountText == null ? '…' : esc(bannerCountText)
+    const countClass = bannerCountText == null ? '' : ' font-semibold'
+    banner.innerHTML = `Serving unit changed to <strong>${esc(unitSelect.value)}</strong>. <span data-elem="banner-count"${countClass}>${countPart}</span> ${sizePart}. Confirm the new serving size.`
+  }
+
+  sizeInput.addEventListener('input', () => {
+    lastAutoFill = null
+    // Keep the promised rescale factor in step with the value being saved.
+    renderBanner()
+  })
 
   function updateSizeLabel(unit) {
     if (sizeLabel) sizeLabel.innerHTML = `Serving size (${esc(unit)} per serving)<span class="mp-req">*</span>`
@@ -632,43 +655,38 @@ async function openEditModal(id, returnFocus) {
     })
     updateSizeLabel(u)
 
+    // Unit changed: decide the field's next value and who owns it. A
+    // user-typed size is never replaced; only a modal-written one gets
+    // restored to the original size (back on the initial unit) or pre-filled
+    // with the new unit's default.
+    const next = resolveServingSizeOnUnitChange({
+      current: sizeInput.value,
+      lastAutoFill,
+      originalSize: String(originalSize),
+      newUnit: u,
+      initialUnit,
+    })
+    sizeInput.value = next.value
+    lastAutoFill = next.lastAutoFill
+
     if (u === initialUnit) {
-      // Back to the original unit: no rescale is coming, so restore the
-      // original size — but only if the user hasn't typed their own value.
-      if (sizeInput.value === '' || sizeInput.value === lastAutoFill) {
-        sizeInput.value = originalSize
-        lastAutoFill = originalSize
-      }
+      // Back to the original unit: no rescale is coming.
       banner.hidden = true
       return
     }
 
-    // Unit changed: the rescale factor flows through the serving_size, so
-    // re-confirm it. Pre-fill a unit-based suggestion unless the user has
-    // typed their own value since the last auto-fill.
-    if (sizeInput.value === '' || sizeInput.value === String(originalSize) || sizeInput.value === lastAutoFill) {
-      sizeInput.value = defaultServingSize(u)
-    }
-    lastAutoFill = sizeInput.value
-
     banner.hidden = false
-    const suggested = sizeInput.value
-    const sizePart = originalSize
-      ? `their quantities will be rescaled by <strong>${esc(originalSize)} → ${esc(suggested)}</strong> (×${esc(String(Number(suggested) / Number(originalSize)))})`
-      : 'their quantities will be rescaled by the new serving size'
-    banner.innerHTML = `Serving unit changed to <strong>${esc(u)}</strong>. <span data-elem="banner-count">…</span> ${sizePart}. Confirm the new serving size.`
+    renderBanner()
 
     const recipes = await ensureRecipes()
-    const countEl = banner.querySelector('[data-elem="banner-count"]')
-    if (!countEl) return
     if (recipes) {
       const uses = countRecipesUsingIngredient(recipes, ing.name)
-      countEl.textContent = `${uses} ${uses === 1 ? 'recipe' : 'recipes'} use${uses === 1 ? 's' : ''} ${ing.name} and`
-      countEl.className = 'font-semibold'
+      bannerCountText = `${uses} ${uses === 1 ? 'recipe' : 'recipes'} use${uses === 1 ? 's' : ''} ${ing.name} and`
     } else {
       // Count unavailable: keep the message name-only.
-      countEl.textContent = `the recipes using ${ing.name}`
+      bannerCountText = `the recipes using ${ing.name}`
     }
+    renderBanner()
   })
 
   const saveBtn = ctrl.panel.querySelector('[data-save]')

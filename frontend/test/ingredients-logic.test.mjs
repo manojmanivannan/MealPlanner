@@ -25,6 +25,7 @@ import {
   filterIngredients,
   validateIngredient,
   defaultServingSize,
+  resolveServingSizeOnUnitChange,
   countRecipesUsingIngredient,
 } from '../src/pages/ingredients-logic.js'
 
@@ -256,6 +257,77 @@ test('countRecipesUsingIngredient matches case-insensitively and trimmed', () =>
   assert.equal(countRecipesUsingIngredient(recipes, 'pepper'), 0)
   assert.equal(countRecipesUsingIngredient(recipes, ''), 0)
   assert.equal(countRecipesUsingIngredient(null, 'ginger'), 0)
+})
+
+test('resolveServingSizeOnUnitChange keeps a user-typed size when switching away', () => {
+  // Ingredient with serving_size 100; user typed 150 over the untouched 100,
+  // so the modal's last auto-fill is still the original size.
+  const r = resolveServingSizeOnUnitChange({
+    current: '150', lastAutoFill: '100', originalSize: '100', newUnit: 'nos', initialUnit: 'g',
+  })
+  assert.equal(r.value, '150')
+  // The user's value stays user-owned, not recorded as an auto-fill.
+  assert.equal(r.lastAutoFill, null)
+})
+
+test('resolveServingSizeOnUnitChange keeps a user-typed size when switching back to the initial unit', () => {
+  // User typed 150, so the field is user-owned even back on the original unit.
+  const r = resolveServingSizeOnUnitChange({
+    current: '150', lastAutoFill: null, originalSize: '100', newUnit: 'g', initialUnit: 'g',
+  })
+  assert.equal(r.value, '150')
+  assert.equal(r.lastAutoFill, null)
+})
+
+test('resolveServingSizeOnUnitChange keeps a user-typed size with a NULL original when switching back', () => {
+  // NULL serving_size: user typed 50, switched away and back — the field must
+  // not be restored to '' (which would fail the required-size validation).
+  const r = resolveServingSizeOnUnitChange({
+    current: '50', lastAutoFill: null, originalSize: '', newUnit: 'g', initialUnit: 'g',
+  })
+  assert.equal(r.value, '50')
+  assert.equal(r.lastAutoFill, null)
+})
+
+test('resolveServingSizeOnUnitChange restores the original size when an untouched field switches back', () => {
+  // Modal last wrote 240 (a cup pre-fill); back on g, the original wins.
+  const r = resolveServingSizeOnUnitChange({
+    current: '240', lastAutoFill: '240', originalSize: '100', newUnit: 'g', initialUnit: 'g',
+  })
+  assert.equal(r.value, '100')
+  assert.equal(r.lastAutoFill, '100')
+})
+
+test('resolveServingSizeOnUnitChange keeps the confirmed pre-fill when the original size is NULL', () => {
+  // NULL original size: switching back to the initial unit must not restore ''
+  // (the field would then fail the required-size validation on save).
+  const r = resolveServingSizeOnUnitChange({
+    current: '240', lastAutoFill: '240', originalSize: '', newUnit: 'g', initialUnit: 'g',
+  })
+  assert.equal(r.value, '240')
+  assert.equal(r.lastAutoFill, '240')
+  // An empty modal-owned field stays empty (validation catches it on save).
+  const empty = resolveServingSizeOnUnitChange({
+    current: '', lastAutoFill: null, originalSize: '', newUnit: 'g', initialUnit: 'g',
+  })
+  assert.equal(empty.value, '')
+})
+
+test('resolveServingSizeOnUnitChange pre-fills the unit default when the field is empty', () => {
+  const r = resolveServingSizeOnUnitChange({
+    current: '', lastAutoFill: null, originalSize: '100', newUnit: 'cup', initialUnit: 'g',
+  })
+  assert.equal(r.value, '240')
+  // The pre-fill is recorded as modal-written so a later unit change can tell.
+  assert.equal(r.lastAutoFill, '240')
+})
+
+test('resolveServingSizeOnUnitChange replaces a stale auto-fill with the new unit default', () => {
+  const r = resolveServingSizeOnUnitChange({
+    current: '1', lastAutoFill: '1', originalSize: '100', newUnit: 'ml', initialUnit: 'g',
+  })
+  assert.equal(r.value, '100')
+  assert.equal(r.lastAutoFill, '100')
 })
 
 test('validateIngredient: requireServingSize makes serving_size mandatory and > 0', () => {

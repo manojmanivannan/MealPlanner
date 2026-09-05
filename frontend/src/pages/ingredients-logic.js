@@ -163,10 +163,10 @@ export function filterIngredients(ingredients, term) {
 }
 
 /**
- * The serving_size a unit change pre-fills in the edit modal, matching the
- * create-time defaults (backend `ingredient_router.add_ingredient`) extended
- * to the volume units: bulk units are "per 100", a cup is 240 ml, discrete
- * units are "per unit".
+ * The serving_size a unit change pre-fills in the edit modal: a nutrition-basis
+ * suggestion, not the create-time default (backend `add_ingredient` defaults
+ * everything non-bulk to 1, cup included). Bulk units suggest "per 100", a cup
+ * suggests 240 ml, discrete units "per unit".
  * @param {string} unit
  * @returns {number}
  */
@@ -174,6 +174,45 @@ export function defaultServingSize(unit) {
   if (unit === 'g' || unit === 'ml') return 100
   if (unit === 'cup') return 240
   return 1
+}
+
+/**
+ * Decide what the edit modal's serving-size field should hold after a unit
+ * switch, and what the modal last wrote into it.
+ *
+ * `lastAutoFill` is the value the modal last wrote into the field, or `null`
+ * once the user has typed their own value (the modal clears it on any input
+ * event). A value the user typed is never replaced — only a field the modal
+ * owns gets restored to `originalSize` (switching back) or pre-filled with
+ * the new unit's default (switching away).
+ *
+ * @param {{current:string, lastAutoFill:string|null, originalSize:string|number, newUnit:string, initialUnit:string}} args
+ * @returns {{value:string, lastAutoFill:string|null}} the value to put in the
+ *   field and the updated auto-fill marker for the next unit change
+ */
+export function resolveServingSizeOnUnitChange({
+  current,
+  lastAutoFill,
+  originalSize,
+  newUnit,
+  initialUnit,
+}) {
+  const userTyped = current !== '' && current !== String(lastAutoFill ?? '')
+  if (!userTyped) {
+    if (newUnit === initialUnit) {
+      const restored = String(originalSize)
+      if (restored === '') {
+        // NULL original size: there is nothing to restore — keep the value the
+        // modal already confirmed (restoring '' would fail the required-size
+        // validation on save for no visible reason).
+        return { value: current, lastAutoFill }
+      }
+      return { value: restored, lastAutoFill: restored }
+    }
+    const suggested = String(defaultServingSize(newUnit))
+    return { value: suggested, lastAutoFill: suggested }
+  }
+  return { value: current, lastAutoFill: null }
 }
 
 /**

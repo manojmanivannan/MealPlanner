@@ -99,6 +99,16 @@ def _create_recipe(client, headers, name, ingredients):
     return resp.json()
 
 
+def test_add_ingredient_create_default_serving_size(test_client, auth_headers):
+    # Create-time defaults: bulk units "per 100", everything else (including
+    # cup) 1. Note the edit modal's unit-change prefill deliberately differs
+    # for cup (240 ml) — it suggests a nutrition basis, not the create default.
+    assert _create_ingredient(test_client, auth_headers, "Flour", "g")["serving_size"] == 100
+    assert _create_ingredient(test_client, auth_headers, "Water", "ml")["serving_size"] == 100
+    assert _create_ingredient(test_client, auth_headers, "Rice", "cup")["serving_size"] == 1
+    assert _create_ingredient(test_client, auth_headers, "Eggs", "nos")["serving_size"] == 1
+
+
 def _get_recipe_rows(client, headers, recipe_id):
     resp = client.get(f"/recipes/{recipe_id}", headers=headers)
     assert resp.status_code == 200, resp.text
