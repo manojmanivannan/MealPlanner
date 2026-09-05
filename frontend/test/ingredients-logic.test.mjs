@@ -28,6 +28,7 @@ import {
   resolveServingSizeOnUnitChange,
   countRecipesUsingIngredient,
   servingSizeWillRescale,
+  formatRescaleFactor,
 } from '../src/pages/ingredients-logic.js'
 
 const sample = [
@@ -344,6 +345,27 @@ test('servingSizeWillRescale tracks any size change, unit change or not', () => 
   assert.equal(servingSizeWillRescale('240', null), false)
   // Non-numeric current value never rescales.
   assert.equal(servingSizeWillRescale('abc', '100'), false)
+})
+
+test('formatRescaleFactor recomputes the promised factor from the live size value', () => {
+  // The unit-change repro from #42: g→cup pre-fills 240 (×2.4), then the
+  // user types 480 — the banner text must follow the field, not the
+  // value captured at unit-change time.
+  assert.equal(formatRescaleFactor('100', '240'), '100 → 240 (×2.4)')
+  assert.equal(formatRescaleFactor('100', '480'), '100 → 480 (×4.8)')
+  assert.equal(formatRescaleFactor('100', '300'), '100 → 300 (×3)')
+  // The values are interpolated verbatim (the page esc()s the whole string).
+  assert.equal(formatRescaleFactor(100, 480), '100 → 480 (×4.8)')
+})
+
+test('formatRescaleFactor degrades without inventing a factor', () => {
+  // NULL original size: no usable factor at all.
+  assert.equal(formatRescaleFactor('', '240'), '')
+  assert.equal(formatRescaleFactor(null, '240'), '')
+  // A non-numeric suggested value keeps the range text but no ×ratio —
+  // the banner is hidden in that state anyway (servingSizeWillRescale).
+  assert.equal(formatRescaleFactor('100', 'abc'), '100 → abc')
+  assert.equal(formatRescaleFactor('100', ''), '100 → ')
 })
 
 test('validateIngredient: requireServingSize makes serving_size mandatory and > 0', () => {

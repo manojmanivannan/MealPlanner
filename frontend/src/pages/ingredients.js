@@ -22,6 +22,7 @@ import {
   resolveServingSizeOnUnitChange,
   countRecipesUsingIngredient,
   servingSizeWillRescale,
+  formatRescaleFactor,
 } from './ingredients-logic.js'
 
 /* ----------------------------- Constants ----------------------------- */
@@ -628,10 +629,12 @@ async function openEditModal(id, returnFocus) {
 
   function renderBanner() {
     if (banner.hidden) return
-    const suggested = sizeInput.value
-    const ratio = Number(suggested) / Number(originalSize)
-    const sizePart = originalSize
-      ? `their quantities will be rescaled by <strong>${esc(originalSize)} → ${esc(suggested)}</strong>${Number.isFinite(ratio) ? ` (×${esc(String(ratio))})` : ''}`
+    // The factor text is recomputed from the LIVE field value here, so it
+    // tracks the serving size the user edits while the banner is showing
+    // (#42) — never a value captured when the banner first appeared.
+    const factor = formatRescaleFactor(originalSize, sizeInput.value)
+    const sizePart = factor
+      ? `their quantities will be rescaled by <strong>${esc(factor)}</strong>`
       : 'their quantities will be rescaled by the new serving size'
     const countPart = bannerCountText == null ? '…' : esc(bannerCountText)
     const countClass = bannerCountText == null ? '' : ' font-semibold'

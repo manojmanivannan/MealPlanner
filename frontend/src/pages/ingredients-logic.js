@@ -234,6 +234,30 @@ export function servingSizeWillRescale(current, originalSize) {
 }
 
 /**
+ * The rescale-factor text the edit modal's warning banner promises:
+ * `<original> → <suggested> (×<ratio>)`. Recomputed from the LIVE serving
+ * size on every render so the promised factor always matches what a save
+ * will apply (#42) — the user edits the field while the banner is showing.
+ * The output is plain text; the page esc()s the whole string.
+ * @param {string|number} originalSize - the ingredient's stored serving_size ('' when NULL)
+ * @param {string|number} suggested - the value currently in the size field
+ * @returns {string} the factor text, '' with no usable original size, or
+ *   the range without a ×ratio when the ratio isn't finite.
+ */
+export function formatRescaleFactor(originalSize, suggested) {
+  const orig = Number(originalSize)
+  if (originalSize === '' || originalSize == null || !Number.isFinite(orig)) return ''
+  const cur = Number(suggested)
+  // An empty/invalid suggested value yields no ratio (Number('') is 0, not
+  // a factor). The banner is hidden in this state anyway —
+  // servingSizeWillRescale is false — so keep the range text only.
+  if (suggested === '' || suggested == null || !Number.isFinite(cur)) {
+    return `${originalSize} → ${suggested}`
+  }
+  return `${originalSize} → ${suggested} (×${cur / orig})`
+}
+
+/**
  * How many recipes use an ingredient, matched the way the backend sync and
  * the shopping list do: case-insensitive and trimmed against each recipe
  * row's name (via the shopping list's `normalizeName`). The recipes come
