@@ -216,6 +216,24 @@ export function resolveServingSizeOnUnitChange({
 }
 
 /**
+ * Whether SAVING the current modal state will rescale recipe quantities:
+ * the backend rescales matching recipe rows whenever the saved serving_size
+ * differs from the stored one — a unit change is NOT required. A NULL
+ * original size (no usable factor) and an empty/invalid current value never
+ * rescale (the backend leaves quantities alone and warns).
+ * @param {string|number} current - the value currently in the size field
+ * @param {string|number} originalSize - the ingredient's stored serving_size ('' when NULL)
+ * @returns {boolean}
+ */
+export function servingSizeWillRescale(current, originalSize) {
+  const orig = Number(originalSize)
+  if (originalSize === '' || originalSize == null || !Number.isFinite(orig) || orig <= 0) return false
+  if (current === '' || current == null) return false
+  const cur = Number(current)
+  return Number.isFinite(cur) && cur !== orig
+}
+
+/**
  * How many recipes use an ingredient, matched the way the backend sync and
  * the shopping list do: case-insensitive and trimmed against each recipe
  * row's name (via the shopping list's `normalizeName`). The recipes come

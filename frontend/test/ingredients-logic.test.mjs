@@ -27,6 +27,7 @@ import {
   defaultServingSize,
   resolveServingSizeOnUnitChange,
   countRecipesUsingIngredient,
+  servingSizeWillRescale,
 } from '../src/pages/ingredients-logic.js'
 
 const sample = [
@@ -328,6 +329,21 @@ test('resolveServingSizeOnUnitChange replaces a stale auto-fill with the new uni
   })
   assert.equal(r.value, '100')
   assert.equal(r.lastAutoFill, '100')
+})
+
+test('servingSizeWillRescale tracks any size change, unit change or not', () => {
+  // A size differing from the stored one rescales even back on the initial
+  // unit — this is what the banner visibility must follow.
+  assert.equal(servingSizeWillRescale('300', '100'), true)
+  assert.equal(servingSizeWillRescale('100', '100'), false)
+  assert.equal(servingSizeWillRescale('240', '100'), true)
+  // Empty current value: validation blocks the save, nothing rescales.
+  assert.equal(servingSizeWillRescale('', '100'), false)
+  // NULL original size: the backend has no usable factor and only warns.
+  assert.equal(servingSizeWillRescale('240', ''), false)
+  assert.equal(servingSizeWillRescale('240', null), false)
+  // Non-numeric current value never rescales.
+  assert.equal(servingSizeWillRescale('abc', '100'), false)
 })
 
 test('validateIngredient: requireServingSize makes serving_size mandatory and > 0', () => {

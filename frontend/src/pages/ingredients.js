@@ -21,6 +21,7 @@ import {
   validateIngredient,
   resolveServingSizeOnUnitChange,
   countRecipesUsingIngredient,
+  servingSizeWillRescale,
 } from './ingredients-logic.js'
 
 /* ----------------------------- Constants ----------------------------- */
@@ -634,20 +635,48 @@ async function openEditModal(id, returnFocus) {
       : 'their quantities will be rescaled by the new serving size'
     const countPart = bannerCountText == null ? '…' : esc(bannerCountText)
     const countClass = bannerCountText == null ? '' : ' font-semibold'
-    banner.innerHTML = `Serving unit changed to <strong>${esc(unitSelect.value)}</strong>. <span data-elem="banner-count"${countClass}>${countPart}</span> ${sizePart}. Confirm the new serving size.`
+    // The banner tracks a coming rescale, which a serving-size change alone
+    // can trigger (no unit change involved) — only claim a unit change when
+    // the unit actually differs from the initial one.
+    const unitPart = unitSelect.value === initialUnit
+      ? ''
+      : `Serving unit changed to <strong>${esc(unitSelect.value)}</strong>. `
+    banner.innerHTML = `${unitPart}<span data-elem="banner-count"${countClass}>${countPart}</span> ${sizePart}. Confirm the new serving size.`
+  }
+
+  // Show the banner exactly when SAVING will rescale recipe quantities: any
+  // serving size that differs from the stored one rescales, unit change or
+  // not. Previously the banner was tied to the unit select, so switching the
+  // unit back to the initial one hid the warning while a user-typed size
+  // still rescaled recipes on save.
+  function refreshBanner() {
+    const rescales = servingSizeWillRescale(sizeInput.value, originalSize)
+    banner.hidden = !rescales
+    if (!rescales) return
+    renderBanner()
+    ensureRecipes().then((recipes) => {
+      if (recipes) {
+        const uses = countRecipesUsingIngredient(recipes, ing.name)
+        bannerCountText = `${uses} ${uses === 1 ? 'recipe' : 'recipes'} use${uses === 1 ? 's' : ''} ${ing.name} and`
+      } else {
+        // Count unavailable: keep the message name-only.
+        bannerCountText = `the recipes using ${ing.name}`
+      }
+      renderBanner()
+    })
   }
 
   sizeInput.addEventListener('input', () => {
     lastAutoFill = null
     // Keep the promised rescale factor in step with the value being saved.
-    renderBanner()
+    refreshBanner()
   })
 
   function updateSizeLabel(unit) {
     if (sizeLabel) sizeLabel.innerHTML = `Serving size (${esc(unit)} per serving)<span class="mp-req">*</span>`
   }
 
-  unitSelect.addEventListener('change', async () => {
+  unitSelect.addEventListener('change', () => {
     const u = unitSelect.value
     NUTRITION_FIELDS.forEach((f) => {
       const label = ctrl.panel.querySelector(`[data-label-for="${f.key}"]`)
@@ -669,24 +698,7 @@ async function openEditModal(id, returnFocus) {
     sizeInput.value = next.value
     lastAutoFill = next.lastAutoFill
 
-    if (u === initialUnit) {
-      // Back to the original unit: no rescale is coming.
-      banner.hidden = true
-      return
-    }
-
-    banner.hidden = false
-    renderBanner()
-
-    const recipes = await ensureRecipes()
-    if (recipes) {
-      const uses = countRecipesUsingIngredient(recipes, ing.name)
-      bannerCountText = `${uses} ${uses === 1 ? 'recipe' : 'recipes'} use${uses === 1 ? 's' : ''} ${ing.name} and`
-    } else {
-      // Count unavailable: keep the message name-only.
-      bannerCountText = `the recipes using ${ing.name}`
-    }
-    renderBanner()
+    refreshBanner()
   })
 
   const saveBtn = ctrl.panel.querySelector('[data-save]')
