@@ -20,6 +20,14 @@ logger.setLevel(logging.DEBUG)
 ing_router = APIRouter(prefix="/ingredients", tags=["Ingredients"])
 
 
+def _row_matches_ingredient(row, name: str) -> bool:
+    """Whether a recipe's ingredient row refers to `name`, case-insensitively
+    and whitespace-trimmed, the same way recipe availability and
+    shopping-list code match ingredient names. Shared by the legacy-size
+    pre-check and the sync loop so the two cannot drift apart."""
+    return str(row.get('name', '')).strip().lower() == name.strip().lower()
+
+
 def _parse_serving_size(raw: Optional[str]) -> Optional[float]:
     """Validate an incoming serving_size when the parameter is provided.
 
@@ -203,14 +211,36 @@ def update_ingredient(
                 ((Recipe.user_id == current_user.id) | (Recipe.user_id == None))
             ).all()
         logger.debug(f"Recipes to update: {[r.name for r in recipes_to_update]}")
+
+        if size_changed and (old_size is None or old_size <= 0):
+            # Legacy row with a NULL, 0, or negative serving_size: there is no
+            # usable old size, so a rescale has no meaningful factor. Skipping
+            # it silently while still storing the new size would shift every
+            # affected recipe's nutrition by the old/new ratio (#43) — reject
+            # instead. Nothing has been written yet, so the PUT is
+            # all-or-nothing.
+            affected = [
+                recipe.name for recipe in recipes_to_update
+                if any(_row_matches_ingredient(row, old_name) for row in recipe.ingredients)
+            ]
+            if affected:
+                raise HTTPException(
+                    status_code=400,
+                    detail=(
+                        f"Cannot change serving size: '{old_name}' has no stored "
+                        f"serving size to rescale from. Remove '{old_name}' from "
+                        f"these recipes first, then set the serving size here and "
+                        f"re-add the rows with the new basis: {', '.join(affected)}"
+                    ),
+                )
+
         for recipe in recipes_to_update:
             recipe_changed = False
             for ingredient_in_recipe in recipe.ingredients:
                 # Match on the OLD name, case-insensitively and
                 # whitespace-trimmed, the same way recipe availability and
                 # shopping-list code match ingredient names.
-                row_name = str(ingredient_in_recipe.get('name', '')).strip().lower()
-                if row_name != old_name.strip().lower():
+                if not _row_matches_ingredient(ingredient_in_recipe, old_name):
                     continue
 
                 if name_changed:
@@ -224,28 +254,20 @@ def update_ingredient(
                     # therefore preserves each recipe's nutrition by
                     # construction — the ratio cancels in the trigger math.
                     # The unit change (if any) travels in the same request;
-                    # the factor is computed from the DB's old size.
-                    if old_size:
-                        quantity = ingredient_in_recipe.get('quantity')
-                        if isinstance(quantity, (int, float)) and not isinstance(quantity, bool):
-                            factor = new_size / old_size
-                            ingredient_in_recipe['quantity'] = round(quantity * factor, 4)
-                        else:
-                            # Missing or non-numeric quantity (legacy/hand-edited
-                            # JSONB): no meaningful factor — leave it and log.
-                            logger.warning(
-                                f"Recipe '{recipe.name}' row "
-                                f"'{ingredient_in_recipe.get('name')}' has non-numeric "
-                                f"quantity {quantity!r}; not rescaled"
-                            )
+                    # the factor is computed from the DB's old size. A
+                    # legacy non-usable (NULL or ≤ 0) old size was rejected
+                    # above, so a matched row here always has a usable factor.
+                    quantity = ingredient_in_recipe.get('quantity')
+                    if isinstance(quantity, (int, float)) and not isinstance(quantity, bool):
+                        factor = new_size / old_size
+                        ingredient_in_recipe['quantity'] = round(quantity * factor, 4)
                     else:
-                        # Legacy row with no usable old size: there is no
-                        # meaningful factor, so leave the quantity alone.
+                        # Missing or non-numeric quantity (legacy/hand-edited
+                        # JSONB): no meaningful factor — leave it and log.
                         logger.warning(
-                            f"Ingredient '{old_name}' had no usable serving_size "
-                            f"({old_size!r}); recipe '{recipe.name}' keeps "
-                            f"quantity {ingredient_in_recipe['quantity']} for row "
-                            f"'{ingredient_in_recipe['name']}'"
+                            f"Recipe '{recipe.name}' row "
+                            f"'{ingredient_in_recipe.get('name')}' has non-numeric "
+                            f"quantity {quantity!r}; not rescaled"
                         )
                 if unit_changed:
                     # Unit change relabels the rows only; any numeric

@@ -1,5 +1,6 @@
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import text
 
 from models import Recipe, RecipeMealType
 
@@ -318,6 +319,85 @@ def test_size_change_rescales_global_recipe_too(test_client, auth_headers, db_se
     rows = global_recipe.ingredients
     assert rows[0]["quantity"] == pytest.approx(20)
     assert rows[0]["serving_unit"] == "g"
+
+
+def _corrupt_serving_size(db_session, ingredient_id, value):
+    # Simulate a legacy row (or a row written before validation existed):
+    # the ORM default only applies on inserts, so the column can hold
+    # NULL or 0 (#43).
+    db_session.execute(
+        text("UPDATE ingredients SET serving_size = :v WHERE id = :i"),
+        {"v": value, "i": ingredient_id},
+    )
+    db_session.commit()
+    db_session.expire_all()
+
+
+@pytest.mark.parametrize("legacy_size", [None, 0, -5])
+def test_size_change_with_legacy_old_size_rejected_when_recipes_reference_it(
+    test_client, auth_headers, db_session, legacy_size
+):
+    ing = _create_ingredient(test_client, auth_headers, "Sugar", "g", serving_size=100)
+    _corrupt_serving_size(db_session, ing["id"], legacy_size)
+    recipe = _create_recipe(
+        test_client,
+        auth_headers,
+        "Cake",
+        [{"name": "Sugar", "quantity": 50, "serving_unit": "g"}],
+    )
+
+    resp = test_client.put(f"/ingredients/{ing['id']}", params={"serving_size": 240}, headers=auth_headers)
+
+    # Rejected: there is no usable old size to rescale from, and silently
+    # skipping the rescale while storing the new size corrupts nutrition.
+    assert resp.status_code == 400, resp.text
+    assert "Cake" in resp.json()["detail"]
+
+    # Nothing was written: the recipe row and the stored size are untouched.
+    rows = _get_recipe_rows(test_client, auth_headers, recipe["id"])
+    assert rows[0]["quantity"] == 50
+    # Asserted at the DB level to prove nothing was written by the rejected
+    # PUT (the API response is a 400 with no body to inspect).
+    from models import Ingredient
+    stored = db_session.query(Ingredient).get(ing["id"])
+    assert stored.serving_size == legacy_size
+
+
+def test_size_change_with_legacy_old_size_allowed_without_recipe_rows(test_client, auth_headers, db_session):
+    # No recipe references the ingredient, so there is nothing to rescale —
+    # the PUT is the only way to repair the legacy NULL, so it must succeed.
+    ing = _create_ingredient(test_client, auth_headers, "Quinoa", "g", serving_size=100)
+    _corrupt_serving_size(db_session, ing["id"], None)
+
+    resp = test_client.put(f"/ingredients/{ing['id']}", params={"serving_size": 240}, headers=auth_headers)
+
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["serving_size"] == 240
+
+
+def test_unit_change_with_legacy_old_size_still_propagates(test_client, auth_headers, db_session):
+    # Rename/unit propagation does not need the old size — only a size
+    # change does — so it must not be blocked by the legacy-size rejection.
+    ing = _create_ingredient(test_client, auth_headers, "Millet", "g", serving_size=100)
+    _corrupt_serving_size(db_session, ing["id"], None)
+    recipe = _create_recipe(
+        test_client,
+        auth_headers,
+        "Porridge",
+        [{"name": "Millet", "quantity": 40, "serving_unit": "g"}],
+    )
+
+    resp = test_client.put(
+        f"/ingredients/{ing['id']}",
+        params={"name": "Hulled Millet", "serving_unit": "tsp"},
+        headers=auth_headers,
+    )
+
+    assert resp.status_code == 200, resp.text
+    rows = _get_recipe_rows(test_client, auth_headers, recipe["id"])
+    assert rows[0]["name"] == "Hulled Millet"
+    assert rows[0]["quantity"] == 40
+    assert rows[0]["serving_unit"] == "tsp"
 
 
 def test_noop_resave_does_not_rescale_recipe_quantities(test_client, auth_headers):

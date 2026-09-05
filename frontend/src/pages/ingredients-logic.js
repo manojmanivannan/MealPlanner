@@ -235,7 +235,8 @@ function usableOriginalSize(originalSize) {
  * the backend rescales matching recipe rows whenever the saved serving_size
  * differs from the stored one — a unit change is NOT required. A NULL
  * original size (no usable factor) and an empty/invalid current value never
- * rescale (the backend leaves quantities alone and warns), and neither does
+ * rescale (the backend rejects a size change on a legacy NULL/0 size with a
+ * 400 when recipes reference the ingredient, #43), and neither does
  * a current value the save path rejects (serving size must be > 0) — the
  * banner must not promise a rescale the save cannot apply.
  * @param {string|number} current - the value currently in the size field

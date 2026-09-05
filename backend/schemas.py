@@ -63,7 +63,12 @@ class IngredientSchema(BaseModel):
     shelf_life: Optional[int]
     last_available: Optional[datetime.datetime]
     serving_unit: ServingUnits
-    serving_size: float
+    # Nullable like the nutrition fields below: a legacy row (or one written
+    # before validation existed) can hold NULL, and the schema must echo that
+    # back as null instead of failing every list/update that touches it (#43).
+    # A size change on such a row is rejected by the router; other edits and
+    # a repair PUT remain possible.
+    serving_size: Optional[float] = None
     # Nutrition is nullable: a cleared field (empty string on PUT) is stored
     # as NULL, and the schema must echo that back as null instead of failing
     # validation (#41). The edit modal renders null as an empty input.
