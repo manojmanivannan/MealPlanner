@@ -14,6 +14,7 @@ import {
   NUTRITION_FIELDS,
   nutritionLabel,
   groupByLetter,
+  alphabetIndex,
   sortByShelfLife,
   sortByName,
   shelfLifeBadge,
@@ -53,11 +54,14 @@ const state = {
   error: null,
   sort: 'name',
   searchTerm: '',
+  // A–Z index bar: the letter whose group is expanded alone, or null for all.
+  activeLetter: null,
 }
 
 let unitsCache = null
 
 const grid = document.getElementById('ingredient-grid')
+const letterIndex = document.getElementById('ingredient-letter-index')
 const searchInput = document.getElementById('ingredient-search')
 const sortSelect = document.getElementById('sort-select')
 const addBtn = document.getElementById('add-ingredient-btn')
@@ -148,6 +152,7 @@ function render() {
   }
 
   renderMetrics()
+  renderAlphabetBar()
 
   const filtered = filterIngredients(state.ingredients, state.searchTerm)
   if (state.ingredients.length === 0) {
@@ -205,6 +210,42 @@ function renderMetrics() {
       <span class="text-xs text-muted mt-2 truncate">${expiring > 0 ? 'Use in 48h' : 'Pantry fresh'}</span>
     </div>
   `
+}
+
+/**
+ * The A–Z index bar, shown only in the name-sorted view with no active
+ * search (search already narrows the list, and the shelf-life view isn't
+ * alphabetical). Empty letters are rendered disabled; the active letter is
+ * highlighted, and clicking it again — or "All" — expands the full list.
+ */
+function renderAlphabetBar() {
+  if (!letterIndex) return
+  const showBar = state.status === 'ready' && state.sort === 'name' && !state.searchTerm && state.ingredients.length > 0
+  letterIndex.hidden = !showBar
+  if (!showBar) {
+    letterIndex.innerHTML = ''
+    return
+  }
+
+  const letterBtn = ({ letter, count }) => {
+    const present = count > 0
+    const active = state.activeLetter === letter
+    const base = 'inline-flex h-7 min-w-7 px-1.5 items-center justify-center rounded-md text-xs font-semibold transition-colors focus-ring'
+    const tone = active
+      ? 'bg-accent/15 text-accent'
+      : present
+        ? 'text-secondary hover:bg-subtle hover:text-primary'
+        : 'text-muted opacity-40'
+    const label = present ? `${letter} — ${count} ingredient${count === 1 ? '' : 's'}` : letter
+    return `<button type="button" data-letter="${letter}" ${active ? 'aria-pressed="true"' : ''} ${present ? '' : 'disabled'} class="${base} ${tone}" title="${esc(label)}">${letter}</button>`
+  }
+
+  letterIndex.innerHTML = `
+    <div class="flex flex-wrap items-center gap-1 rounded-xl border border-line-subtle bg-surface px-2 py-1.5" role="group" aria-label="Jump to ingredients by letter">
+      <button type="button" data-letter="" class="inline-flex h-7 px-2 items-center justify-center rounded-md text-xs font-semibold transition-colors focus-ring ${state.activeLetter ? 'text-secondary hover:bg-subtle hover:text-primary' : 'bg-accent/15 text-accent'}" aria-pressed="${state.activeLetter ? 'false' : 'true'}" title="Show all letters">All</button>
+      <span class="mx-0.5 h-4 w-px bg-line" aria-hidden="true"></span>
+      ${alphabetIndex(state.ingredients).map(letterBtn).join('')}
+    </div>`
 }
 
 function renderSkeleton() {
@@ -276,15 +317,25 @@ function renderNoMatches() {
 function renderList(ingredients) {
   if (state.sort === 'shelf') {
     grid.innerHTML = sortByShelfLife(ingredients).map(ingredientCard).join('')
-  } else {
-    const groups = groupByLetter(ingredients)
-    grid.innerHTML = Object.keys(groups).map((letter) =>
-      `<div class="col-span-full pt-4 first:pt-0 pb-1 border-b border-line">
-         <h3 class="text-sm font-bold text-accent uppercase tracking-wider">${esc(letter)}</h3>
-       </div>` +
-      groups[letter].map(ingredientCard).join('')
-    ).join('')
+    return
   }
+
+  const groups = groupByLetter(ingredients)
+  // A letter selection survives re-renders only while its group still has
+  // ingredients (e.g. after a delete); otherwise fall back to the full list.
+  if (state.activeLetter && !groups[state.activeLetter]) state.activeLetter = null
+  const shown = state.activeLetter ? { [state.activeLetter]: groups[state.activeLetter] } : groups
+
+  grid.innerHTML = Object.keys(shown).map((letter) => {
+    const count = shown[letter].length
+    const countPart = state.activeLetter
+      ? `<span class="ml-1.5 font-medium text-muted normal-case tracking-normal">· ${count} item${count === 1 ? '' : 's'}</span>`
+      : ''
+    return `<div class="col-span-full pt-4 first:pt-0 pb-1 border-b border-line">
+         <h3 class="text-sm font-bold text-accent uppercase tracking-wider">${esc(letter)}${countPart}</h3>
+       </div>` +
+      shown[letter].map(ingredientCard).join('')
+  }).join('')
 }
 
 function ingredientCard(ing) {
@@ -338,6 +389,17 @@ function ingredientCard(ing) {
 
 /* ------------------------- Event Delegation -------------------------- */
 
+if (letterIndex) {
+  letterIndex.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-letter]')
+    if (!btn || btn.disabled) return
+    const letter = btn.dataset.letter
+    // Clicking the active letter (or "All") collapses back to the full list.
+    state.activeLetter = state.activeLetter === letter ? null : letter
+    render()
+  })
+}
+
 grid.addEventListener('click', (e) => {
   const btn = e.target.closest('[data-action]')
   if (!btn || !grid.contains(btn)) return
@@ -381,6 +443,7 @@ if (addBtn) addBtn.addEventListener('click', () => openAddModal(addBtn))
 if (searchInput) {
   searchInput.addEventListener('input', () => {
     state.searchTerm = searchInput.value
+    state.activeLetter = null
     render()
   })
 
@@ -395,12 +458,14 @@ if (searchInput) {
 if (sortSelect) {
   sortSelect.addEventListener('change', () => {
     state.sort = sortSelect.value === 'shelf' ? 'shelf' : 'name'
+    state.activeLetter = null
     render()
   })
 }
 
 function clearFilters() {
   state.searchTerm = ''
+  state.activeLetter = null
   if (searchInput) searchInput.value = ''
   render()
 }
