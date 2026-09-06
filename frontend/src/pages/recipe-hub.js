@@ -83,7 +83,16 @@ async function fetchJson(url, opts = {}) {
   if (handleAuthError(resp)) throw new Error('auth')
   if (!resp.ok) {
     let detail = ''
-    try { detail = (await resp.json()).detail } catch (_) {}
+    try {
+      const raw = (await resp.json()).detail
+      // FastAPI validation errors (422) return an array of objects; flatten
+      // them to a readable message instead of "[object Object], ...".
+      if (Array.isArray(raw)) {
+        detail = raw.map((e) => [e.loc && e.loc.slice(1).join('.'), e.msg].filter(Boolean).join(': ')).join('; ')
+      } else if (raw) {
+        detail = String(raw)
+      }
+    } catch (_) {}
     throw new Error(detail || `Request failed (${resp.status})`)
   }
   if (resp.status === 204) return null
@@ -128,12 +137,11 @@ async function putSlot(day, meal, recipeIds) {
   })
 }
 
-async function createIngredientRequest(ing) {
-  return fetchJson(`${API_BASE}/ingredients`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(ing),
-  })
+async function createIngredientRequest({ name, shelf_life, serving_unit }) {
+  // The backend POST /ingredients takes query params (not a JSON body);
+  // sending a body 422s with an array detail ([object Object], ...).
+  const params = new URLSearchParams({ name, shelf_life, serving_unit })
+  return fetchJson(`${API_BASE}/ingredients?${params.toString()}`, { method: 'POST' })
 }
 
 /* --------------------------- Nutrition Helpers ------------------------ */
