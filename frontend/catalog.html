@@ -70,7 +70,7 @@
   <section class="mb-12">
     <p class="text-xs font-semibold uppercase tracking-wide text-muted">02 · Cards</p>
     <h2 class="text-h2 font-semibold text-primary tracking-snug mt-1 mb-1">Neutral surface + day accent</h2>
-    <p class="text-secondary mb-5 max-w-2xl">Cards stay neutral; the day shows up as a top edge or a left bar — never a full-card fill. Interactive cards lift on hover.</p>
+    <p class="text-secondary mb-5 max-w-2xl">Cards stay neutral; the day shows up as a soft tint wash, a top edge, and a left bar on each meal slot — never a saturated full-card fill. Interactive cards lift on hover.</p>
 
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
       <article class="mp-card">
@@ -86,9 +86,10 @@
         <p class="mp-card-body">Hover lifts; keyboard-focusable. Clickable meal/recipe cards.</p>
       </article>
 
-      <article class="mp-card mp-card-day" style="--day-color:var(--day-mon)">
+      <article class="mp-card mp-card-day" style="--day-color:var(--day-mon);--day-soft:var(--day-mon-soft)">
         <div class="mp-card-header"><span class="flex items-center gap-2"><span class="day-dot"></span><h3 class="mp-card-title">Monday</h3></span></div>
-        <p class="mp-card-body">Top-edge day accent — the day color is the border, not the background.</p>
+        <p class="mp-card-body">Soft tint wash + top edge — the day's <code class="font-mono text-sm">*-soft</code> token fades into the surface.</p>
+        <div class="mp-meal-slot mt-2 py-2"><p class="mp-card-body">Meal-strip left bar on each slot.</p></div>
       </article>
       <article class="mp-card mp-card-day-bar" style="--day-color:var(--day-thu)">
         <div class="mp-card-header"><span class="flex items-center gap-2"><span class="day-dot"></span><h3 class="mp-card-title">Thursday</h3></span></div>
