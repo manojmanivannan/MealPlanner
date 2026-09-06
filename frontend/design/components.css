@@ -193,10 +193,15 @@
     border-left: 3px solid var(--day-color, var(--accent));
   }
   /* Meal-strip pattern — a day-colored left bar on each meal slot forms a
-     continuous color strip down the card. */
+     continuous color strip down the card. The between-slot hairline lives
+     here (not Tailwind's divide-* utilities) so the utility layer can't
+     override this rule's border-color. */
   .mp-meal-slot {
     border-left: 3px solid var(--day-color, var(--accent));
     padding-left: var(--space-3);
+  }
+  .mp-meal-slot + .mp-meal-slot {
+    border-top: 1px solid var(--border-subtle);
   }
   /* Today highlight — outline (not box-shadow) so it never collides with the
      Tailwind shadow utilities on the card. */

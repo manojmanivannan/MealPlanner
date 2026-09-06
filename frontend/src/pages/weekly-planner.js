@@ -451,7 +451,7 @@ function dayCard(day) {
         </header>
 
         <!-- 5 Meal Slots -->
-        <div class="flex flex-col divide-y divide-line-subtle">${slots}</div>
+        <div class="flex flex-col">${slots}</div>
       </div>
 
       <!-- Day Nutrition Summary Footer -->
