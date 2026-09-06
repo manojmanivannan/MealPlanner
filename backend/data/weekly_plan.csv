@@ -5,9 +5,9 @@ id,day,meal_type,recipe_ids
 30,Friday,dinner,{14}
 29,Friday,snack,{}
 6,Monday,pre_breakfast,{54}
-7,Monday,breakfast,{1}
+7,Monday,breakfast,{80}
 8,Monday,lunch,{24}
-10,Monday,dinner,{}
+10,Monday,dinner,"{205,206}"
 9,Monday,snack,{}
 31,Saturday,pre_breakfast,{54}
 32,Saturday,breakfast,{}
@@ -25,12 +25,12 @@ id,day,meal_type,recipe_ids
 25,Thursday,dinner,{85}
 24,Thursday,snack,{}
 11,Tuesday,pre_breakfast,{54}
-12,Tuesday,breakfast,{49}
+12,Tuesday,breakfast,{202}
 13,Tuesday,lunch,{16}
 15,Tuesday,dinner,{67}
 14,Tuesday,snack,{}
 16,Wednesday,pre_breakfast,{54}
-17,Wednesday,breakfast,{49}
+17,Wednesday,breakfast,{3}
 18,Wednesday,lunch,"{65,97}"
 20,Wednesday,dinner,{74}
 19,Wednesday,snack,{}
