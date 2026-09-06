@@ -21,7 +21,7 @@ id,day,meal_type,recipe_ids
 4,Sunday,snack,{}
 21,Thursday,pre_breakfast,{54}
 22,Thursday,breakfast,{3}
-23,Thursday,lunch,{79}
+23,Thursday,lunch,"{208,206}"
 25,Thursday,dinner,{85}
 24,Thursday,snack,{}
 11,Tuesday,pre_breakfast,{54}
