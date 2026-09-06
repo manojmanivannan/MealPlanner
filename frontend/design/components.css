@@ -185,9 +185,33 @@
   /* Day-accent variants */
   .mp-card-day {
     border-top: 3px solid var(--day-color, var(--accent));
+    /* Soft tint wash — the day's *-soft token fades into the surface so each
+       day reads as its own hue while the lower content stays clean. */
+    background: linear-gradient(180deg, var(--day-soft) 0%, var(--bg-surface) 55%);
   }
   .mp-card-day-bar {
     border-left: 3px solid var(--day-color, var(--accent));
+  }
+  /* Meal-slot "now" marker — each slot carries a transparent 3px left track
+     (so the bar never shifts content); only the current day's current slot
+     lights it up with the day color. The between-slot hairline lives here
+     (not Tailwind's divide-* utilities) so the utility layer can't override
+     this rule's border-color. */
+  .mp-meal-slot {
+    border-left: 3px solid transparent;
+    padding-left: var(--space-3);
+  }
+  .mp-meal-slot + .mp-meal-slot {
+    border-top: 1px solid var(--border-subtle);
+  }
+  .mp-meal-slot-current {
+    border-left-color: var(--day-color, var(--accent));
+  }
+  /* Today highlight — outline (not box-shadow) so it never collides with the
+     Tailwind shadow utilities on the card. */
+  .mp-card-today {
+    outline: 2px solid var(--day-color, var(--accent));
+    outline-offset: 1px;
   }
 
   .mp-card-header {

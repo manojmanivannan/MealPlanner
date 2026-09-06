@@ -19,6 +19,8 @@ import {
   perUnitLabel,
   nutritionLabel,
   groupByLetter,
+  ALPHABET,
+  alphabetIndex,
   sortByShelfLife,
   sortByName,
   shelfLifeBadge,
@@ -103,6 +105,40 @@ test('groupByLetter does not mutate the input', () => {
 
 test('groupByLetter of an empty list returns an empty object', () => {
   assert.deepEqual(groupByLetter([]), {})
+})
+
+/* --------------------------- ALPHABET / alphabetIndex --------------------------- */
+
+test('ALPHABET is A–Z then the # bucket, matching groupByLetter key order', () => {
+  assert.equal(ALPHABET.length, 27)
+  assert.deepEqual(ALPHABET.slice(0, 3), ['A', 'B', 'C'])
+  assert.deepEqual(ALPHABET.slice(-2), ['Z', '#'])
+})
+
+test('alphabetIndex counts every letter present, 0 for empty ones', () => {
+  const index = alphabetIndex(sample)
+  const byLetter = Object.fromEntries(index.map((e) => [e.letter, e.count]))
+  assert.equal(byLetter.A, 2) // Apple, almond
+  assert.equal(byLetter.B, 1)
+  assert.equal(byLetter.C, 1)
+  assert.equal(byLetter['#'], 1) // '3 eggs'
+  assert.equal(byLetter.D, 0)
+  assert.equal(byLetter.Z, 0)
+})
+
+test('alphabetIndex covers the full alphabet in order A–Z then #', () => {
+  const index = alphabetIndex(sample)
+  assert.deepEqual(index.map((e) => e.letter), ALPHABET)
+})
+
+test('alphabetIndex of an empty list is all zeros', () => {
+  assert.ok(alphabetIndex([]).every((e) => e.count === 0))
+})
+
+test('alphabetIndex does not mutate the input', () => {
+  const copy = sample.map((i) => ({ ...i }))
+  alphabetIndex(sample)
+  assert.deepEqual(sample, copy)
 })
 
 /* ------------------------------ sortByShelfLife ------------------------------ */

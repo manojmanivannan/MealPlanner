@@ -57,6 +57,22 @@ function getCurrentDayName() {
   return mapping[dayIndex] || 'Monday'
 }
 
+/* Meal-slot time windows (hours, end-exclusive) — the current slot is the
+   one whose window contains "now". */
+const MEAL_SLOT_WINDOWS = [
+  { meal: 'pre_breakfast', from: 0, to: 8 }, // up to 8 AM
+  { meal: 'breakfast', from: 8, to: 11 }, // 8 AM – 11 AM
+  { meal: 'lunch', from: 11, to: 15 }, // 11 AM – 3 PM
+  { meal: 'snack', from: 15, to: 17 }, // 3 PM – 5 PM
+  { meal: 'dinner', from: 17, to: 24 }, // 5 PM – 12 AM
+]
+
+function getCurrentMealSlot(date = new Date()) {
+  const hour = date.getHours()
+  const window = MEAL_SLOT_WINDOWS.find((w) => hour >= w.from && hour < w.to)
+  return (window || MEAL_SLOT_WINDOWS[0]).meal
+}
+
 const state = {
   recipes: [],
   plan: {},
@@ -418,6 +434,7 @@ function renderGrid() {
 
 function dayCard(day) {
   const tok = DAY_TOKEN[day]
+  const isToday = day === getCurrentDayName()
   const dayTotals = emptyNutrition()
   let plannedCount = 0
 
@@ -428,20 +445,21 @@ function dayCard(day) {
     }
     const n = sumNutrition(ids)
     addInto(dayTotals, n)
-    return mealSlot(day, meal, ids)
+    return mealSlot(day, meal, ids, isToday && meal === getCurrentMealSlot())
   }).join('')
 
   return `
-    <article class="mp-card mp-card-day p-3 sm:p-3.5 flex flex-col justify-between shadow-xs hover:shadow-md transition-all" style="--day-color:var(--day-${tok});--day-fg:var(--day-${tok}-fg);--day-soft:var(--day-${tok}-soft)">
+    <article class="mp-card mp-card-day ${isToday ? 'mp-card-today' : ''} p-3 sm:p-3.5 flex flex-col justify-between shadow-xs hover:shadow-md transition-all" style="--day-color:var(--day-${tok});--day-fg:var(--day-${tok}-fg);--day-soft:var(--day-${tok}-soft)">
       <div>
         <!-- Card Day Header (Full Day Name Never Truncated) -->
         <header class="flex items-center justify-between gap-1.5 pb-2 border-b border-line-subtle mb-2.5">
           <div class="flex items-center gap-1.5 min-w-0 flex-1">
             <span class="day-dot flex-none" aria-hidden="true"></span>
             <h2 class="font-bold text-sm sm:text-base text-primary tracking-tight whitespace-nowrap overflow-visible">${day}</h2>
+            ${isToday ? '<span class="mp-badge mp-badge-day text-[10px] px-1.5 py-0.5 font-semibold uppercase tracking-wide">Today</span>' : ''}
           </div>
           <div class="flex items-center gap-1 flex-none">
-            <span class="mp-badge mp-badge-day-soft text-[11px] px-1.5 py-0.5 font-semibold" title="${plannedCount} of ${MEAL_SLOTS.length} meals planned">${plannedCount}/${MEAL_SLOTS.length}</span>
+            <span class="mp-badge mp-badge-day text-[11px] px-1.5 py-0.5 font-semibold" title="${plannedCount} of ${MEAL_SLOTS.length} meals planned">${plannedCount}/${MEAL_SLOTS.length}</span>
             <button type="button" class="mp-btn mp-btn-ghost mp-btn-icon mp-btn-xs focus-ring text-secondary hover:text-primary" data-action="copy-day" data-day="${day}" aria-label="Copy ${day}'s plan" title="Copy ${day}'s plan to other days">
               <svg viewBox="0 0 20 20" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="7" width="9" height="9" rx="1.5"/><path d="M4 13V4a1 1 0 011-1h9"/></svg>
             </button>
@@ -449,7 +467,7 @@ function dayCard(day) {
         </header>
 
         <!-- 5 Meal Slots -->
-        <div class="flex flex-col divide-y divide-line-subtle">${slots}</div>
+        <div class="flex flex-col">${slots}</div>
       </div>
 
       <!-- Day Nutrition Summary Footer -->
@@ -459,7 +477,7 @@ function dayCard(day) {
 
 /* ----------------------------- Meal Slot ------------------------------ */
 
-function mealSlot(day, meal, ids) {
+function mealSlot(day, meal, ids, isCurrentSlot = false) {
   const label = MEAL_LABELS[meal] || meal.replace('_', ' ')
   const icon = MEAL_ICONS[meal] || '🍽️'
   const occupied = ids.length > 0
@@ -509,7 +527,7 @@ function mealSlot(day, meal, ids) {
   }).join('')
 
   return `
-    <div class="py-2.5 first:pt-1.5 last:pb-1.5">
+    <div class="mp-meal-slot ${isCurrentSlot ? 'mp-meal-slot-current' : ''} py-2.5 first:pt-1.5 last:pb-1.5">
       <div class="flex items-center justify-between gap-2 mb-1.5">
         <span class="text-[11px] font-semibold text-secondary uppercase tracking-wider flex items-center gap-1">
           <span>${icon}</span>

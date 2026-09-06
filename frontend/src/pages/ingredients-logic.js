@@ -98,6 +98,30 @@ export function groupByLetter(ingredients) {
 }
 
 /**
+ * The full alphabet index in display order: A–Z, then the `#` misc bucket —
+ * matching groupByLetter's key order.
+ * @type {string[]}
+ */
+export const ALPHABET = [...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split(''), '#']
+
+/**
+ * The per-letter counts backing the A–Z index bar. Every letter of ALPHABET
+ * gets an entry (count 0 for empty letters) so the bar can render the whole
+ * alphabet with empty letters de-emphasized. Non-mutating.
+ * @param {Array<{name:string}>} ingredients
+ * @returns {Array<{letter:string, count:number}>} ordered A–Z then #
+ */
+export function alphabetIndex(ingredients) {
+  const counts = {}
+  for (const ing of ingredients) {
+    const first = (ing.name || '').charAt(0).toUpperCase()
+    const key = /^[A-Z]$/.test(first) ? first : '#'
+    counts[key] = (counts[key] || 0) + 1
+  }
+  return ALPHABET.map((letter) => ({ letter, count: counts[letter] || 0 }))
+}
+
+/**
  * Order ingredients for the shelf-life view: pantry-available first, then by
  * `remaining_shelf_life` ascending (soonest-to-expire first). Missing
  * remaining shelf life sorts last within each availability group. Does not
