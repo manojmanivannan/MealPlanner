@@ -29,6 +29,8 @@ import {
   countRecipesUsingIngredient,
   servingSizeWillRescale,
   formatRescaleFactor,
+  availablePantryNames,
+  pantryChipClass,
 } from '../src/pages/ingredients-logic.js'
 
 const sample = [
@@ -386,4 +388,30 @@ test('validateIngredient: requireServingSize makes serving_size mandatory and > 
   assert.ok(validateIngredient({ ...base, serving_size: '-2' }, { requireServingSize: true }).errors['serving-size'])
   assert.ok(validateIngredient({ ...base, serving_size: '1e999' }, { requireServingSize: true }).errors['serving-size'])
   assert.equal(validateIngredient({ ...base, serving_size: '250' }, { requireServingSize: true }).valid, true)
+})
+
+test('availablePantryNames indexes only available pantry items, normalized', () => {
+  const pantry = [
+    { name: ' Whole Wheat Flour ', available: true },
+    { name: 'OATS', available: false },
+    { name: 'Milk', available: true },
+    { name: '', available: true },
+    null,
+  ]
+  const names = availablePantryNames(pantry)
+  assert.equal(names.size, 2)
+  assert.equal(names.has('whole wheat flour'), true)
+  assert.equal(names.has('milk'), true)
+  assert.equal(names.has('oats'), false)
+  assert.deepEqual([...availablePantryNames(null)], [])
+})
+
+test('pantryChipClass tints green/red, neutral when pantry is unknown', () => {
+  const names = availablePantryNames([{ name: 'Milk', available: true }])
+  assert.equal(pantryChipClass('milk', names), 'mp-ing-available')
+  assert.equal(pantryChipClass('  Milk ', names), 'mp-ing-available')
+  assert.equal(pantryChipClass('Oats', names), 'mp-ing-missing')
+  // Pantry not loaded (fetch failed): no false "missing" flags.
+  assert.equal(pantryChipClass('Oats', null), '')
+  assert.equal(pantryChipClass('Milk', null), '')
 })

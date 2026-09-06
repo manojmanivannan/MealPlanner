@@ -478,6 +478,14 @@
   .mp-badge-day { background: var(--day-color); color: var(--day-fg); }
   .mp-badge-day-soft { background: var(--day-soft); color: var(--text-primary); }
 
+  /* Recipe-detail ingredient chips tinted by pantry availability
+   * (mp-ing-available / mp-ing-missing applied by ingredients-logic.js
+   * helpers). Tint mirrors the badge palette; the caller must not pair
+   * them with bg-subtle / border-line / text-primary utilities — neutral
+   * chips keep those instead, since utilities outrank this layer. */
+  .mp-ing-available { background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.25); color: var(--color-success); }
+  .mp-ing-missing   { background: rgba(239, 68, 68, 0.12);  border: 1px solid rgba(239, 68, 68, 0.25);  color: var(--color-danger); }
+
   /* ============================================================
    * Progress Bars
    * ============================================================ */

@@ -137,6 +137,38 @@ export function shelfLifeBadge(ing) {
 }
 
 /**
+ * Build a Set of normalized names for every pantry item the user has marked
+ * available. Recipe-detail chips compare their ingredient's name against this
+ * set (case- and whitespace-insensitively, mirroring the backend's
+ * lowercased-name convention via the shopping list's normalizeName) to tint
+ * themselves green (in pantry) or red (missing).
+ * @param {Array<{name:string, available?:boolean}>} ingredients
+ * @returns {Set<string>} normalized names; empty set for falsy input
+ */
+export function availablePantryNames(ingredients) {
+  const names = new Set()
+  for (const ing of Array.isArray(ingredients) ? ingredients : []) {
+    if (!ing || !ing.available) continue
+    const key = normalizeName(ing.name)
+    if (key) names.add(key)
+  }
+  return names
+}
+
+/**
+ * Chip modifier class for a recipe-detail ingredient chip based on pantry
+ * availability. A null `pantryNames` (pantry list not loaded — fetch failed)
+ * keeps the chip neutral rather than falsely flagging everything missing.
+ * @param {string} name
+ * @param {Set<string>|null} pantryNames
+ * @returns {''|'mp-ing-available'|'mp-ing-missing'}
+ */
+export function pantryChipClass(name, pantryNames) {
+  if (!pantryNames) return ''
+  return pantryNames.has(normalizeName(name)) ? 'mp-ing-available' : 'mp-ing-missing'
+}
+
+/**
  * Order a copy of the ingredients by name, case-aware `localeCompare`. The
  * backend `GET /ingredients?sort=name` already returns this order, but the
  * page re-sorts after a local mutation (add / rename) so the list re-anchors

@@ -9,6 +9,7 @@ import { mountLayout } from '../bootstrap.js'
 import { openModal } from '../components/modal.js'
 import { toast } from '../components/toast.js'
 import { formatQuantity } from './shopping-list-logic.js'
+import { availablePantryNames, pantryChipClass } from './ingredients-logic.js'
 import {
   CATEGORIES, PLANNABLE_SLOTS, SLOT_LABELS, MEAL_TYPE_LABELS,
   filterRecipes, suggestSlot, isHubOnlyMealType, defaultMealTypeForCategory,
@@ -406,13 +407,19 @@ function clearFilters() {
 
 /* ------------------------------- Modals ------------------------------ */
 
-function showRecipeDetails(id, returnFocus) {
+async function showRecipeDetails(id, returnFocus) {
   const recipe = state.recipes.find((r) => r.id === id)
   if (!recipe) return
   const n = perRecipe(recipe)
+  const pantrySet = await pantryNames()
 
   const ingr = (Array.isArray(recipe.ingredients) ? recipe.ingredients : [])
-    .map((i) => `<span class="inline-flex items-center px-2.5 py-1 bg-subtle border border-line rounded-lg text-xs font-medium text-primary">${formatQuantity(i.quantity)} ${i.serving_unit} ${esc(i.name)}</span>`)
+    .map((i) => {
+      const tone = pantryChipClass(i.name, pantrySet)
+      const toneCls = tone || 'bg-subtle border border-line text-primary'
+      const hint = tone === 'mp-ing-available' ? 'In pantry' : tone === 'mp-ing-missing' ? 'Not in pantry' : ''
+      return `<span${hint ? ` title="${hint}"` : ''} class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium ${toneCls}">${formatQuantity(i.quantity)} ${i.serving_unit} ${esc(i.name)}</span>`
+    })
     .join(' ') || '<span class="text-muted">—</span>'
   const instr = esc((recipe.instructions || '').trim()) || '<span class="text-muted">No instructions provided.</span>'
 
@@ -567,6 +574,22 @@ async function ensureModalData() {
 
 function defaultQtyFor(unit) {
   return (unit === 'g' || unit === 'ml') ? 100 : 1
+}
+
+/* Pantry availability for the recipe-detail chips. Loaded once on demand;
+ * a failed fetch caches null so the chips stay neutral instead of falsely
+ * flagging everything missing. */
+let pantryNamesCache
+async function pantryNames() {
+  if (pantryNamesCache === undefined) {
+    try {
+      pantryNamesCache = availablePantryNames(await fetchIngredients())
+    } catch (err) {
+      if (err && err.message === 'auth') throw err
+      pantryNamesCache = null
+    }
+  }
+  return pantryNamesCache
 }
 
 async function openRecipeModal(id, returnFocus) {

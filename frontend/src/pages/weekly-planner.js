@@ -13,6 +13,7 @@ import {
   MEAL_ORDER,
   MEAL_LABELS,
 } from './shopping-list-logic.js'
+import { availablePantryNames, pantryChipClass } from './ingredients-logic.js'
 
 /* ----------------------------- Constants ----------------------------- */
 
@@ -127,6 +128,28 @@ async function fetchRecipes() {
 
 async function fetchPlan() {
   return fetchJson(`${API_BASE}/weekly-plan`)
+}
+
+async function fetchPantryIngredients() {
+  return fetchJson(`${API_BASE}/ingredients?sort=name`)
+}
+
+/* Pantry availability for the recipe-detail chips. Loaded once, in the
+ * background alongside the plan; a failed fetch caches null so the chips
+ * stay neutral instead of falsely flagging everything missing. */
+let pantryNamesCache
+let pantryNamesPromise = null
+
+function pantryNames() {
+  if (!pantryNamesPromise) {
+    pantryNamesPromise = fetchPantryIngredients()
+      .then((list) => { pantryNamesCache = availablePantryNames(list) })
+      .catch((err) => {
+        if (err && err.message === 'auth') throw err
+        pantryNamesCache = null
+      })
+  }
+  return pantryNamesPromise.then(() => pantryNamesCache)
 }
 
 async function putSlot(day, meal, recipeIds) {
@@ -740,13 +763,19 @@ function openCopyDayModal(sourceDay, returnFocus) {
   ctrl.panel.querySelectorAll('[data-close]').forEach((b) => b.addEventListener('click', () => ctrl.close()))
 }
 
-function showRecipeDetails(id, returnFocus) {
+async function showRecipeDetails(id, returnFocus) {
   const recipe = state.recipes.find((r) => r.id === id)
   if (!recipe) return
   const n = perRecipe(recipe)
+  const pantrySet = await pantryNames()
 
   const ingr = (Array.isArray(recipe.ingredients) ? recipe.ingredients : [])
-    .map((i) => `<span class="inline-flex items-center px-2.5 py-1 bg-subtle border border-line rounded-lg text-xs font-medium text-primary">${i.quantity} ${i.serving_unit} ${esc(i.name)}</span>`)
+    .map((i) => {
+      const tone = pantryChipClass(i.name, pantrySet)
+      const toneCls = tone || 'bg-subtle border border-line text-primary'
+      const hint = tone === 'mp-ing-available' ? 'In pantry' : tone === 'mp-ing-missing' ? 'Not in pantry' : ''
+      return `<span${hint ? ` title="${hint}"` : ''} class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium ${toneCls}">${i.quantity} ${i.serving_unit} ${esc(i.name)}</span>`
+    })
     .join(' ') || '<span class="text-muted">—</span>'
 
   const instr = esc((recipe.instructions || '').trim()) || '<span class="text-muted">No instructions provided.</span>'
@@ -882,6 +911,7 @@ async function load() {
     state.plan = plan || {}
     state.status = 'ready'
     render()
+    pantryNames().catch(() => {}) // fire-and-forget; chips fall back to neutral
   } catch (err) {
     if (err && err.message === 'auth') return
     state.status = 'error'
