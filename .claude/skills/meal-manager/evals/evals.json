@@ -1,0 +1,26 @@
+{
+  "skill_name": "meal-manager",
+  "evals": [
+    {
+      "id": 1,
+      "name": "plan-dinner-from-pantry",
+      "prompt": "I want to plan dinner for Tuesday. Look at what recipes I can cook with the ingredients I currently have available, suggest a vegetarian dinner, and put it on my Tuesday dinner plan. Show me the macros for Tuesday after.",
+      "expected_output": "Uses recipes --only-available + meal_type==dinner + is_vegetarian filter, picks one, sets Tuesday dinner via plan-set (preserving/overwriting the slot correctly), then reports nutrition for Tuesday. No leftover test data.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "restock-pantry",
+      "prompt": "I just got back from the store with oats, greek yogurt, and blueberries. Mark them as available in my pantry. If any of those don't exist as ingredients yet, create them first.",
+      "expected_output": "Looks up each ingredient by name (case-insensitive). For any missing, creates via ingredient-add with a sensible unit (g) and shelf-life, then marks each available via pantry add / ingredient-update --available=true. Reports which were created vs. already existed.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "name": "add-recipe-and-shop",
+      "prompt": "Add a new recipe called 'Quick Oats Bowl' — 50g oats, 150g greek yogurt, 50g blueberries, serves 1, breakfast, vegetarian. Instructions: combine and top with blueberries. Then show me my shopping list.",
+      "expected_output": "Creates the recipe via recipe-create with a correct JSON body (name, serves, ingredients array of {name,quantity,serving_unit}, instructions, meal_type, is_vegetarian) and NO nutrition fields. Then prints the shopping-list. If any ingredient name doesn't exist, creates it first so nutrition computes.",
+      "files": []
+    }
+  ]
+}
