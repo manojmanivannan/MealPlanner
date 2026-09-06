@@ -165,14 +165,13 @@ export function filterIngredients(ingredients, term) {
 /**
  * The serving_size a unit change pre-fills in the edit modal: a nutrition-basis
  * suggestion, not the create-time default (backend `add_ingredient` defaults
- * everything non-bulk to 1, cup included). Bulk units suggest "per 100", a cup
- * suggests 240 ml, discrete units "per unit".
+ * everything non-bulk to 1, cup included). Bulk units suggest "per 100",
+ * everything else "per unit".
  * @param {string} unit
  * @returns {number}
  */
 export function defaultServingSize(unit) {
   if (unit === 'g' || unit === 'ml') return 100
-  if (unit === 'cup') return 240
   return 1
 }
 

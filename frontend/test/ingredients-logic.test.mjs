@@ -238,10 +238,10 @@ test('validateIngredient: multiple errors are reported together', () => {
 })
 /* --------------------------- serving-size helpers --------------------------- */
 
-test('defaultServingSize matches create-time defaults extended to volume units', () => {
+test('defaultServingSize matches create-time defaults: bulk per 100, everything else per unit', () => {
   assert.equal(defaultServingSize('g'), 100)
   assert.equal(defaultServingSize('ml'), 100)
-  assert.equal(defaultServingSize('cup'), 240)
+  assert.equal(defaultServingSize('cup'), 1)
   assert.equal(defaultServingSize('tbsp'), 1)
   assert.equal(defaultServingSize('tsp'), 1)
   assert.equal(defaultServingSize('nos'), 1)
@@ -292,9 +292,9 @@ test('resolveServingSizeOnUnitChange keeps a user-typed size with a NULL origina
 })
 
 test('resolveServingSizeOnUnitChange restores the original size when an untouched field switches back', () => {
-  // Modal last wrote 240 (a cup pre-fill); back on g, the original wins.
+  // Modal last wrote 1 (a cup pre-fill); back on g, the original wins.
   const r = resolveServingSizeOnUnitChange({
-    current: '240', lastAutoFill: '240', originalSize: '100', newUnit: 'g', initialUnit: 'g',
+    current: '1', lastAutoFill: '1', originalSize: '100', newUnit: 'g', initialUnit: 'g',
   })
   assert.equal(r.value, '100')
   assert.equal(r.lastAutoFill, '100')
@@ -319,9 +319,9 @@ test('resolveServingSizeOnUnitChange pre-fills the unit default when the field i
   const r = resolveServingSizeOnUnitChange({
     current: '', lastAutoFill: null, originalSize: '100', newUnit: 'cup', initialUnit: 'g',
   })
-  assert.equal(r.value, '240')
+  assert.equal(r.value, '1')
   // The pre-fill is recorded as modal-written so a later unit change can tell.
-  assert.equal(r.lastAutoFill, '240')
+  assert.equal(r.lastAutoFill, '1')
 })
 
 test('resolveServingSizeOnUnitChange replaces a stale auto-fill with the new unit default', () => {
@@ -352,8 +352,8 @@ test('servingSizeWillRescale tracks any size change, unit change or not', () => 
 })
 
 test('formatRescaleFactor recomputes the promised factor from the live size value', () => {
-  // The unit-change repro from #42: g→cup pre-fills 240 (×2.4), then the
-  // user types 480 — the banner text must follow the field, not the
+  // The unit-change repro from #42: a g→cup switch pre-fills the cup default,
+  // then the user types 480 — the banner text must follow the field, not the
   // value captured at unit-change time.
   assert.equal(formatRescaleFactor('100', '240'), '100 → 240 (×2.4)')
   assert.equal(formatRescaleFactor('100', '480'), '100 → 480 (×4.8)')
