@@ -19,6 +19,10 @@ import {
   shelfLifeBadge,
   filterIngredients,
   validateIngredient,
+  resolveServingSizeOnUnitChange,
+  countRecipesUsingIngredient,
+  servingSizeWillRescale,
+  formatRescaleFactor,
 } from './ingredients-logic.js'
 
 /* ----------------------------- Constants ----------------------------- */
@@ -90,6 +94,10 @@ async function fetchJson(url, opts = {}) {
 
 async function fetchIngredients() {
   return fetchJson(`${API_BASE}/ingredients?sort=name`)
+}
+
+async function fetchRecipes() {
+  return fetchJson(`${API_BASE}/recipes`)
 }
 
 async function fetchServingUnits() {
@@ -437,11 +445,11 @@ function readCoreFields(panel) {
   }
 }
 
-function applyValidation(panel, extraErrors = {}) {
+function applyValidation(panel, extraErrors = {}, validationOptions = {}) {
   const values = { ...readCoreFields(panel) }
   const sizeInput = panel.querySelector('[data-field="serving-size"]')
   if (sizeInput) values.serving_size = sizeInput.value
-  const { errors } = validateIngredient(values)
+  const { errors } = validateIngredient(values, validationOptions)
   const all = { ...errors, ...extraErrors }
   clearFieldErrors(panel)
   for (const key of Object.keys(all)) setFieldError(panel, key, all[key])
@@ -557,7 +565,8 @@ async function openEditModal(id, returnFocus) {
           <p class="mp-error-text" data-err="serving-unit" style="display:none"></p>
         </div>
         <div class="mp-field sm:col-span-2">
-          <label class="mp-label" for="edit-serving-size">Serving size (grams/ml per serving, optional)</label>
+          <div data-elem="unit-change-banner" hidden class="mb-2 p-3 rounded-lg bg-amber-500/10 text-amber-700 dark:text-amber-400 text-xs leading-relaxed"></div>
+          <label class="mp-label" for="edit-serving-size" id="edit-serving-size-label">Serving size (${esc(initialUnit)} per serving)<span class="mp-req">*</span></label>
           <input id="edit-serving-size" type="number" min="0" step="any" class="mp-input focus-ring" data-field="serving-size" value="${ing.serving_size ?? ''}">
           <p class="mp-error-text" data-err="serving-size" style="display:none"></p>
         </div>
@@ -596,29 +605,146 @@ async function openEditModal(id, returnFocus) {
   })
 
   const unitSelect = ctrl.panel.querySelector('[data-field="serving-unit"]')
+  const sizeInput = ctrl.panel.querySelector('[data-field="serving-size"]')
+  const sizeLabel = ctrl.panel.querySelector('#edit-serving-size-label')
+  const banner = ctrl.panel.querySelector('[data-elem="unit-change-banner"]')
+  const originalSize = ing.serving_size ?? ''
+
+  // The ingredients page does not load recipes; the affected-recipe count in
+  // the unit-change banner lazily fetches them once per modal session.
+  let recipesPromise = null
+  function ensureRecipes() {
+    if (!recipesPromise) recipesPromise = fetchRecipes().catch(() => null)
+    return recipesPromise
+  }
+
+  // Tracks the value the modal last wrote into the size field, so a later
+  // unit change knows whether the user has typed their own value. Any input
+  // event hands ownership to the user, until the modal writes again.
+  let lastAutoFill = String(originalSize)
+
+  // Resolved affected-recipe count, null while the fetch is pending. Cached
+  // because the count depends only on the ingredient, not the unit. When the
+  // fetch fails the count stays unknown; the copy falls back to name-only.
+  let bannerUses = null
+  let bannerCountUnavailable = false
+
+  function renderBanner() {
+    if (banner.hidden) return
+    // The factor text is recomputed from the LIVE field value here, so it
+    // tracks the serving size the user edits while the banner is showing
+    // (#42) — never a value captured when the banner first appeared.
+    const factor = formatRescaleFactor(originalSize, sizeInput.value)
+    const sizePart = factor
+      ? `their quantities will be rescaled by <strong>${esc(factor)}</strong>`
+      : 'their quantities will be rescaled by the new serving size'
+    const countPart = bannerCountUnavailable
+      ? esc(`the recipes using ${ing.name}`)
+      : bannerUses == null
+        ? '…'
+        : esc(`${bannerUses} ${bannerUses === 1 ? 'recipe' : 'recipes'} use${bannerUses === 1 ? 's' : ''} ${ing.name} and`)
+    const countClass = bannerUses == null && !bannerCountUnavailable ? '' : ' font-semibold'
+    // The banner tracks a coming rescale, which a serving-size change alone
+    // can trigger (no unit change involved) — only claim a unit change when
+    // the unit actually differs from the initial one.
+    const unitPart = unitSelect.value === initialUnit
+      ? ''
+      : `Serving unit changed to <strong>${esc(unitSelect.value)}</strong>. `
+    banner.innerHTML = `${unitPart}<span data-elem="banner-count"${countClass}>${countPart}</span> ${sizePart}. Confirm the new serving size.`
+  }
+
+  // Show the banner exactly when SAVING will rescale recipe quantities: any
+  // serving size that differs from the stored one rescales, unit change or
+  // not. Previously the banner was tied to the unit select, so switching the
+  // unit back to the initial one hid the warning while a user-typed size
+  // still rescaled recipes on save. A resolved count of 0 also hides it —
+  // the backend sync matches recipe rows by name, so with no matching rows
+  // nothing is rescaled and there is nothing to warn about.
+  function refreshBanner() {
+    const rescales = servingSizeWillRescale(sizeInput.value, originalSize) && bannerUses !== 0
+    banner.hidden = !rescales
+    if (!rescales) return
+    renderBanner()
+    // The count resolves once per modal session; later renders only recompute
+    // the factor text, so don't re-attach the fetch for every keystroke.
+    if (bannerUses != null || bannerCountUnavailable) return
+    ensureRecipes().then((recipes) => {
+      if (recipes) {
+        bannerUses = countRecipesUsingIngredient(recipes, ing.name)
+      } else {
+        // Count unavailable: keep the message name-only.
+        bannerCountUnavailable = true
+      }
+      refreshBanner()
+    })
+  }
+
+  sizeInput.addEventListener('input', () => {
+    lastAutoFill = null
+    // Keep the promised rescale factor in step with the value being saved.
+    refreshBanner()
+  })
+
+  function updateSizeLabel(unit) {
+    if (sizeLabel) sizeLabel.innerHTML = `Serving size (${esc(unit)} per serving)<span class="mp-req">*</span>`
+  }
+
   unitSelect.addEventListener('change', () => {
     const u = unitSelect.value
     NUTRITION_FIELDS.forEach((f) => {
       const label = ctrl.panel.querySelector(`[data-label-for="${f.key}"]`)
       if (label) label.textContent = nutritionLabel(f, u)
     })
+    updateSizeLabel(u)
+
+    // Unit changed: decide the field's next value and who owns it. A
+    // user-typed size is never replaced; only a modal-written one gets
+    // restored to the original size (back on the initial unit) or pre-filled
+    // with the new unit's default.
+    const next = resolveServingSizeOnUnitChange({
+      current: sizeInput.value,
+      lastAutoFill,
+      originalSize: String(originalSize),
+      newUnit: u,
+      initialUnit,
+    })
+    sizeInput.value = next.value
+    lastAutoFill = next.lastAutoFill
+
+    refreshBanner()
   })
 
   const saveBtn = ctrl.panel.querySelector('[data-save]')
   saveBtn.addEventListener('click', async () => {
-    const { valid } = applyValidation(ctrl.panel)
+    const { valid } = applyValidation(ctrl.panel, {}, { requireServingSize: true })
     if (!valid) return
+    // A number input mid-typing (e.g. "5e") reports value '' with badInput:
+    // sending that would silently CLEAR the stored nutrition value instead
+    // of saving what the user sees. Nutrition fields have no inline
+    // validation, so guard here.
+    const badInput = NUTRITION_FIELDS.some((f) => {
+      const inp = ctrl.panel.querySelector(`[data-nut-field="${f.key}"]`)
+      return inp && inp.validity && inp.validity.badInput
+    })
+    if (badInput) {
+      toast.error('A nutrition field contains an incomplete number. Finish typing it or clear the field completely before saving.', { title: 'Check nutrition values' })
+      return
+    }
     const core = readCoreFields(ctrl.panel)
     const sizeVal = ctrl.panel.querySelector('[data-field="serving-size"]').value
     const params = {
       name: core.name.trim(),
       shelf_life: core.shelf_life,
       serving_unit: core.serving_unit,
-      serving_size: sizeVal === '' ? '' : sizeVal,
+      // Required by validation now, so always sent as a number.
+      serving_size: sizeVal,
     }
+    // Every nutrition field is re-sent on each save; a cleared field is
+    // sent as an empty string, which the backend PUT treats as "unset to
+    // NULL" (#41) — not as a parse error or a no-op.
     NUTRITION_FIELDS.forEach((f) => {
       const inp = ctrl.panel.querySelector(`[data-nut-field="${f.key}"]`)
-      if (inp) params[f.key] = inp.value === '' ? '' : inp.value
+      if (inp) params[f.key] = inp.value
     })
 
     saveBtn.dataset.loading = 'true'

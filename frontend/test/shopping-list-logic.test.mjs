@@ -90,6 +90,19 @@ test('formatQuantity guards null / NaN / undefined to "0"', () => {
   assert.equal(formatQuantity(NaN), '0')
 })
 
+test('formatQuantity keeps tiny nonzero quantities visible', () => {
+  // A 4 mg spice row downsized x0.01 stores 0.00004 (#44): the 2dp round is
+  // 0, but rendering "0" would hide a real quantity from the shopping list.
+  // Zero stays "0" — only a nonzero value falls back to more precision.
+  assert.equal(formatQuantity(0.00004), '0.00004')
+  assert.equal(formatQuantity(0.004), '0.004')
+  // Never exponential notation, however tiny (toPrecision would say "4e-8").
+  assert.equal(formatQuantity(0.00000004), '0.00000004')
+  assert.equal(formatQuantity(0.0000001), '0.0000001')
+  assert.equal(formatQuantity(0.005), '0.01') // 2dp round is nonzero: normal path
+  assert.equal(formatQuantity(0), '0')
+})
+
 /* ------------------------------ buildUsageIndex ------------------------------ */
 
 const PLAN = {

@@ -24,6 +24,13 @@ import {
   shelfLifeBadge,
   filterIngredients,
   validateIngredient,
+  defaultServingSize,
+  resolveServingSizeOnUnitChange,
+  countRecipesUsingIngredient,
+  servingSizeWillRescale,
+  formatRescaleFactor,
+  availablePantryNames,
+  pantryChipClass,
 } from '../src/pages/ingredients-logic.js'
 
 const sample = [
@@ -230,4 +237,181 @@ test('validateIngredient: multiple errors are reported together', () => {
   assert.ok(r.errors['name'])
   assert.ok(r.errors['shelf-life'])
   assert.ok(r.errors['serving-unit'])
+})
+/* --------------------------- serving-size helpers --------------------------- */
+
+test('defaultServingSize matches create-time defaults: bulk per 100, everything else per unit', () => {
+  assert.equal(defaultServingSize('g'), 100)
+  assert.equal(defaultServingSize('ml'), 100)
+  assert.equal(defaultServingSize('cup'), 1)
+  assert.equal(defaultServingSize('tbsp'), 1)
+  assert.equal(defaultServingSize('tsp'), 1)
+  assert.equal(defaultServingSize('nos'), 1)
+})
+
+test('countRecipesUsingIngredient matches case-insensitively and trimmed', () => {
+  const recipes = [
+    { name: 'A', ingredients: [{ name: ' Ginger ', quantity: 1 }] },
+    { name: 'B', ingredients: [{ name: 'ginger', quantity: 2 }, { name: 'garlic', quantity: 1 }] },
+    { name: 'C', ingredients: [{ name: 'Garlic', quantity: 1 }] },
+    { name: 'D', ingredients: [] },
+  ]
+  assert.equal(countRecipesUsingIngredient(recipes, 'ginger'), 2)
+  assert.equal(countRecipesUsingIngredient(recipes, '  GARLIC '), 2)
+  assert.equal(countRecipesUsingIngredient(recipes, 'pepper'), 0)
+  assert.equal(countRecipesUsingIngredient(recipes, ''), 0)
+  assert.equal(countRecipesUsingIngredient(null, 'ginger'), 0)
+})
+
+test('resolveServingSizeOnUnitChange keeps a user-typed size when switching away', () => {
+  // Ingredient with serving_size 100; user typed 150 over the untouched 100,
+  // so the modal's last auto-fill is still the original size.
+  const r = resolveServingSizeOnUnitChange({
+    current: '150', lastAutoFill: '100', originalSize: '100', newUnit: 'nos', initialUnit: 'g',
+  })
+  assert.equal(r.value, '150')
+  // The user's value stays user-owned, not recorded as an auto-fill.
+  assert.equal(r.lastAutoFill, null)
+})
+
+test('resolveServingSizeOnUnitChange keeps a user-typed size when switching back to the initial unit', () => {
+  // User typed 150, so the field is user-owned even back on the original unit.
+  const r = resolveServingSizeOnUnitChange({
+    current: '150', lastAutoFill: null, originalSize: '100', newUnit: 'g', initialUnit: 'g',
+  })
+  assert.equal(r.value, '150')
+  assert.equal(r.lastAutoFill, null)
+})
+
+test('resolveServingSizeOnUnitChange keeps a user-typed size with a NULL original when switching back', () => {
+  // NULL serving_size: user typed 50, switched away and back — the field must
+  // not be restored to '' (which would fail the required-size validation).
+  const r = resolveServingSizeOnUnitChange({
+    current: '50', lastAutoFill: null, originalSize: '', newUnit: 'g', initialUnit: 'g',
+  })
+  assert.equal(r.value, '50')
+  assert.equal(r.lastAutoFill, null)
+})
+
+test('resolveServingSizeOnUnitChange restores the original size when an untouched field switches back', () => {
+  // Modal last wrote 1 (a cup pre-fill); back on g, the original wins.
+  const r = resolveServingSizeOnUnitChange({
+    current: '1', lastAutoFill: '1', originalSize: '100', newUnit: 'g', initialUnit: 'g',
+  })
+  assert.equal(r.value, '100')
+  assert.equal(r.lastAutoFill, '100')
+})
+
+test('resolveServingSizeOnUnitChange keeps the confirmed pre-fill when the original size is NULL', () => {
+  // NULL original size: switching back to the initial unit must not restore ''
+  // (the field would then fail the required-size validation on save).
+  const r = resolveServingSizeOnUnitChange({
+    current: '240', lastAutoFill: '240', originalSize: '', newUnit: 'g', initialUnit: 'g',
+  })
+  assert.equal(r.value, '240')
+  assert.equal(r.lastAutoFill, '240')
+  // An empty modal-owned field stays empty (validation catches it on save).
+  const empty = resolveServingSizeOnUnitChange({
+    current: '', lastAutoFill: null, originalSize: '', newUnit: 'g', initialUnit: 'g',
+  })
+  assert.equal(empty.value, '')
+})
+
+test('resolveServingSizeOnUnitChange pre-fills the unit default when the field is empty', () => {
+  const r = resolveServingSizeOnUnitChange({
+    current: '', lastAutoFill: null, originalSize: '100', newUnit: 'cup', initialUnit: 'g',
+  })
+  assert.equal(r.value, '1')
+  // The pre-fill is recorded as modal-written so a later unit change can tell.
+  assert.equal(r.lastAutoFill, '1')
+})
+
+test('resolveServingSizeOnUnitChange replaces a stale auto-fill with the new unit default', () => {
+  const r = resolveServingSizeOnUnitChange({
+    current: '1', lastAutoFill: '1', originalSize: '100', newUnit: 'ml', initialUnit: 'g',
+  })
+  assert.equal(r.value, '100')
+  assert.equal(r.lastAutoFill, '100')
+})
+
+test('servingSizeWillRescale tracks any size change, unit change or not', () => {
+  // A size differing from the stored one rescales even back on the initial
+  // unit — this is what the banner visibility must follow.
+  assert.equal(servingSizeWillRescale('300', '100'), true)
+  assert.equal(servingSizeWillRescale('100', '100'), false)
+  assert.equal(servingSizeWillRescale('240', '100'), true)
+  // Empty current value: validation blocks the save, nothing rescales.
+  assert.equal(servingSizeWillRescale('', '100'), false)
+  // A size the save path rejects (must be > 0) can never be saved, so
+  // nothing rescales — the banner must not promise one.
+  assert.equal(servingSizeWillRescale('0', '100'), false)
+  assert.equal(servingSizeWillRescale('-5', '100'), false)
+  // NULL original size: the backend has no usable factor and only warns.
+  assert.equal(servingSizeWillRescale('240', ''), false)
+  assert.equal(servingSizeWillRescale('240', null), false)
+  // Non-numeric current value never rescales.
+  assert.equal(servingSizeWillRescale('abc', '100'), false)
+})
+
+test('formatRescaleFactor recomputes the promised factor from the live size value', () => {
+  // The unit-change repro from #42: a g→cup switch pre-fills the cup default,
+  // then the user types 480 — the banner text must follow the field, not the
+  // value captured at unit-change time.
+  assert.equal(formatRescaleFactor('100', '240'), '100 → 240 (×2.4)')
+  assert.equal(formatRescaleFactor('100', '480'), '100 → 480 (×4.8)')
+  assert.equal(formatRescaleFactor('100', '300'), '100 → 300 (×3)')
+  // The values are interpolated verbatim (the page esc()s the whole string).
+  assert.equal(formatRescaleFactor(100, 480), '100 → 480 (×4.8)')
+})
+
+test('formatRescaleFactor degrades without inventing a factor', () => {
+  // NULL original size: no usable factor at all.
+  assert.equal(formatRescaleFactor('', '240'), '')
+  assert.equal(formatRescaleFactor(null, '240'), '')
+  // A non-numeric suggested value keeps the range text but no ×ratio —
+  // the banner is hidden in that state anyway (servingSizeWillRescale).
+  assert.equal(formatRescaleFactor('100', 'abc'), '100 → abc')
+  assert.equal(formatRescaleFactor('100', ''), '100 → ')
+  // Number('') is 0, not a factor — a save-invalid size gets no invented ratio.
+  assert.equal(formatRescaleFactor('100', '0'), '100 → 0')
+  assert.equal(formatRescaleFactor('100', '-2'), '100 → -2')
+})
+
+test('validateIngredient: requireServingSize makes serving_size mandatory and > 0', () => {
+  const base = { name: 'X', shelf_life: '5', serving_unit: 'g' }
+  // Add flow unchanged: missing size is still fine.
+  assert.equal(validateIngredient(base).valid, true)
+  // Edit flow: missing/empty is an error; 0 and negatives too.
+  assert.ok(validateIngredient(base, { requireServingSize: true }).errors['serving-size'])
+  assert.ok(validateIngredient({ ...base, serving_size: '' }, { requireServingSize: true }).errors['serving-size'])
+  assert.ok(validateIngredient({ ...base, serving_size: '0' }, { requireServingSize: true }).errors['serving-size'])
+  assert.ok(validateIngredient({ ...base, serving_size: '-2' }, { requireServingSize: true }).errors['serving-size'])
+  assert.ok(validateIngredient({ ...base, serving_size: '1e999' }, { requireServingSize: true }).errors['serving-size'])
+  assert.equal(validateIngredient({ ...base, serving_size: '250' }, { requireServingSize: true }).valid, true)
+})
+
+test('availablePantryNames indexes only available pantry items, normalized', () => {
+  const pantry = [
+    { name: ' Whole Wheat Flour ', available: true },
+    { name: 'OATS', available: false },
+    { name: 'Milk', available: true },
+    { name: '', available: true },
+    null,
+  ]
+  const names = availablePantryNames(pantry)
+  assert.equal(names.size, 2)
+  assert.equal(names.has('whole wheat flour'), true)
+  assert.equal(names.has('milk'), true)
+  assert.equal(names.has('oats'), false)
+  assert.deepEqual([...availablePantryNames(null)], [])
+})
+
+test('pantryChipClass tints green/red, neutral when pantry is unknown', () => {
+  const names = availablePantryNames([{ name: 'Milk', available: true }])
+  assert.equal(pantryChipClass('milk', names), 'mp-ing-available')
+  assert.equal(pantryChipClass('  Milk ', names), 'mp-ing-available')
+  assert.equal(pantryChipClass('Oats', names), 'mp-ing-missing')
+  // Pantry not loaded (fetch failed): no false "missing" flags.
+  assert.equal(pantryChipClass('Oats', null), '')
+  assert.equal(pantryChipClass('Milk', null), '')
 })

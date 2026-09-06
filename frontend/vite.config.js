@@ -2,9 +2,9 @@ import { defineConfig } from 'vite'
 import { fileURLToPath } from 'node:url'
 import tailwindcss from '@tailwindcss/vite'
 
-// T2 build scaffold — Vite MPA + compiled Tailwind v4 (no runtime CDN).
-// One HTML entry per page; add converted pages to `input` as they migrate.
-// See docs/adr/0002-build-scaffold-and-shared-layout.md.
+// Build scaffold — Vite MPA + compiled Tailwind v4 (no runtime CDN).
+// One HTML entry per page; add new pages to `input`.
+// Rationale: docs/frontend.md ("Build scaffold").
 export default defineConfig({
   // Multi-page app: serve each .html directly, no SPA history fallback.
   appType: 'mpa',

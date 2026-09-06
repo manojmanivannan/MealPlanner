@@ -1,7 +1,8 @@
-from pydantic import BaseModel, ConfigDict, EmailStr
+from pydantic import BaseModel, ConfigDict, EmailStr, field_validator
 from models import RecipeMealType, ServingUnits, DaysOfWeek
 from typing import List, Optional
 import datetime
+import math
 
 
 # --- Pydantic Schemas ---
@@ -63,18 +64,39 @@ class IngredientSchema(BaseModel):
     shelf_life: Optional[int]
     last_available: Optional[datetime.datetime]
     serving_unit: ServingUnits
-    serving_size: float
-    energy: float
-    protein: float
-    carbs: float
-    fat: float
-    fiber: float
-    iron_mg: float
-    magnesium_mg: float
-    calcium_mg: float
-    potassium_mg: float
-    sodium_mg: float
-    vitamin_c_mg: float
+    # Nullable like the nutrition fields below: a legacy row (or one written
+    # before validation existed) can hold NULL, and the schema must echo that
+    # back as null instead of failing every list/update that touches it (#43).
+    # A size change on such a row is rejected by the router; other edits and
+    # a repair PUT remain possible.
+    serving_size: Optional[float] = None
+
+    @field_validator("serving_size")
+    @classmethod
+    def nonfinite_serving_size_as_null(cls, v: Optional[float]) -> Optional[float]:
+        # A legacy row can also hold NaN or ±Inf in the Numeric column —
+        # pydantic used to accept NaN floats and Postgres stores it (#48).
+        # None-only handling was not enough: echoing a NaN float back 500s
+        # the response (JSON has no NaN token), so list/update of such a row
+        # crashed. The setup_db migration backfills these rows; until it
+        # runs, echo the unusable value as null like the NULL case above.
+        if v is not None and not math.isfinite(v):
+            return None
+        return v
+    # Nutrition is nullable: a cleared field (empty string on PUT) is stored
+    # as NULL, and the schema must echo that back as null instead of failing
+    # validation (#41). The edit modal renders null as an empty input.
+    energy: Optional[float] = None
+    protein: Optional[float] = None
+    carbs: Optional[float] = None
+    fat: Optional[float] = None
+    fiber: Optional[float] = None
+    iron_mg: Optional[float] = None
+    magnesium_mg: Optional[float] = None
+    calcium_mg: Optional[float] = None
+    potassium_mg: Optional[float] = None
+    sodium_mg: Optional[float] = None
+    vitamin_c_mg: Optional[float] = None
     remaining_shelf_life: Optional[int] = None
 
 class IngredientUpdateSchema(BaseModel):

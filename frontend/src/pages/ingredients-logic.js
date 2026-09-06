@@ -12,6 +12,7 @@
  * here is pure (no document, no fetch, no localStorage, no mutation of its
  * arguments).
  */
+import { normalizeName } from './shopping-list-logic.js'
 
 /**
  * The six serving units the backend `ServingUnits` enum accepts
@@ -136,6 +137,38 @@ export function shelfLifeBadge(ing) {
 }
 
 /**
+ * Build a Set of normalized names for every pantry item the user has marked
+ * available. Recipe-detail chips compare their ingredient's name against this
+ * set (case- and whitespace-insensitively, mirroring the backend's
+ * lowercased-name convention via the shopping list's normalizeName) to tint
+ * themselves green (in pantry) or red (missing).
+ * @param {Array<{name:string, available?:boolean}>} ingredients
+ * @returns {Set<string>} normalized names; empty set for falsy input
+ */
+export function availablePantryNames(ingredients) {
+  const names = new Set()
+  for (const ing of Array.isArray(ingredients) ? ingredients : []) {
+    if (!ing || !ing.available) continue
+    const key = normalizeName(ing.name)
+    if (key) names.add(key)
+  }
+  return names
+}
+
+/**
+ * Chip modifier class for a recipe-detail ingredient chip based on pantry
+ * availability. A null `pantryNames` (pantry list not loaded — fetch failed)
+ * keeps the chip neutral rather than falsely flagging everything missing.
+ * @param {string} name
+ * @param {Set<string>|null} pantryNames
+ * @returns {''|'mp-ing-available'|'mp-ing-missing'}
+ */
+export function pantryChipClass(name, pantryNames) {
+  if (!pantryNames) return ''
+  return pantryNames.has(normalizeName(name)) ? 'mp-ing-available' : 'mp-ing-missing'
+}
+
+/**
  * Order a copy of the ingredients by name, case-aware `localeCompare`. The
  * backend `GET /ingredients?sort=name` already returns this order, but the
  * page re-sorts after a local mutation (add / rename) so the list re-anchors
@@ -162,6 +195,138 @@ export function filterIngredients(ingredients, term) {
 }
 
 /**
+ * The serving_size a unit change pre-fills in the edit modal: a nutrition-basis
+ * suggestion, not the create-time default (backend `add_ingredient` defaults
+ * everything non-bulk to 1, cup included). Bulk units suggest "per 100",
+ * everything else "per unit".
+ * @param {string} unit
+ * @returns {number}
+ */
+export function defaultServingSize(unit) {
+  if (unit === 'g' || unit === 'ml') return 100
+  return 1
+}
+
+/**
+ * Decide what the edit modal's serving-size field should hold after a unit
+ * switch, and what the modal last wrote into it.
+ *
+ * `lastAutoFill` is the value the modal last wrote into the field, or `null`
+ * once the user has typed their own value (the modal clears it on any input
+ * event). A value the user typed is never replaced — only a field the modal
+ * owns gets restored to `originalSize` (switching back) or pre-filled with
+ * the new unit's default (switching away).
+ *
+ * @param {{current:string, lastAutoFill:string|null, originalSize:string|number, newUnit:string, initialUnit:string}} args
+ * @returns {{value:string, lastAutoFill:string|null}} the value to put in the
+ *   field and the updated auto-fill marker for the next unit change
+ */
+export function resolveServingSizeOnUnitChange({
+  current,
+  lastAutoFill,
+  originalSize,
+  newUnit,
+  initialUnit,
+}) {
+  const userTyped = current !== '' && current !== String(lastAutoFill ?? '')
+  if (!userTyped) {
+    if (newUnit === initialUnit) {
+      const restored = String(originalSize)
+      if (restored === '') {
+        // NULL original size: there is nothing to restore — keep the value the
+        // modal already confirmed (restoring '' would fail the required-size
+        // validation on save for no visible reason).
+        return { value: current, lastAutoFill }
+      }
+      return { value: restored, lastAutoFill: restored }
+    }
+    const suggested = String(defaultServingSize(newUnit))
+    return { value: suggested, lastAutoFill: suggested }
+  }
+  return { value: current, lastAutoFill: null }
+}
+
+/**
+ * The stored serving size as a usable rescale factor (a finite number > 0),
+ * or null when there is none ('' / NULL / non-numeric / ≤ 0). The single
+ * definition of "usable original size" shared by the banner's visibility
+ * (servingSizeWillRescale) and its factor text (formatRescaleFactor), so
+ * the two cannot disagree about which states are rescale-able.
+ * @param {string|number|null} originalSize - the ingredient's stored serving_size
+ * @returns {number|null}
+ */
+function usableOriginalSize(originalSize) {
+  if (originalSize === '' || originalSize == null) return null
+  const orig = Number(originalSize)
+  return Number.isFinite(orig) && orig > 0 ? orig : null
+}
+
+/**
+ * Whether SAVING the current modal state will rescale recipe quantities:
+ * the backend rescales matching recipe rows whenever the saved serving_size
+ * differs from the stored one — a unit change is NOT required. A NULL or
+ * non-finite original size (no usable factor) and an empty/invalid current
+ * value never rescale (the backend rejects a size change on a legacy
+ * NULL/0/NaN/±Inf size with a 400 when recipes reference the ingredient,
+ * #43, #48), and neither does
+ * a current value the save path rejects (serving size must be > 0) — the
+ * banner must not promise a rescale the save cannot apply.
+ * @param {string|number} current - the value currently in the size field
+ * @param {string|number} originalSize - the ingredient's stored serving_size ('' when NULL)
+ * @returns {boolean}
+ */
+export function servingSizeWillRescale(current, originalSize) {
+  const orig = usableOriginalSize(originalSize)
+  if (orig == null) return false
+  if (current === '' || current == null) return false
+  const cur = Number(current)
+  return Number.isFinite(cur) && cur > 0 && cur !== orig
+}
+
+/**
+ * The rescale-factor text the edit modal's warning banner promises:
+ * `<original> → <suggested> (×<ratio>)`. Recomputed from the LIVE serving
+ * size on every render so the promised factor always matches what a save
+ * will apply (#42) — the user edits the field while the banner is showing.
+ * The output is plain text; the page esc()s the whole string.
+ * @param {string|number} originalSize - the ingredient's stored serving_size ('' when NULL)
+ * @param {string|number} suggested - the value currently in the size field
+ * @returns {string} the factor text, '' with no usable original size, or
+ *   the range without a ×ratio when the suggested value isn't save-valid.
+ */
+export function formatRescaleFactor(originalSize, suggested) {
+  const orig = usableOriginalSize(originalSize)
+  if (orig == null) return ''
+  const cur = Number(suggested)
+  // An empty/invalid or non-positive suggested value yields no ratio
+  // (Number('') is 0, not a factor). The banner is hidden in these states
+  // anyway — servingSizeWillRescale is false — so keep the range text only.
+  if (suggested === '' || suggested == null || !Number.isFinite(cur) || cur <= 0) {
+    return `${originalSize} → ${suggested}`
+  }
+  return `${originalSize} → ${suggested} (×${cur / orig})`
+}
+
+/**
+ * How many recipes use an ingredient, matched the way the backend sync and
+ * the shopping list do: case-insensitive and trimmed against each recipe
+ * row's name (via the shopping list's `normalizeName`). The recipes come
+ * from `GET /recipes` (rows are `{name, quantity, serving_unit}`). Does not
+ * mutate the input.
+ * @param {Array<{ingredients?:Array<{name?:string}>}>} recipes
+ * @param {string} name
+ * @returns {number}
+ */
+export function countRecipesUsingIngredient(recipes, name) {
+  const target = normalizeName(name)
+  if (!target) return 0
+  return (recipes || []).filter((recipe) =>
+    Array.isArray(recipe.ingredients) &&
+    recipe.ingredients.some((row) => normalizeName(row.name) === target)
+  ).length
+}
+
+/**
  * Inline-validation rules for the add / edit form. Returns a `errors` map
  * keyed by the form field id suffix used in ingredients.js
  * (`name` | `shelf-life` | `serving-unit` | `serving-size`).
@@ -170,12 +335,15 @@ export function filterIngredients(ingredients, term) {
  *   • name — required (non-empty after trim)
  *   • shelf_life — required, a positive integer (days)
  *   • serving_unit — required and one of DEFAULT_UNITS
- *   • serving_size — when present, a number > 0
+ *   • serving_size — when present, a number > 0; required > 0 when
+ *     `options.requireServingSize` is set (the edit flow, where a size
+ *     change rescales recipe quantities)
  *
  * @param {{name?:string, shelf_life?:string|number, serving_unit?:string, serving_size?:string|number}} values
+ * @param {{requireServingSize?:boolean}} [options]
  * @returns {{valid:boolean, errors:Record<string,string>}}
  */
-export function validateIngredient(values) {
+export function validateIngredient(values, options = {}) {
   const errors = {}
 
   const name = (values.name || '').trim()
@@ -196,12 +364,17 @@ export function validateIngredient(values) {
     errors['serving-unit'] = 'Serving unit must be one of: ' + DEFAULT_UNITS.join(', ') + '.'
   }
 
-  // serving_size is optional in the form but the backend stores a number; if
-  // the user typed one it must be a positive number.
+  // serving_size is optional in the add form (the create endpoint defaults
+  // it); in the edit flow it is required — it is the anchor a recipe
+  // rescale divides by — and the user typed value must be a positive number.
   const sizeRaw = values.serving_size == null ? '' : String(values.serving_size).trim()
-  if (sizeRaw !== '') {
+  if (options.requireServingSize && sizeRaw === '') {
+    errors['serving-size'] = 'Serving size is required.'
+  } else if (sizeRaw !== '') {
     const size = Number(sizeRaw)
-    if (isNaN(size) || size <= 0) {
+    // Number.isFinite also rejects Infinity ('1e999' typed into a number
+    // input), which would poison the backend rescale like NaN would.
+    if (!Number.isFinite(size) || size <= 0) {
       errors['serving-size'] = 'Serving size must be a positive number.'
     }
   }

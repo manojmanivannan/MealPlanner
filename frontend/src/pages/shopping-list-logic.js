@@ -75,12 +75,25 @@ export function titleCase(name) {
  * Format a quantity for display: round to 2 decimals and drop a trailing
  * ".0". Guards null/undefined/NaN to "0" (a missing quantity should never
  * render as "undefined" or "NaN" in the list).
+ *
+ * A nonzero value whose 2-decimal round is 0 (a tiny spice quantity — the
+ * backend stores rescaled rows at 8 decimals, #44) falls back to enough
+ * precision to stay visible instead of rendering as "0"; a true zero still
+ * shows as "0".
  * @param {number|*} q
  * @returns {string}
  */
 export function formatQuantity(q) {
   if (q == null || Number.isNaN(q)) return '0'
-  const rounded = Number(Number(q).toFixed(2))
+  const n = Number(q)
+  const rounded = Number(n.toFixed(2))
+  if (rounded === 0 && n !== 0) {
+    // Enough decimals to show 2 significant digits of a sub-0.005 quantity,
+    // trailing zeros trimmed — never exponential notation (toPrecision
+    // would render 4e-8 as "4e-8" in the list).
+    const decimals = Math.min(20, -Math.floor(Math.log10(Math.abs(n))) + 1)
+    return n.toFixed(decimals).replace(/0+$/, '').replace(/\.$/, '')
+  }
   return String(rounded)
 }
 

@@ -152,12 +152,27 @@ class WeeklyPlan(Base):
 # The trigger logic is attached to the table metadata.
 
 # 1. Nutrition Calculation Trigger for Recipes
+# The trigger divides each row's contribution by the ingredient's
+# serving_size; a legacy non-finite value (NaN/±Inf) — pydantic used to
+# accept NaN floats, Postgres Numeric stores them — would poison the recipe's
+# totals with NaN, and 0/negative poison them too. Route the divisor through
+# usable_divisor so every unusable basis contributes NULL, which the
+# surrounding COALESCE turns into 0.0 (#48).
+usable_divisor_func = DDL("""
+    CREATE OR REPLACE FUNCTION usable_divisor(n numeric) RETURNS numeric AS $$
+        SELECT CASE WHEN n IS NULL OR n = 0
+                     OR n IN ('NaN'::numeric, 'Infinity'::numeric, '-Infinity'::numeric)
+                    THEN NULL ELSE n END
+    $$ LANGUAGE sql;
+""")
+
 calculate_nutrition_func = DDL("""
     CREATE OR REPLACE FUNCTION calculate_recipe_nutrients()
     RETURNS TRIGGER AS $$
     DECLARE
         ing_record RECORD;
         nutrient_data RECORD;
+        found_match BOOLEAN;
         total_protein FLOAT := 0.0; 
         total_carbs FLOAT := 0.0;
         total_fat FLOAT := 0.0; 
@@ -170,27 +185,46 @@ calculate_nutrition_func = DDL("""
         total_sodium_mg FLOAT := 0.0;
         total_vitamin_c_mg FLOAT := 0.0;
     BEGIN
-        FOR ing_record IN SELECT * FROM jsonb_to_recordset(NEW.ingredients) AS x(name text, quantity float, unit text)
+        FOR ing_record IN SELECT * FROM jsonb_to_recordset(NEW.ingredients) AS x(name text, quantity float, serving_unit text)
         LOOP
-            -- If recipe is user-specific, prefer that user's ingredient values; else fall back to any matching name
+            -- If recipe is user-specific, prefer that user's ingredient values;
+            -- else fall back to global stock only (user_id IS NULL) — never to
+            -- another user's row. The partial unique index on bare name for
+            -- global rows makes this fallback deterministic.
+            -- Track the match in a flag instead of FOUND: for a global recipe
+            -- the user-scoped SELECT is skipped, so FOUND would stay true from
+            -- the previous loop iteration and every lookup after the first
+            -- would be skipped, accumulating later rows with the earlier
+            -- row's basis. (Cannot test `nutrient_data IS NULL` either: a
+            -- composite is NOT NULL only when *all* its fields are, and a
+            -- global ingredient row has a NULL user_id.)
+            found_match := false;
             IF NEW.user_id IS NOT NULL THEN
                 SELECT * INTO nutrient_data FROM ingredients WHERE name = ing_record.name AND user_id = NEW.user_id LIMIT 1;
+                found_match := FOUND;
             END IF;
-            IF NOT FOUND THEN
-                SELECT * INTO nutrient_data FROM ingredients WHERE name = ing_record.name LIMIT 1;
+            IF NOT found_match THEN
+                SELECT * INTO nutrient_data FROM ingredients WHERE name = ing_record.name AND user_id IS NULL LIMIT 1;
+                found_match := FOUND;
             END IF;
-            IF FOUND THEN
-                total_protein := total_protein + (nutrient_data.protein * ing_record.quantity / nutrient_data.serving_size);
-                total_carbs := total_carbs + (nutrient_data.carbs * ing_record.quantity/ nutrient_data.serving_size);
-                total_fat := total_fat + (nutrient_data.fat * ing_record.quantity/ nutrient_data.serving_size);
-                total_fiber := total_fiber + (nutrient_data.fiber * ing_record.quantity/ nutrient_data.serving_size);
-                total_energy := total_energy + (nutrient_data.energy * ing_record.quantity/ nutrient_data.serving_size);
-                total_iron_mg := total_iron_mg + (nutrient_data.iron_mg * ing_record.quantity/ nutrient_data.serving_size);
-                total_magnesium_mg := total_magnesium_mg + (nutrient_data.magnesium_mg * ing_record.quantity/ nutrient_data.serving_size);
-                total_calcium_mg := total_calcium_mg + (nutrient_data.calcium_mg * ing_record.quantity/ nutrient_data.serving_size);
-                total_potassium_mg := total_potassium_mg + (nutrient_data.potassium_mg * ing_record.quantity/ nutrient_data.serving_size);
-                total_sodium_mg := total_sodium_mg + (nutrient_data.sodium_mg * ing_record.quantity/ nutrient_data.serving_size);
-                total_vitamin_c_mg := total_vitamin_c_mg + (nutrient_data.vitamin_c_mg * ing_record.quantity/ nutrient_data.serving_size);
+            IF found_match THEN
+                -- Each per-row contribution is COALESCEd to 0: an
+                -- ingredient nutrient or serving_size can be NULL (cleared
+                -- via PUT #41), and plain plpgsql addition would propagate
+                -- that NULL into the recipe's totals. usable_divisor maps a
+                -- NULL, zero, or non-finite (NaN/±Inf) serving_size to NULL
+                -- so the division can never error or yield NaN.
+                total_protein := total_protein + COALESCE(nutrient_data.protein * ing_record.quantity / usable_divisor(nutrient_data.serving_size), 0.0);
+                total_carbs := total_carbs + COALESCE(nutrient_data.carbs * ing_record.quantity / usable_divisor(nutrient_data.serving_size), 0.0);
+                total_fat := total_fat + COALESCE(nutrient_data.fat * ing_record.quantity / usable_divisor(nutrient_data.serving_size), 0.0);
+                total_fiber := total_fiber + COALESCE(nutrient_data.fiber * ing_record.quantity / usable_divisor(nutrient_data.serving_size), 0.0);
+                total_energy := total_energy + COALESCE(nutrient_data.energy * ing_record.quantity / usable_divisor(nutrient_data.serving_size), 0.0);
+                total_iron_mg := total_iron_mg + COALESCE(nutrient_data.iron_mg * ing_record.quantity / usable_divisor(nutrient_data.serving_size), 0.0);
+                total_magnesium_mg := total_magnesium_mg + COALESCE(nutrient_data.magnesium_mg * ing_record.quantity / usable_divisor(nutrient_data.serving_size), 0.0);
+                total_calcium_mg := total_calcium_mg + COALESCE(nutrient_data.calcium_mg * ing_record.quantity / usable_divisor(nutrient_data.serving_size), 0.0);
+                total_potassium_mg := total_potassium_mg + COALESCE(nutrient_data.potassium_mg * ing_record.quantity / usable_divisor(nutrient_data.serving_size), 0.0);
+                total_sodium_mg := total_sodium_mg + COALESCE(nutrient_data.sodium_mg * ing_record.quantity / usable_divisor(nutrient_data.serving_size), 0.0);
+                total_vitamin_c_mg := total_vitamin_c_mg + COALESCE(nutrient_data.vitamin_c_mg * ing_record.quantity / usable_divisor(nutrient_data.serving_size), 0.0);
             ELSE
             END IF;
         END LOOP;
@@ -217,6 +251,7 @@ create_nutrition_trigger = DDL("""
 """)
 
 # Associate the function and trigger with the Recipe table
+event.listen(Recipe.__table__, 'before_create', usable_divisor_func)
 event.listen(Recipe.__table__, 'before_create', calculate_nutrition_func)
 event.listen(Recipe.__table__, 'after_create', create_nutrition_trigger)
 

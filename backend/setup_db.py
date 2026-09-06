@@ -10,7 +10,10 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.sql import text
 
 from database import engine, Base, SessionLocal
-from models import Ingredient, Recipe, WeeklyPlan, RecipeMealType, User
+from models import (
+    Ingredient, Recipe, WeeklyPlan, RecipeMealType, User,
+    usable_divisor_func, calculate_nutrition_func, check_recipe_ids_func,
+)
 from sqlalchemy import text as sa_text
 from passlib.context import CryptContext
 
@@ -170,6 +173,30 @@ def load_data_from_csv(
         raise DataLoadError(f"Data conversion error in {file_path}: {e}") from e
 
 
+def backfill_legacy_serving_sizes(conn) -> None:
+    """Backfill serving_size on legacy ingredient rows to the create-time
+    default (100 for g/ml, else 1) — the same rule add_ingredient applies.
+
+    Rows written before serving-size validation existed can hold NULL (the
+    ORM default only applies on inserts) or a non-finite value — NaN or
+    ±Infinity (pydantic used to accept NaN/Inf floats; Postgres Numeric
+    stores all of them). Each poisons the nutrition trigger: quantity / NULL
+    -> NULL totals, quantity / NaN -> NaN totals, and a later size-change PUT
+    rescales with a NaN factor that writes NaN into recipe JSONB, making the
+    ingredient permanently uneditable via PUT. The router treats all four as
+    unusable, so the backfill must repair all four, or a ±Inf row would stay
+    stuck forever (#43, #48). 0 and negative sizes are left alone: they are
+    finite values the #43 rejection guides the user to repair deliberately.
+    Re-running is a no-op once clean.
+    """
+    conn.execute(sa_text("""
+        UPDATE ingredients
+        SET serving_size = CASE WHEN serving_unit IN ('g','ml') THEN 100 ELSE 1 END
+        WHERE serving_size IS NULL
+           OR serving_size IN ('NaN'::numeric, 'Infinity'::numeric, '-Infinity'::numeric)
+    """))
+
+
 # --- Main Logic ---
 
 def setup_database() -> None:
@@ -180,8 +207,17 @@ def setup_database() -> None:
         print("Schema and triggers created successfully.")
 
         # Ensure new micronutrient columns exist for existing databases
-        
+
         with engine.connect() as conn:
+            # Re-apply trigger function definitions. create_all only fires the
+            # models.py DDL events when it actually creates the tables, so an
+            # existing database keeps whichever function version it was created
+            # with (e.g. the pre-COALESCE nutrition trigger that propagates a
+            # cleared ingredient nutrient into NULL recipe totals). All are
+            # CREATE OR REPLACE, so re-running is idempotent; the CREATE
+            # TRIGGER statements must NOT be re-run (duplicate trigger error).
+            for trigger_func in (usable_divisor_func, calculate_nutrition_func, check_recipe_ids_func):
+                conn.execute(trigger_func)
             # print("Ensuring micronutrient columns exist on 'ingredients' table...")
             # conn.execute(sa_text("""
             #     ALTER TABLE IF EXISTS ingredients 
@@ -338,10 +374,15 @@ def setup_database() -> None:
 
             # Backfill weekly_plan user_id if null
             conn.execute(sa_text("""
-                UPDATE weekly_plan 
+                UPDATE weekly_plan
                 SET user_id = (SELECT id FROM users ORDER BY id LIMIT 1)
                 WHERE user_id IS NULL;
             """))
+            # Backfill legacy NULL/non-finite serving_size (see
+            # backfill_legacy_serving_sizes) so every ingredient has a finite,
+            # positive nutrition basis the trigger and any size-change PUT
+            # can use (#43, #48).
+            backfill_legacy_serving_sizes(conn)
             conn.commit()
 
         with SessionLocal() as session:

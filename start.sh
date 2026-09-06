@@ -18,7 +18,7 @@
 # Flags:
 #   -p, --profile NAME   Target profile: local or prod
 #   -d, --detach         (up) run in background, no file watch
-#   --no-build           (up/build) skip the image build
+#   --no-build           (up/build) skip the image build and frontend dist build
 #   -v, --volumes        (down/restart) also wipe named volumes (DROPS THE DB)
 #
 # Examples:
@@ -115,11 +115,32 @@ parse_args() {
 }
 
 # ---------------------------------------------------------------------------
+# Frontend build (local profile bind-mounts ./frontend/dist into nginx —
+# an empty dist makes nginx fail with a rewrite-cycle 500, so build it if
+# the output is missing)
+# ---------------------------------------------------------------------------
+ensure_frontend_dist() {
+    if [[ -f frontend/dist/index.html ]]; then
+        ok "frontend/dist present"
+        return 0
+    fi
+
+    log "frontend/dist missing — building frontend"
+    command -v npm >/dev/null 2>&1 || die "npm not found; run 'npm ci && npm run build' in frontend/"
+    [[ -d frontend/node_modules ]] || (cd frontend && npm ci)
+    (cd frontend && npm run build) || die "frontend build failed"
+    [[ -f frontend/dist/index.html ]] || die "build finished but frontend/dist/index.html is still missing"
+    ok "frontend/dist built"
+}
+
+# ---------------------------------------------------------------------------
 # Commands
 # ---------------------------------------------------------------------------
 cmd_up() {
     parse_args "$@"
     local profile="${PROFILE:-$DEFAULT_PROFILE}"
+
+    [[ "$profile" == local && $NO_BUILD -eq 0 ]] && ensure_frontend_dist
 
     local flags=(--profile "$profile" up)
     # prod runs detached by default; local stays in foreground for file watch.
