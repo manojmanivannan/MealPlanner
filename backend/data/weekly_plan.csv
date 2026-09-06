@@ -12,7 +12,7 @@ id,day,meal_type,recipe_ids
 31,Saturday,pre_breakfast,{54}
 32,Saturday,breakfast,{}
 33,Saturday,lunch,{}
-35,Saturday,dinner,{}
+35,Saturday,dinner,{68}
 34,Saturday,snack,{}
 1,Sunday,pre_breakfast,{}
 2,Sunday,breakfast,{}
