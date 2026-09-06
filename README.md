@@ -59,15 +59,23 @@ This project uses Docker for easy setup and deployment. You can run it locally o
 
 ## Features
 
-*   **Weekly Meal Planner:** An interactive grid to assign recipes to each meal slot for the week.
+*   **Weekly Meal Planner:** An interactive grid assigning recipes to each of the 5 plannable meal slots (pre-breakfast, breakfast, lunch, snack, dinner) across the 7 days, with per-serving day nutrition totals and a PDF export.
 *   **Recipe Hub:** A central place to store and manage all your recipes.
-    *   Add, edit, and delete recipes.
-    *   Filter recipes by meal type (breakfast, lunch, dinner, etc.) and dietary preference (vegetarian/non-vegetarian).
-*   **Ingredient Management:**
-    *   View a master list of all ingredients from your recipes.
-    *   Track which ingredients you have on hand.
-    *   Sort ingredients alphabetically or by remaining shelf life to monitor freshness.
-*   **Responsive Design:** The application is designed to work on both desktop and mobile devices.
+    *   Add, edit, and delete recipes (nutrition is computed automatically from the ingredient rows).
+    *   Filter recipes by meal type — including the hub-only Sides and Weekend Prep categories — and dietary preference (vegetarian/non-vegetarian).
+*   **Ingredient Management (Pantry):**
+    *   A master ingredient list combining global stock with your own.
+    *   Track which ingredients you have on hand; mark availability.
+    *   Sort alphabetically or by remaining shelf life to monitor freshness.
+*   **Shopping List:** Derived from the weekly plan minus what's already in your pantry, with per-ingredient usage hints (which day/meal uses it) and check-off progress.
+*   **User Accounts:** Email + password auth; new accounts start from the demo collection as a starter pack.
+
+## Documentation
+
+*   [`CONTEXT.md`](./CONTEXT.md) — domain glossary (canonical vocabulary).
+*   [`docs/backend.md`](./docs/backend.md) — backend architecture, data model, triggers, auth, seeding, testing.
+*   [`docs/domain-logic.md`](./docs/domain-logic.md) — business rules (nutrition chain, by-name ingredient linking, shopping list, pantry lifecycle) and known deviations.
+*   [`docs/frontend.md`](./docs/frontend.md) — Vite MPA scaffold, design system, page inventory, logic/render convention.
 
 ## Project Structure
 
@@ -75,67 +83,69 @@ This project uses Docker for easy setup and deployment. You can run it locally o
 .
 ├── backend
 │   ├── app.py
-│   ├── data
+│   ├── data/
 │   │   ├── ingredients.csv
 │   │   ├── recipes.csv
 │   │   └── weekly_plan.csv
 │   ├── database.py
 │   ├── Dockerfile
 │   ├── models.py
-│   ├── routers
+│   ├── routers/
 │   │   ├── auth_router.py
 │   │   ├── ingredient_router.py
 │   │   ├── plan_router.py
 │   │   ├── recipe_router.py
 │   │   └── utilities_router.py
 │   ├── schemas.py
-│   └── setup_db.py
+│   ├── setup_db.py
+│   └── utils.py
 ├── backup_db.sh
-├── config
+├── config/
 │   └── meal.json
+├── CONTEXT.md
 ├── docker-compose.yml
+├── docs/
+│   ├── agents/
+│   ├── backend.md
+│   ├── domain-logic.md
+│   └── frontend.md
 ├── frontend
 │   ├── Dockerfile
-│   └── html
-│       ├── index.html
-│       ├── ingredients.html
-│       ├── ingredients.js
-│       ├── meal_logo.ico
-│       ├── recipe-hub.html
-│       ├── recipe-hub.js
-│       ├── styles.css
-│       ├── weekly-plan.js
-│       └── welcome.html
+│   ├── index.html          # Vite MPA entries (one HTML per page)
+│   ├── recipe-hub.html
+│   ├── ingredients.html
+│   ├── shopping-list.html
+│   ├── welcome.html
+│   ├── catalog.html
+│   ├── src/                # page logic, layout, components, design tokens
+│   ├── test/               # node --test pure-logic unit tests
+│   └── vite.config.js
 ├── nginx.conf
 ├── README.md
 ├── requirements-dev.txt
 ├── restore_db.sh
 ├── samples
-│   ├── ingredients.png
-│   ├── planner.png
-│   └── recipe_hub.png
-└── tests
-    ├── conftest.py
-    ├── test_auth.py
-    ├── test_health.py
-    ├── test_ingredients.py
-    ├── test_recipes.py
-    └── test_weekly_plan_and_utilities.py
+└── tests/                  # pytest suite (Testcontainers PostgreSQL)
 ```
 
 ## Technologies Used
 
 *   **Backend:**
-    *   [FastAPI](https://fastapi.tiangolo.com/): A modern, fast (high-performance) web framework for building APIs with Python 3.7+ based on standard Python type hints.
-    *   [PostgreSQL](https://www.postgresql.org/): A powerful, open source object-relational database system.
-    *   [Psycopg2](https://www.psycopg.org/): A PostgreSQL adapter for Python.
+    *   [FastAPI](https://fastapi.tiangolo.com/): API framework with Pydantic v2 schemas.
+    *   [PostgreSQL](https://www.postgresql.org/): Data store (JSONB recipe ingredients, ARRAY recipe ids, nutrition/integrity triggers).
+    *   [SQLAlchemy](https://www.sqlalchemy.org/) + Psycopg2: ORM and driver.
+    *   [pylatex](https://pypi.org/project/pylatex/): PDF export via LaTeX (TeX Live in the backend image).
 *   **Frontend:**
-    *   [Tailwind CSS](https://tailwindcss.com/): A utility-first CSS framework for rapid UI development.
-    *   JavaScript (ES6+): For frontend logic.
+    *   [Vite](https://vite.dev/): Multi-page app build (`dist/` served by nginx).
+    *   [Tailwind CSS v4](https://tailwindcss.com/): Compiled utility CSS over semantic design tokens.
+    *   JavaScript (ES modules), self-hosted Inter — no SPA framework, no runtime CDN.
+*   **Testing:**
+    *   pytest + [Testcontainers](https://testcontainers.com/) (ephemeral PostgreSQL).
+    *   `node --test` for frontend pure-logic modules.
 *   **Deployment:**
-    *   [Docker](https://www.docker.com/): For containerization.
-    *   [Nginx](https://www.nginx.com/): As a reverse proxy.
-    *   [Tailscale](https://tailscale.com/): For secure networking.
+    *   [Docker](https://www.docker.com/) + Docker Compose (local / prod profiles).
+    *   [Nginx](https://www.nginx.com/): static frontend + `/api` reverse proxy.
+    *   [Tailscale](https://tailscale.com/): secure networking in the prod profile (Caddy alternative commented out).
 
 ## Backend tests (dedicated Dockerized PostgreSQL)
 
@@ -153,3 +163,11 @@ The backend uses PostgreSQL-specific features (JSONB, ARRAY, triggers). The test
    ```
 
 The suite starts a `postgres:15-alpine` container per test session, creates all tables and triggers, overrides the app's DB dependency, and seeds a user to obtain an auth token.
+
+## Frontend tests
+
+Pure-logic modules (no DOM) have unit tests run with Node's built-in runner:
+
+```bash
+cd frontend && npm test
+```
