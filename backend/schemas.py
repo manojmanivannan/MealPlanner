@@ -1,7 +1,8 @@
-from pydantic import BaseModel, ConfigDict, EmailStr
+from pydantic import BaseModel, ConfigDict, EmailStr, field_validator
 from models import RecipeMealType, ServingUnits, DaysOfWeek
 from typing import List, Optional
 import datetime
+import math
 
 
 # --- Pydantic Schemas ---
@@ -69,6 +70,19 @@ class IngredientSchema(BaseModel):
     # A size change on such a row is rejected by the router; other edits and
     # a repair PUT remain possible.
     serving_size: Optional[float] = None
+
+    @field_validator("serving_size")
+    @classmethod
+    def nonfinite_serving_size_as_null(cls, v: Optional[float]) -> Optional[float]:
+        # A legacy row can also hold NaN or ±Inf in the Numeric column —
+        # pydantic used to accept NaN floats and Postgres stores it (#48).
+        # None-only handling was not enough: echoing a NaN float back 500s
+        # the response (JSON has no NaN token), so list/update of such a row
+        # crashed. The setup_db migration backfills these rows; until it
+        # runs, echo the unusable value as null like the NULL case above.
+        if v is not None and not math.isfinite(v):
+            return None
+        return v
     # Nutrition is nullable: a cleared field (empty string on PUT) is stored
     # as NULL, and the schema must echo that back as null instead of failing
     # validation (#41). The edit modal renders null as an empty input.

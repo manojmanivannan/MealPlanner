@@ -212,13 +212,14 @@ def update_ingredient(
             ).all()
         logger.debug(f"Recipes to update: {[r.name for r in recipes_to_update]}")
 
-        if size_changed and (old_size is None or old_size <= 0):
-            # Legacy row with a NULL, 0, or negative serving_size: there is no
-            # usable old size, so a rescale has no meaningful factor. Skipping
-            # it silently while still storing the new size would shift every
-            # affected recipe's nutrition by the old/new ratio (#43) — reject
-            # instead. Nothing has been written yet, so the PUT is
-            # all-or-nothing.
+        if size_changed and (old_size is None or not math.isfinite(old_size) or old_size <= 0):
+            # Legacy row with a NULL, NaN/±Inf, 0, or negative serving_size:
+            # there is no usable old size, so a rescale has no meaningful
+            # factor. Skipping it silently while still storing the new size
+            # would shift every affected recipe's nutrition by the old/new
+            # ratio (#43) and a NaN factor would write NaN into recipe JSONB
+            # (#48) — reject instead. Nothing has been written yet, so the
+            # PUT is all-or-nothing.
             affected = [
                 recipe.name for recipe in recipes_to_update
                 if any(_row_matches_ingredient(row, old_name) for row in recipe.ingredients)
@@ -227,10 +228,11 @@ def update_ingredient(
                 raise HTTPException(
                     status_code=400,
                     detail=(
-                        f"Cannot change serving size: '{old_name}' has no stored "
-                        f"serving size to rescale from. Remove '{old_name}' from "
-                        f"these recipes first, then set the serving size here and "
-                        f"re-add the rows with the new basis: {', '.join(affected)}"
+                        f"Cannot change serving size: '{old_name}' has no usable "
+                        f"stored serving size to rescale from. Remove '{old_name}' "
+                        f"from these recipes first, then set the serving size here "
+                        f"and re-add the rows with the new basis: "
+                        f"{', '.join(affected)}"
                     ),
                 )
 
@@ -255,8 +257,9 @@ def update_ingredient(
                     # construction — the ratio cancels in the trigger math.
                     # The unit change (if any) travels in the same request;
                     # the factor is computed from the DB's old size. A
-                    # legacy non-usable (NULL or ≤ 0) old size was rejected
-                    # above, so a matched row here always has a usable factor.
+                    # legacy non-usable (NULL, non-finite, or ≤ 0) old size
+                    # was rejected above, so a matched row here always has a
+                    # usable factor.
                     quantity = ingredient_in_recipe.get('quantity')
                     if isinstance(quantity, (int, float)) and not isinstance(quantity, bool):
                         factor = new_size / old_size

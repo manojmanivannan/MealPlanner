@@ -1,3 +1,5 @@
+import math
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import text
@@ -72,6 +74,10 @@ def test_get_ingredient_unauthorized(test_client: TestClient):
 # ---------------------------------------------------------------------------
 
 def _create_ingredient(client, headers, name, serving_unit, serving_size=None, extra=None):
+    # NOTE: POST /ingredients has no serving_size param — the handler applies
+    # the create-time default (100 for g/ml, else 1). The serving_size argument
+    # is therefore only honored when it equals that default; a deliberately
+    # different stored size must come from a later PUT (e.g. via extra).
     params = {"name": name, "shelf_life": 5, "serving_unit": serving_unit}
     if serving_size is not None:
         params["serving_size"] = serving_size
@@ -501,6 +507,192 @@ def test_unit_change_with_legacy_old_size_still_propagates(test_client, auth_hea
     assert rows[0]["name"] == "Hulled Millet"
     assert rows[0]["quantity"] == 40
     assert rows[0]["serving_unit"] == "tsp"
+
+
+# ---------------------------------------------------------------------------
+# Legacy NaN / non-finite serving_size (#48)
+#
+# Rows written before serving_size validation existed can hold NaN (pydantic
+# accepted NaN floats; Postgres Numeric stores it). Any comparison with NaN
+# is false, so the #43 guard (`old_size is None or old_size <= 0`) let NaN
+# slip through: `factor = new_size / NaN` wrote NaN into recipe JSONB and the
+# ingredient became permanently uneditable via PUT. The fix treats NaN/±Inf
+# as another unusable old size — rejected exactly like NULL/0 when recipes
+# reference the ingredient — and a data migration backfills the rows.
+#
+# NOTE on seeding: the recipe must be created BEFORE the size is corrupted to
+# NaN — a recipe built from a NaN serving_size computes NaN totals (0 * qty /
+# NaN -> NaN in Postgres even with default 0.0 nutrients) which would 500 the
+# recipe POST's own response.
+# ---------------------------------------------------------------------------
+
+def _corrupt_serving_size_sql(db_session, ingredient_id, sql_literal):
+    # Simulate a legacy row written before serving-size validation existed:
+    # the Numeric column can hold NaN or ±Infinity (#48).
+    db_session.execute(
+        text(f"UPDATE ingredients SET serving_size = {sql_literal} WHERE id = :i"),
+        {"i": ingredient_id},
+    )
+    db_session.commit()
+    db_session.expire_all()
+
+
+@pytest.mark.parametrize("legacy_literal", ["'NaN'::numeric", "'Infinity'::numeric"])
+def test_size_change_with_legacy_nonfinite_old_size_rejected_when_recipes_reference_it(
+    test_client, auth_headers, db_session, legacy_literal
+):
+    ing = _create_ingredient(test_client, auth_headers, "Sugar", "g", serving_size=100)
+    recipe = _create_recipe(
+        test_client,
+        auth_headers,
+        "Cake",
+        [{"name": "Sugar", "quantity": 50, "serving_unit": "g"}],
+    )
+    _corrupt_serving_size_sql(db_session, ing["id"], legacy_literal)
+
+    resp = test_client.put(f"/ingredients/{ing['id']}", params={"serving_size": 240}, headers=auth_headers)
+
+    # Same rejection as the NULL/0 sibling (#43): a non-finite old size is no
+    # usable factor, and silently skipping the rescale while storing the new
+    # size would push `new / NaN = NaN` into every referencing recipe row or
+    # shift their nutrition by the unknown old/new ratio (#48).
+    assert resp.status_code == 400, resp.text
+    assert "Cake" in resp.json()["detail"]
+
+    # Nothing was written: the recipe row and the stored size are untouched.
+    rows = _get_recipe_rows(test_client, auth_headers, recipe["id"])
+    assert rows[0]["quantity"] == 50
+    from models import Ingredient
+    stored = db_session.query(Ingredient).get(ing["id"])
+    assert not math.isfinite(float(stored.serving_size))
+
+
+def test_resave_with_legacy_nan_old_size_and_referencing_recipe_is_rejected(test_client, auth_headers, db_session):
+    # The edit modal re-sends name/unit/size on every save, and any finite
+    # size differs from NaN — so on a legacy NaN row a would-be no-op save IS
+    # a size change and is rejected while a recipe references it (#48). The
+    # repair path is the backfill migration, or removing the row from recipes
+    # first.
+    ing = _create_ingredient(test_client, auth_headers, "Honey", "g", serving_size=100)
+    recipe = _create_recipe(
+        test_client,
+        auth_headers,
+        "Granola",
+        [{"name": "Honey", "quantity": 30, "serving_unit": "g"}],
+    )
+    _corrupt_serving_size_sql(db_session, ing["id"], "'NaN'::numeric")
+
+    resp = test_client.put(
+        f"/ingredients/{ing['id']}",
+        params={"name": "Honey", "serving_unit": "g", "serving_size": 100},
+        headers=auth_headers,
+    )
+    assert resp.status_code == 400, resp.text
+    assert "Granola" in resp.json()["detail"]
+
+    rows = _get_recipe_rows(test_client, auth_headers, recipe["id"])
+    assert rows == [{"name": "Honey", "quantity": 30, "serving_unit": "g"}]
+
+
+def test_size_change_with_legacy_nan_old_size_allowed_without_recipe_rows(test_client, auth_headers, db_session):
+    # No recipe references the ingredient, so there is nothing to rescale —
+    # a size-change PUT is the repair path for the bad row (mirrors the NULL
+    # sibling in #43).
+    ing = _create_ingredient(test_client, auth_headers, "Quinoa", "g", serving_size=100)
+    _corrupt_serving_size_sql(db_session, ing["id"], "'NaN'::numeric")
+
+    resp = test_client.put(f"/ingredients/{ing['id']}", params={"serving_size": 240}, headers=auth_headers)
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["serving_size"] == 240
+
+
+def test_unit_and_rename_with_legacy_nan_old_size_still_propagates(test_client, auth_headers, db_session):
+    # Rename/unit propagation does not need the old size, so it must not be
+    # blocked by the non-finite rejection — and the response must serialize
+    # the unusable size as null instead of 500-ing every list/update that
+    # touches the row (#48).
+    ing = _create_ingredient(test_client, auth_headers, "Millet", "g", serving_size=100)
+    recipe = _create_recipe(
+        test_client,
+        auth_headers,
+        "Porridge",
+        [{"name": "Millet", "quantity": 40, "serving_unit": "g"}],
+    )
+    # Corrupt AFTER the recipe is built (a recipe POSTed from a NaN basis
+    # computes NaN totals). The rename below re-fires the recipe trigger, so
+    # this also proves the trigger's usable_divisor maps the NaN basis to a
+    # 0.0 contribution instead of NaN.
+    _corrupt_serving_size_sql(db_session, ing["id"], "'NaN'::numeric")
+
+    resp = test_client.put(
+        f"/ingredients/{ing['id']}",
+        params={"name": "Hulled Millet", "serving_unit": "tsp"},
+        headers=auth_headers,
+    )
+
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["serving_size"] is None  # NaN echoed as null, not a 500
+    rows = _get_recipe_rows(test_client, auth_headers, recipe["id"])
+    assert rows[0]["name"] == "Hulled Millet"
+    assert rows[0]["quantity"] == 40
+    assert rows[0]["serving_unit"] == "tsp"
+
+
+def test_serving_size_backfill_migration_purges_nan_and_null(test_client, auth_headers, db_session, engine):
+    # The idempotent setup_db migration backfills legacy NULL/NaN
+    # serving_size to the create-time default (100 for g/ml, else 1) so the
+    # nutrition trigger always has a finite divisor and a later size change
+    # has a usable old factor (#43, #48).
+    import setup_db
+
+    # One row per unit rule: NaN in g/ml/other, Infinity in g, NULL in g,
+    # plus healthy controls that must be left alone.
+    for name, unit in (("Flour", "g"), ("Milk", "ml"), ("Rice", "cup"),
+                       ("Eggs", "nos"), ("Pepper", "g"), ("Salt", "g"),
+                       ("Oats", "g"), ("Honey", "nos")):
+        _create_ingredient(test_client, auth_headers, name, unit)
+    # Oats: a healthy row with a deliberate non-default size that must survive.
+    oats = next(i for i in test_client.get("/ingredients", headers=auth_headers).json() if i["name"] == "Oats")
+    resp = test_client.put(f"/ingredients/{oats['id']}", params={"serving_size": 200}, headers=auth_headers)
+    assert resp.status_code == 200, resp.text
+
+    db_session.execute(text(
+        "UPDATE ingredients SET serving_size = 'NaN'::numeric "
+        "WHERE name IN ('Flour', 'Milk', 'Rice', 'Eggs')"
+    ))
+    db_session.execute(text(
+        "UPDATE ingredients SET serving_size = 'Infinity'::numeric WHERE name = 'Pepper'"
+    ))
+    db_session.execute(text("UPDATE ingredients SET serving_size = NULL WHERE name = 'Salt'"))
+    db_session.commit()
+    db_session.expire_all()
+
+    with engine.connect() as conn:
+        setup_db.backfill_legacy_serving_sizes(conn)
+        conn.commit()
+
+    db_session.expire_all()
+    from models import Ingredient
+
+    def size(name):
+        return float(db_session.query(Ingredient).filter(Ingredient.name == name).one().serving_size)
+
+    assert size("Flour") == 100   # NaN, g
+    assert size("Milk") == 100    # NaN, ml
+    assert size("Rice") == 1      # NaN, cup
+    assert size("Eggs") == 1      # NaN, nos
+    assert size("Pepper") == 100  # +Infinity, g
+    assert size("Salt") == 100    # NULL, g
+    assert size("Oats") == 200    # healthy, non-default: untouched
+    assert size("Honey") == 1     # healthy, unit default: untouched
+
+    # Idempotent: a second run is a strict no-op.
+    with engine.connect() as conn:
+        setup_db.backfill_legacy_serving_sizes(conn)
+        conn.commit()
+    db_session.expire_all()
+    assert size("Flour") == 100
+    assert size("Oats") == 200
 
 
 def test_noop_resave_does_not_rescale_recipe_quantities(test_client, auth_headers):

@@ -152,6 +152,20 @@ class WeeklyPlan(Base):
 # The trigger logic is attached to the table metadata.
 
 # 1. Nutrition Calculation Trigger for Recipes
+# The trigger divides each row's contribution by the ingredient's
+# serving_size; a legacy non-finite value (NaN/±Inf) — pydantic used to
+# accept NaN floats, Postgres Numeric stores them — would poison the recipe's
+# totals with NaN, and 0/negative poison them too. Route the divisor through
+# usable_divisor so every unusable basis contributes NULL, which the
+# surrounding COALESCE turns into 0.0 (#48).
+usable_divisor_func = DDL("""
+    CREATE OR REPLACE FUNCTION usable_divisor(n numeric) RETURNS numeric AS $$
+        SELECT CASE WHEN n IS NULL OR n = 0
+                     OR n IN ('NaN'::numeric, 'Infinity'::numeric, '-Infinity'::numeric)
+                    THEN NULL ELSE n END
+    $$ LANGUAGE sql;
+""")
+
 calculate_nutrition_func = DDL("""
     CREATE OR REPLACE FUNCTION calculate_recipe_nutrients()
     RETURNS TRIGGER AS $$
@@ -197,19 +211,20 @@ calculate_nutrition_func = DDL("""
                 -- Each per-row contribution is COALESCEd to 0: an
                 -- ingredient nutrient or serving_size can be NULL (cleared
                 -- via PUT #41), and plain plpgsql addition would propagate
-                -- that NULL into the recipe's totals. NULLIF also guards a
-                -- zero serving_size against a division error.
-                total_protein := total_protein + COALESCE(nutrient_data.protein * ing_record.quantity / NULLIF(nutrient_data.serving_size, 0), 0.0);
-                total_carbs := total_carbs + COALESCE(nutrient_data.carbs * ing_record.quantity / NULLIF(nutrient_data.serving_size, 0), 0.0);
-                total_fat := total_fat + COALESCE(nutrient_data.fat * ing_record.quantity / NULLIF(nutrient_data.serving_size, 0), 0.0);
-                total_fiber := total_fiber + COALESCE(nutrient_data.fiber * ing_record.quantity / NULLIF(nutrient_data.serving_size, 0), 0.0);
-                total_energy := total_energy + COALESCE(nutrient_data.energy * ing_record.quantity / NULLIF(nutrient_data.serving_size, 0), 0.0);
-                total_iron_mg := total_iron_mg + COALESCE(nutrient_data.iron_mg * ing_record.quantity / NULLIF(nutrient_data.serving_size, 0), 0.0);
-                total_magnesium_mg := total_magnesium_mg + COALESCE(nutrient_data.magnesium_mg * ing_record.quantity / NULLIF(nutrient_data.serving_size, 0), 0.0);
-                total_calcium_mg := total_calcium_mg + COALESCE(nutrient_data.calcium_mg * ing_record.quantity / NULLIF(nutrient_data.serving_size, 0), 0.0);
-                total_potassium_mg := total_potassium_mg + COALESCE(nutrient_data.potassium_mg * ing_record.quantity / NULLIF(nutrient_data.serving_size, 0), 0.0);
-                total_sodium_mg := total_sodium_mg + COALESCE(nutrient_data.sodium_mg * ing_record.quantity / NULLIF(nutrient_data.serving_size, 0), 0.0);
-                total_vitamin_c_mg := total_vitamin_c_mg + COALESCE(nutrient_data.vitamin_c_mg * ing_record.quantity / NULLIF(nutrient_data.serving_size, 0), 0.0);
+                -- that NULL into the recipe's totals. usable_divisor maps a
+                -- NULL, zero, or non-finite (NaN/±Inf) serving_size to NULL
+                -- so the division can never error or yield NaN.
+                total_protein := total_protein + COALESCE(nutrient_data.protein * ing_record.quantity / usable_divisor(nutrient_data.serving_size), 0.0);
+                total_carbs := total_carbs + COALESCE(nutrient_data.carbs * ing_record.quantity / usable_divisor(nutrient_data.serving_size), 0.0);
+                total_fat := total_fat + COALESCE(nutrient_data.fat * ing_record.quantity / usable_divisor(nutrient_data.serving_size), 0.0);
+                total_fiber := total_fiber + COALESCE(nutrient_data.fiber * ing_record.quantity / usable_divisor(nutrient_data.serving_size), 0.0);
+                total_energy := total_energy + COALESCE(nutrient_data.energy * ing_record.quantity / usable_divisor(nutrient_data.serving_size), 0.0);
+                total_iron_mg := total_iron_mg + COALESCE(nutrient_data.iron_mg * ing_record.quantity / usable_divisor(nutrient_data.serving_size), 0.0);
+                total_magnesium_mg := total_magnesium_mg + COALESCE(nutrient_data.magnesium_mg * ing_record.quantity / usable_divisor(nutrient_data.serving_size), 0.0);
+                total_calcium_mg := total_calcium_mg + COALESCE(nutrient_data.calcium_mg * ing_record.quantity / usable_divisor(nutrient_data.serving_size), 0.0);
+                total_potassium_mg := total_potassium_mg + COALESCE(nutrient_data.potassium_mg * ing_record.quantity / usable_divisor(nutrient_data.serving_size), 0.0);
+                total_sodium_mg := total_sodium_mg + COALESCE(nutrient_data.sodium_mg * ing_record.quantity / usable_divisor(nutrient_data.serving_size), 0.0);
+                total_vitamin_c_mg := total_vitamin_c_mg + COALESCE(nutrient_data.vitamin_c_mg * ing_record.quantity / usable_divisor(nutrient_data.serving_size), 0.0);
             ELSE
             END IF;
         END LOOP;
@@ -236,6 +251,7 @@ create_nutrition_trigger = DDL("""
 """)
 
 # Associate the function and trigger with the Recipe table
+event.listen(Recipe.__table__, 'before_create', usable_divisor_func)
 event.listen(Recipe.__table__, 'before_create', calculate_nutrition_func)
 event.listen(Recipe.__table__, 'after_create', create_nutrition_trigger)
 
