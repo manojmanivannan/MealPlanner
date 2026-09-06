@@ -57,6 +57,22 @@ function getCurrentDayName() {
   return mapping[dayIndex] || 'Monday'
 }
 
+/* Meal-slot time windows (hours, end-exclusive) — the current slot is the
+   one whose window contains "now". */
+const MEAL_SLOT_WINDOWS = [
+  { meal: 'pre_breakfast', from: 0, to: 8 }, // up to 8 AM
+  { meal: 'breakfast', from: 8, to: 11 }, // 8 AM – 11 AM
+  { meal: 'lunch', from: 11, to: 15 }, // 11 AM – 3 PM
+  { meal: 'snack', from: 15, to: 17 }, // 3 PM – 5 PM
+  { meal: 'dinner', from: 17, to: 24 }, // 5 PM – 12 AM
+]
+
+function getCurrentMealSlot(date = new Date()) {
+  const hour = date.getHours()
+  const window = MEAL_SLOT_WINDOWS.find((w) => hour >= w.from && hour < w.to)
+  return (window || MEAL_SLOT_WINDOWS[0]).meal
+}
+
 const state = {
   recipes: [],
   plan: {},
@@ -429,7 +445,7 @@ function dayCard(day) {
     }
     const n = sumNutrition(ids)
     addInto(dayTotals, n)
-    return mealSlot(day, meal, ids)
+    return mealSlot(day, meal, ids, isToday && meal === getCurrentMealSlot())
   }).join('')
 
   return `
@@ -461,7 +477,7 @@ function dayCard(day) {
 
 /* ----------------------------- Meal Slot ------------------------------ */
 
-function mealSlot(day, meal, ids) {
+function mealSlot(day, meal, ids, isCurrentSlot = false) {
   const label = MEAL_LABELS[meal] || meal.replace('_', ' ')
   const icon = MEAL_ICONS[meal] || '🍽️'
   const occupied = ids.length > 0
@@ -511,7 +527,7 @@ function mealSlot(day, meal, ids) {
   }).join('')
 
   return `
-    <div class="mp-meal-slot py-2.5 first:pt-1.5 last:pb-1.5">
+    <div class="mp-meal-slot ${isCurrentSlot ? 'mp-meal-slot-current' : ''} py-2.5 first:pt-1.5 last:pb-1.5">
       <div class="flex items-center justify-between gap-2 mb-1.5">
         <span class="text-[11px] font-semibold text-secondary uppercase tracking-wider flex items-center gap-1">
           <span>${icon}</span>
